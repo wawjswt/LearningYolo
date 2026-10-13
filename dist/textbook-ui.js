@@ -120,5 +120,6 @@
     window.render();
     window.scrollTo(0,0);
   },true);
+  window.addEventListener('popstate',()=>{window.render();window.scrollTo(0,0)});
   render();
 })();

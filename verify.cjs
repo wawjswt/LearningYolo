@@ -29,7 +29,7 @@ const context = vm.createContext({
   console,
 });
 
-for (const file of ['data.js', 'textbook-v2.js', 'textbook-app.js', 'textbook-ui-v2.js']) {
+for (const file of ['data.js', 'textbook-v2.js', 'textbook-app.js', 'textbook-ui-v3.js']) {
   vm.runInContext(fs.readFileSync(`dist/${file}`, 'utf8'), context, { filename: file });
 }
 
@@ -44,7 +44,10 @@ for (const lesson of lessons) {
 }
 const manifest = JSON.parse(fs.readFileSync('.openai/hosting.json', 'utf8'));
 assert.equal(manifest.static.directory, 'dist');
-for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-ui-v2.js', 'textbook-v2.js', 'textbook-v2.css']) {
+const html = fs.readFileSync('dist/index.html', 'utf8');
+assert.match(html, /href="textbook-v3\.css"/);
+assert.match(html, /src="textbook-ui-v3\.js"/);
+for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css']) {
   assert.ok(fs.statSync(`dist/${file}`).size > 0, `${file} should be present`);
 }
 

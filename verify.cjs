@@ -29,7 +29,7 @@ const context = vm.createContext({
   console,
 });
 
-for (const file of ['data.js', 'textbook-v2.js', 'textbook-app.js', 'textbook-ui-v3.js']) {
+for (const file of ['data.js', 'textbook-figures.js', 'textbook-v2.js', 'textbook-app.js', 'textbook-ui-v3.js']) {
   vm.runInContext(fs.readFileSync(`dist/${file}`, 'utf8'), context, { filename: file });
 }
 
@@ -41,13 +41,19 @@ for (const lesson of lessons) {
   assert.ok(lesson.sections.length >= 3, `${lesson.id} should have detailed sections`);
   assert.ok(lesson.code.trim(), `${lesson.id} should include a code example`);
   assert.ok(lesson.quiz.answer >= 0 && lesson.quiz.answer < lesson.quiz.options.length, `${lesson.id} should have a valid quiz answer`);
+  const page = context.window.lesson(lesson.id);
+  assert.match(page, new RegExp(`<figure class="chapter-concept-figure" data-visual="${lesson.visual}"`), `${lesson.id} should have a chapter-specific concept figure`);
+  assert.match(page, /<figure class="chapter-concept-figure"[^>]*tabindex="0"/, `${lesson.id} figure should be keyboard scrollable on narrow screens`);
+  assert.match(page, /<svg[^>]+aria-labelledby="[^"]+"[\s\S]*?<title id="[^"]+">[\s\S]*?<desc id="[^"]+">/, `${lesson.id} figure should explain its visual to assistive technology`);
+  assert.match(page, /<section class="text-section" id="section-\d+">[\s\S]*?<figure class="chapter-concept-figure"/, `${lesson.id} figure should sit beside its related explanation`);
 }
 const manifest = JSON.parse(fs.readFileSync('.openai/hosting.json', 'utf8'));
 assert.equal(manifest.static.directory, 'dist');
 const html = fs.readFileSync('dist/index.html', 'utf8');
 assert.match(html, /href="textbook-v3\.css"/);
 assert.match(html, /src="textbook-ui-v3\.js"/);
-for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css']) {
+assert.match(html, /src="textbook-figures\.js"/);
+for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-figures.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css']) {
   assert.ok(fs.statSync(`dist/${file}`).size > 0, `${file} should be present`);
 }
 
@@ -73,3 +79,4 @@ clickCourseFilter('all');
 assert.equal(location.hash, '#courses');
 assert.match(content.innerHTML, /共 24 章/);
 console.log('Verified 24 textbook chapters and working course-category navigation.');
+

@@ -93,7 +93,7 @@
   }
   function render(){
     const parts=location.hash.slice(1).split('/'),route=parts[0]||'home',id=parts[1];
-    if(route==='courses'&&id&&groups[id])filter=id;
+    if(route==='courses')filter=id&&groups[id]?id:'all';
     const names={home:'学习概览',courses:'课程目录',path:'学习路线',lab:'交互实验室',notes:'我的笔记',resources:'资源导航',lesson:'教材阅读'};
     const crumb=route==='lesson'?(lessons.find(l=>l.id===id)||{}).title||'教材阅读':names[route]||'学习概览';
     const content=route==='home'?home():route==='courses'?courses():route==='path'?path():route==='lesson'?lesson(id):route==='lab'?lab():route==='notes'?notes():route==='resources'?resources():home();
@@ -106,5 +106,19 @@
     document.title=(route==='lesson'?crumb:names[route]||'学习概览')+' · VisionLab';
   }
   window.home=home;window.courses=courses;window.path=path;window.lesson=lesson;window.render=render;
+  document.addEventListener('click',event=>{
+    const anchor=event.target.closest('a[href^="#"]');
+    if(!anchor)return;
+    const destination=anchor.getAttribute('href').slice(1);
+    if(destination.startsWith('section-')||destination==='chapter-review'||destination==='chapter-notes'){
+      event.preventDefault();
+      document.getElementById(destination)?.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
+    event.preventDefault();
+    history.pushState({},'',location.pathname+location.search+'#'+destination);
+    window.render();
+    window.scrollTo(0,0);
+  },true);
   render();
 })();

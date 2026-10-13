@@ -7,16 +7,52 @@ const content = { innerHTML: '' };
 const crumb = { textContent: '' };
 const search = { addEventListener() {} };
 const sidebar = { classList: { remove() {} } };
-const elements = { '#content': content, '#crumb': crumb, '#search': search, '.sidebar': sidebar };
+const progressRoot = { attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
+const progressFill = { style: {} };
+const windowListeners = [];
+const elements = { '#content': content, '#crumb': crumb, '#search': search, '.sidebar': sidebar, '#reading-progress': progressRoot, '#reading-progress-fill': progressFill };
 const location = { hash: '#courses', pathname: '/', search: '' };
+const sectionPositions = { 'section-1': 90, 'section-2': 450, 'chapter-review': 1000, 'chapter-notes': 1500 };
+const sections = Object.entries(sectionPositions).map(([id, position]) => ({
+  id,
+  getBoundingClientRect() { return { top: position - window.scrollY }; },
+}));
+function tocLink(id) {
+  const attributes = { href: `#${id}` };
+  const classes = new Set();
+  return {
+    attributes,
+    classes,
+    getAttribute(name) { return attributes[name] || null; },
+    setAttribute(name, value) { attributes[name] = value; },
+    removeAttribute(name) { delete attributes[name]; },
+    classList: { toggle(name, enabled) { if (enabled) classes.add(name); else classes.delete(name); } },
+  };
+}
+const tocLinks = Object.keys(sectionPositions).map(tocLink);
 const document = {
   title: '',
   querySelector(selector) { return elements[selector] || null; },
-  querySelectorAll() { return []; },
+  querySelectorAll(selector) {
+    if (selector === '.text-section[id^="section-"], #chapter-review, #chapter-notes') return sections;
+    if (selector === '.chapter-toc a') return tocLinks;
+    return [];
+  },
+  documentElement: { scrollHeight: 2400 },
   getElementById(id) { return elements[`#${id}`] || null; },
   addEventListener(type, listener, options) { listeners.push({ type, listener, capture: options === true || options?.capture === true }); },
 };
-const window = { addEventListener() {}, scrollTo() {} };
+const window = {
+  innerHeight: 800,
+  scrollY: 0,
+  addEventListener(type, listener) { windowListeners.push({ type, listener }); },
+  removeEventListener(type, listener) {
+    const index = windowListeners.findIndex(item => item.type === type && item.listener === listener);
+    if (index >= 0) windowListeners.splice(index, 1);
+  },
+  matchMedia() { return { matches: false }; },
+  scrollTo() {},
+};
 const context = vm.createContext({
   document,
   window,
@@ -47,6 +83,13 @@ for (const lesson of lessons) {
   assert.match(page, /<svg[^>]+aria-labelledby="[^"]+"[\s\S]*?<title id="[^"]+">[\s\S]*?<desc id="[^"]+">/, `${lesson.id} figure should explain its visual to assistive technology`);
   assert.match(page, /<section class="text-section" id="section-\d+">[\s\S]*?<figure class="chapter-concept-figure"/, `${lesson.id} figure should sit beside its related explanation`);
 }
+const readingPage = context.window.lesson('iou');
+assert.match(readingPage, /class="reading-progress"[^>]*role="progressbar"/, 'lesson pages should expose an accessible reading progress bar');
+assert.match(readingPage, /id="reading-progress-fill"/, 'lesson pages should contain a progress indicator');
+const textbookCss = fs.readFileSync('dist/textbook-v3.css', 'utf8');
+assert.match(textbookCss, /@keyframes textbook-enter/, 'page sections should use the restrained entrance animation');
+assert.match(textbookCss, /prefers-reduced-motion:\s*reduce/, 'motion should respect the reduced-motion preference');
+assert.match(textbookCss, /\.chapter-toc a\.is-current/, 'the current reading section should be highlighted in the table of contents');
 const manifest = JSON.parse(fs.readFileSync('.openai/hosting.json', 'utf8'));
 assert.equal(manifest.static.directory, 'dist');
 const html = fs.readFileSync('dist/index.html', 'utf8');
@@ -78,5 +121,13 @@ for (const group of ['dl', 'cv', 'yolo']) {
 clickCourseFilter('all');
 assert.equal(location.hash, '#courses');
 assert.match(content.innerHTML, /共 24 章/);
-console.log('Verified 24 textbook chapters and working course-category navigation.');
-
+location.hash = '#lesson/iou';
+context.window.render();
+assert.equal(progressRoot.attributes['aria-valuenow'], '0', 'reading progress should initialize at the top of a lesson');
+assert.ok(tocLinks[0].classes.has('is-current'), 'the first section should be active at the top of a lesson');
+window.scrollY = 650;
+windowListeners.find(item => item.type === 'scroll').listener();
+assert.equal(progressRoot.attributes['aria-valuenow'], '41', 'reading progress should follow page scrolling');
+assert.ok(tocLinks[1].classes.has('is-current'), 'the active table-of-contents item should follow the visible section');
+assert.equal(tocLinks[1].attributes['aria-current'], 'location', 'the current section should be announced to assistive technology');
+console.log('Verified 24 textbook chapters, course navigation, and accessible reading progress.');

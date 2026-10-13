@@ -1,5 +1,43 @@
 /* 教材式阅读界面：保留原有笔记、自测、搜索与 IoU 实验交互。 */
 (()=>{
+  let readingEffectsHandler=null;
+  function clearReadingEffects(){
+    if(!readingEffectsHandler)return;
+    window.removeEventListener('scroll',readingEffectsHandler);
+    window.removeEventListener('resize',readingEffectsHandler);
+    readingEffectsHandler=null;
+  }
+  function updateReadingEffects(route){
+    clearReadingEffects();
+    if(route!=='lesson')return;
+    const progress=document.getElementById('reading-progress');
+    const fill=document.getElementById('reading-progress-fill');
+    const sections=[...document.querySelectorAll('.text-section[id^="section-"], #chapter-review, #chapter-notes')];
+    const links=[...document.querySelectorAll('.chapter-toc a')];
+    if(!progress||!fill)return;
+    readingEffectsHandler=()=>{
+      const maxScroll=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);
+      const percent=Math.round(Math.min(1,Math.max(0,(window.scrollY||0)/maxScroll))*100);
+      fill.style.transform='scaleX('+(percent/100)+')';
+      progress.setAttribute('aria-valuenow',String(percent));
+      progress.setAttribute('aria-valuetext','阅读进度 '+percent+'%');
+      let active=sections[0]?.id;
+      const threshold=Math.max(120,(window.innerHeight||0)*.25);
+      for(const section of sections){
+        if(section.getBoundingClientRect().top<=threshold)active=section.id;
+        else break;
+      }
+      for(const link of links){
+        const current=link.getAttribute('href')==='#'+active;
+        link.classList.toggle('is-current',current);
+        if(current)link.setAttribute('aria-current','location');
+        else link.removeAttribute('aria-current');
+      }
+    };
+    window.addEventListener('scroll',readingEffectsHandler,{passive:true});
+    window.addEventListener('resize',readingEffectsHandler);
+    readingEffectsHandler();
+  }
   function rich(value){const mark=String.fromCharCode(96);const pattern=new RegExp(mark+'([^'+mark+']+)'+mark,'g');return esc(value).replace(pattern,'<code>$1</code>').replace(/\n/g,'<br>')}
   function articleSections(l){
     const placement=window.lessonFigures.placement(l);
@@ -64,7 +102,7 @@
     const quiz=l.quiz?'<section class="chapter-quiz quiz"><span class="chapter-kicker">CHECK YOUR UNDERSTANDING · 章末自测</span><h2>检查一下你的理解</h2><p>'+l.quiz.q+'</p>'+l.quiz.options.map((o,i)=>'<button data-answer="'+i+'" data-lesson="'+l.id+'">'+String.fromCharCode(65+i)+'. '+o+'</button>').join('')+'<div class="quiz-result" aria-live="polite"></div></section>':'';
     const keypoints=l.keypoints?'<section class="keypoint-review"><span class="chapter-kicker">CHAPTER REVIEW</span><h2>本章要点</h2><ul>'+l.keypoints.map(x=>'<li>'+x+'</li>').join('')+'</ul></section>':'';
     const source=l.source?'<p class="source-note">延伸阅读：<a href="'+esc(l.source)+'" target="_blank" rel="noopener noreferrer">官方文档与参考资料 ↗</a>。概念解释为本课程整理；具体接口、参数和仓库实现请以对应版本文档为准。</p>':'';
-    return '<article class="textbook-page"><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(index+1).padStart(2,'0')+' 章　/　'+lessons.length+' 章</span></div>'
+    return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(index+1).padStart(2,'0')+' 章　/　'+lessons.length+' 章</span></div>'
       +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span></div></header>'
       +'<div class="chapter-layout"><aside class="chapter-toc"><strong>本章导航</strong><ol>'+l.sections.map((s,i)=>'<li><a href="#section-'+(i+1)+'">'+s.title+'</a></li>').join('')+'<li><a href="#chapter-review">本章要点</a></li><li><a href="#chapter-notes">笔记与进度</a></li></ol></aside>'
       +'<div class="chapter-body">'+objectiveBox(l)+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
@@ -83,6 +121,7 @@
     document.getElementById('content').innerHTML=content;
     if(route==='lab')updateIoU();
     document.querySelector('.sidebar').classList.remove('open');
+    updateReadingEffects(route);
     document.title=(route==='lesson'?crumb:names[route]||'学习概览')+' · VisionLab';
   }
   window.home=home;window.courses=courses;window.path=path;window.lesson=lesson;window.render=render;
@@ -92,7 +131,8 @@
     const destination=anchor.getAttribute('href').slice(1);
     if(destination.startsWith('section-')||destination==='chapter-review'||destination==='chapter-notes'){
       event.preventDefault();
-      document.getElementById(destination)?.scrollIntoView({behavior:'smooth',block:'start'});
+      const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      document.getElementById(destination)?.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});
       return;
     }
     event.preventDefault();
@@ -103,4 +143,3 @@
   window.addEventListener('popstate',()=>{window.render();window.scrollTo(0,0)});
   render();
 })();
-

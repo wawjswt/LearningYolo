@@ -128,3 +128,34 @@ footer{border-color:#e5e2d9}
 @media(max-width:480px){.page-intro h1{font-size:29px}.page-intro>p:last-child{font-size:13px}.welcome-art{min-height:190px}.art-orbit.orbit-one{width:250px;height:120px}.art-orbit.orbit-two{width:190px;height:190px}.node-one{left:11%}.node-two{right:8%}.chapter-byline{gap:8px 14px}.lesson-figure{margin:0 -10px 28px;padding:10px}.figure-heading{font-size:9px}.figure-heading span:last-child,.chapter-concept-figure .figure-heading span:last-child{display:none}.chapter-concept-figure{margin:18px -9px 25px;padding:9px 8px 10px}.chapter-concept-figure svg{width:580px;max-width:none;min-height:0;max-height:none}.chapter-concept-figure figcaption{font-size:12px;line-height:1.85}.text-section p,.worked-example p{font-size:14px;line-height:2}.chapter-heading h1{font-size:27px}.chapter-row-meta{font-size:9px}.level-pill{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.next-reading-card,.stage-card,.chapter-row{transition:none!important}}
 
+/* Calm page transitions and clear feedback keep the textbook pleasant to explore. */
+#content>*{animation:textbook-enter .48s cubic-bezier(.22,.61,.36,1) both}
+#content>:nth-child(2){animation-delay:45ms}
+#content>:nth-child(3){animation-delay:90ms}
+#content>:nth-child(4){animation-delay:135ms}
+#content>:nth-child(5){animation-delay:180ms}
+@keyframes textbook-enter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.art-core{animation:textbook-core-arrive .9s cubic-bezier(.2,.75,.35,1) both}
+@keyframes textbook-core-arrive{0%{transform:scale(.92);box-shadow:0 0 0 0 #7668a833}65%{box-shadow:0 0 0 13px #7668a800}100%{transform:scale(1);box-shadow:0 15px 35px #51448c38}}
+.stage-card{transition:background .2s,transform .2s,box-shadow .2s}
+.stage-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px #4038550d;z-index:1}
+.chapter-row{position:relative;transition:background .18s,transform .18s,border-color .18s}
+.chapter-row::before{position:absolute;inset:12px auto 12px 0;width:2px;background:#8070b1;content:"";transform:scaleY(0);transform-origin:center;transition:transform .18s ease}
+.chapter-row:hover,.chapter-row:focus-visible{background:#fffefa;transform:translateX(3px)}
+.chapter-row:hover::before,.chapter-row:focus-visible::before{transform:scaleY(1)}
+.chapter-row .chapter-status{transition:transform .18s ease}
+.chapter-row:hover .chapter-status{transform:translateX(3px)}
+.chapter-toc a{display:inline-block;transition:color .18s,transform .18s}
+.chapter-toc a.is-current{color:#584987;font-weight:650;transform:translateX(3px)}
+.chapter-concept-figure{transition:border-color .2s,box-shadow .2s}
+.chapter-concept-figure:hover{border-color:#d7d0e4;box-shadow:0 6px 20px #3833440a}
+.progress-bar i{transition:width .45s cubic-bezier(.2,.7,.25,1)}
+.sidebar{transition:transform .26s cubic-bezier(.2,.7,.25,1)}
+.reading-progress{position:fixed;inset:0 0 auto 240px;height:3px;z-index:50;overflow:hidden;background:#e8e4dc;pointer-events:none}
+.reading-progress span{display:block;width:100%;height:100%;background:linear-gradient(90deg,#7668a8,#50879a);transform:scaleX(0);transform-origin:left center;transition:transform .08s linear}
+@media(max-width:700px){.reading-progress{left:0}}
+@media(prefers-reduced-motion:reduce){
+  #content>*,.art-core{animation:none!important}
+  .stage-card,.chapter-row,.chapter-row::before,.chapter-row .chapter-status,.chapter-toc a,.chapter-concept-figure,.progress-bar i,.sidebar,.reading-progress span{transition:none!important}
+  html{scroll-behavior:auto!important}
+}

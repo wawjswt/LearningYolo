@@ -50,8 +50,8 @@ footer{border-color:#e5e2d9}
 .reading-note{max-width:1200px;margin:0 auto 16px;display:flex;gap:14px;padding:17px 20px;background:#f0eee7;border-left:2px solid #9688bd;color:#697582}.reading-note>span{font-size:20px;color:#7969ac}.reading-note p{font-size:12px;line-height:1.9;margin:0}.reading-note strong{color:#303c4b}
 .page-intro:has(+.textbook-filters),.page-intro:has(+.roadmap-intro){max-width:1180px}
 .textbook-filters{display:flex;gap:8px;flex-wrap:wrap;max-width:1180px;margin:26px auto 12px}
-.textbook-filters button{border:1px solid #e5e2da;background:#fffefa;border-radius:3px;padding:9px 14px;font-size:12px;color:#697686}
-.textbook-filters button:hover,.textbook-filters button.selected{border-color:#a69bc9;background:#f0eef6;color:#5f5196}
+.textbook-filters a{display:inline-flex;align-items:center;border:1px solid #e5e2da;background:#fffefa;border-radius:3px;padding:9px 14px;font-size:12px;color:#697686;text-decoration:none}
+.textbook-filters a:hover,.textbook-filters a.selected{border-color:#a69bc9;background:#f0eef6;color:#5f5196}
 .catalog-count{max-width:1180px;margin:0 auto 10px;color:#7b8591;font-size:11px}
 .chapter-list{list-style:none;padding:0;margin:0}
 .catalog-count+.chapter-list,.roadmap-stage .chapter-list{max-width:1180px;margin:0 auto}

@@ -55,7 +55,7 @@
     return '<ol class="chapter-list">'+items.map(l=>'<li><a class="chapter-row '+l.group+'" href="#lesson/'+l.id+'"><span class="chapter-index">'+String(lessons.indexOf(l)+1).padStart(2,'0')+'</span><span class="chapter-row-copy"><strong>'+l.title+'</strong><small>'+l.desc+'</small></span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">'+(state.done.includes(l.id)?'✓':'→')+'</span></a></li>').join('')+'</ol>';
   }
   function filters(){
-    return '<div class="textbook-filters">'+[['all','全部章节'],['dl','深度学习'],['cv','计算机视觉'],['yolo','YOLOv5 实战']].map(([id,name])=>'<button class="'+(filter===id?'selected':'')+'" data-filter="'+id+'">'+name+'</button>').join('')+'</div>';
+    return '<div class="textbook-filters">'+[['all','全部章节'],['dl','深度学习'],['cv','计算机视觉'],['yolo','YOLOv5 实战']].map(([id,name])=>'<a class="'+(filter===id?'selected':'')+'"'+(filter===id?' aria-current="page"':'')+' href="#courses'+(id==='all'?'':'/'+id)+'">'+name+'</a>').join('')+'</div>';
   }
   function matched(){
     return lessons.filter(l=>(filter==='all'||filter===l.group)&&(!query||JSON.stringify(l).toLowerCase().includes(query.toLowerCase())));

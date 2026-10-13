@@ -164,9 +164,8 @@ const additions = [
   {id:'debugging',group:'yolo',title:'训练故障排查与实验复盘',desc:'从空结果、错误标签和验证退化定位模型问题。',time:35,level:'进阶',code:'# 每轮实验至少保存：\n# 1. 数据版本、类别顺序与标注检查图\n# 2. 完整命令、超参数 YAML 与代码版本\n# 3. best.pt、按类指标与错误案例\n# 4. 推理设备、输入尺寸与实测延迟',quiz:{q:'训练能跑完但预测为空，先做什么？',options:['核对权重、类别映射和 conf 阈值','增加页脚动画','只增加 epochs'],answer:0,why:'先检查预测链路与过滤配置是否正确。'},language:'复盘清单'}
 ];
 
-const groupOrder=['dl','cv','yolo'];
-for(const lesson of lessons) Object.assign(lesson,textbook[lesson.id]||{});
 const authored=[...lessons,...additions];
+for(const lesson of authored) Object.assign(lesson,textbook[lesson.id]||{});
 const idOrder=['tensor','gradient','network','losses','optimizer','training','regularization','transfer','image','cnn','pooling','augmentation','tasks','iou','metrics','data-quality','architecture','dataset','anchors','yolo-loss','train-yolo','yolo-augment','inference','debugging'];
 const byId=new Map(authored.map(item=>[item.id,item]));
 lessons.splice(0,lessons.length,...idOrder.map(id=>byId.get(id)).filter(Boolean));

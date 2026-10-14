@@ -28,15 +28,19 @@ for (const [id, value] of Object.entries({
   'conv-kernel': 'edge', 'conv-visual': '', 'conv-detail': '',
   'nms-confidence': '0.3', 'nms-iou': '0.5', 'nms-confidence-value': '', 'nms-iou-value': '',
   'nms-visual': '', 'nms-summary': '',
+  'metric-class': 'all', 'metric-confidence': '0.70', 'metric-iou': '0.50',
+  'metric-confidence-value': '', 'metric-iou-value': '', 'metric-point-summary': '',
+  'metric-precision': '', 'metric-recall': '', 'metric-f1': '', 'metric-best-f1': '',
+  'metric-pr-chart': '', 'metric-f1-chart': '', 'metric-map-summary': '', 'metric-map-breakdown': '',
 })) elements[`#${id}`] = fakeElement(id, value);
-const labTabs = ['iou', 'gradient', 'convolution', 'nms'].map(id => {
+const labTabs = ['iou', 'gradient', 'convolution', 'nms', 'metrics'].map(id => {
   const tab = fakeElement();
   tab.dataset.labTab = id;
   tab.attributes['aria-selected'] = 'false';
   tab.attributes.tabindex = '-1';
   return tab;
 });
-const labPanels = ['iou', 'gradient', 'convolution', 'nms'].map(id => {
+const labPanels = ['iou', 'gradient', 'convolution', 'nms', 'metrics'].map(id => {
   const panel = fakeElement();
   panel.dataset.labPanel = id;
   return panel;
@@ -129,6 +133,10 @@ assert.match(textbookCss, /@keyframes textbook-enter/, 'page sections should use
 assert.match(textbookCss, /prefers-reduced-motion:\s*reduce/, 'motion should respect the reduced-motion preference');
 assert.match(textbookCss, /\.lab-canvas svg pattern path,\.nms-visual svg pattern path\{fill:none\}/, 'open SVG grid paths should not fill triangular cells');
 assert.match(textbookCss, /\.chapter-toc a\.is-current/, 'the current reading section should be highlighted in the table of contents');
+assert.match(textbookCss, /\.metric-pr-line[\s\S]*\.metric-f1-line/, 'the metric charts should have separate readable curve styles');
+assert.match(textbookCss, /\.metric-ap-bar\.ap5095/, 'the mAP breakdown should distinguish AP@0.50 from AP@0.50:0.95');
+assert.match(textbookCss, /@media\(max-width:600px\)\{\.metric-intro-card/, 'the metric lab should adapt to narrow screens');
+assert.match(textbookCss, /@media\(prefers-reduced-motion:reduce\)\{\.metric-chart svg/, 'chart motion should respect reduced-motion preferences');
 const manifest = JSON.parse(fs.readFileSync('.openai/hosting.json', 'utf8'));
 assert.equal(manifest.static.directory, 'dist');
 const html = fs.readFileSync('dist/index.html', 'utf8');
@@ -173,12 +181,16 @@ assert.equal(tocLinks[1].attributes['aria-current'], 'location', 'the current se
 
 location.hash = '#lab';
 context.window.render();
+assert.equal(typeof context.window.VisionLabMath?.evaluateDetectionMetrics, 'function', 'the metrics lab should expose detection metric calculations');
 const labPage = content.innerHTML;
 assert.match(labPage, /role="tablist"/, 'the experiment lab should expose an accessible experiment selector');
 for (const experiment of ['iou', 'gradient', 'convolution', 'nms']) {
   assert.match(labPage, new RegExp(`data-lab-tab="${experiment}"`), `${experiment} should be available in the experiment lab`);
   assert.match(labPage, new RegExp(`id="lab-panel-${experiment}"`), `${experiment} should have a dedicated panel`);
 }
+assert.match(labPage, /data-lab-tab="metrics"/, 'the lab should include a detector metrics experiment');
+assert.match(labPage, /id="metric-pr-chart"[\s\S]*id="metric-f1-chart"[\s\S]*class="metric-ap-legend"[\s\S]*id="metric-map-breakdown"/, 'the metrics experiment should include PR, F1, and labeled mAP visualizations');
+assert.match(labPage, /href="#lesson\/metrics"/, 'the metrics experiment should link back to its textbook chapter');
 for (const lessonId of ['iou', 'optimizer', 'cnn', 'metrics']) {
   assert.ok(lessons.some(lesson => lesson.id === lessonId), `${lessonId} should be a real textbook chapter`);
   assert.ok(labPage.includes(`href="#lesson/${lessonId}"`), `the experiment lab should link to the existing ${lessonId} chapter`);
@@ -186,6 +198,39 @@ for (const lessonId of ['iou', 'optimizer', 'cnn', 'metrics']) {
 
 const labMath = context.window.VisionLabMath;
 assert.ok(labMath, 'the experiment lab should expose its real calculations to the page');
+assert.equal(typeof labMath.evaluateDetectionMetrics, 'function', 'the metrics lab should expose its detection metric calculations');
+const sampleMetrics = labMath.evaluateDetectionMetrics([
+  { className: 'cat', score: 0.9, targetId: 'cat-1', iou: 0.8 },
+  { className: 'dog', score: 0.85, targetId: 'dog-1', iou: 0.4 },
+  { className: 'cat', score: 0.8, targetId: 'cat-2', iou: 0.7 },
+  { className: 'cat', score: 0.7, targetId: 'cat-1', iou: 0.9 },
+], { cat: 2, dog: 1 }, { confidenceThreshold: 0.75, iouThreshold: 0.5, className: 'all' });
+assert.deepEqual(
+  { tp: sampleMetrics.operatingPoint.tp, fp: sampleMetrics.operatingPoint.fp, fn: sampleMetrics.operatingPoint.fn },
+  { tp: 2, fp: 1, fn: 1 },
+  'detection metrics should count a duplicate match and a below-IoU prediction as false positives',
+);
+assert.ok(Math.abs(sampleMetrics.operatingPoint.precision - 2 / 3) < 1e-9, 'precision should be TP divided by predicted positives');
+assert.ok(Math.abs(sampleMetrics.operatingPoint.recall - 2 / 3) < 1e-9, 'recall should be TP divided by ground-truth objects');
+assert.ok(Math.abs(sampleMetrics.operatingPoint.f1 - 2 / 3) < 1e-9, 'F1 should be the harmonic mean of precision and recall');
+assert.ok(Math.abs(sampleMetrics.map50 - 0.5) < 1e-9, 'mAP@0.5 should average per-class AP rather than pool detections');
+assert.ok(Math.abs(sampleMetrics.map5095 - 641 / 2020) < 1e-9, 'mAP@0.5:0.95 should average 101-point AP over ten IoU thresholds');
+const noPredictions = labMath.evaluateDetectionMetrics([], { cat: 2 }, { confidenceThreshold: 0.99, iouThreshold: 0.5 });
+assert.equal(noPredictions.operatingPoint.precision, 0, 'precision should be shown as zero when the model returns no predictions');
+assert.equal(noPredictions.operatingPoint.recall, 0, 'recall should be zero when no ground-truth object is found');
+const exactIouBoundary = labMath.evaluateDetectionMetrics([
+  { className: 'cat', score: 0.9, targetId: 'cat-1', iou: 0.95 },
+], { cat: 1 }, { confidenceThreshold: 0.5, iouThreshold: 0.95 });
+assert.equal(exactIouBoundary.operatingPoint.tp, 1, 'a prediction exactly at the IoU threshold should count as a match');
+assert.ok(Math.abs(exactIouBoundary.map5095 - 1) < 1e-9, 'mAP@0.5:0.95 should include the exact 0.95 IoU boundary');
+const strictMetrics = labMath.evaluateDetectionMetrics([
+  { className: 'cat', score: 0.9, targetId: 'cat-1', iou: 0.8 },
+  { className: 'dog', score: 0.85, targetId: 'dog-1', iou: 0.4 },
+  { className: 'cat', score: 0.8, targetId: 'cat-2', iou: 0.7 },
+  { className: 'cat', score: 0.7, targetId: 'cat-1', iou: 0.9 },
+], { cat: 2, dog: 1 }, { confidenceThreshold: 0.75, iouThreshold: 0.75, className: 'all' });
+assert.equal(strictMetrics.operatingPoint.tp, 1, 'raising the IoU match threshold should turn a looser match into a false positive');
+assert.ok(strictMetrics.operatingPoint.precision < sampleMetrics.operatingPoint.precision, 'a stricter IoU threshold should lower precision for this example');
 const descent = labMath.gradientDescent(0.5, 4);
 assert.equal(descent[0].weight, -4, 'gradient descent should begin at the documented starting point');
 assert.equal(descent[1].weight, -0.5, 'a learning rate of 0.5 should move one step toward the minimum');
@@ -251,4 +296,12 @@ assert.match(elements['#nms-summary'].textContent, /置信度筛选后剩余 1 �
 dispatchLabInput('nms-confidence', '0.3');
 dispatchLabInput('nms-iou', '0.7');
 assert.match(elements['#nms-summary'].textContent, /抑制 0 个重叠框，最终保留 3 个/, 'raising the NMS IoU threshold should keep the overlapping box');
+const firstF1Chart = elements['#metric-f1-chart'].innerHTML;
+dispatchLabInput('metric-confidence', '0.95');
+assert.notEqual(elements['#metric-point-summary'].textContent, '', 'the metrics panel should report its current operating point');
+assert.notEqual(elements['#metric-f1-chart'].innerHTML, firstF1Chart, 'changing confidence should move the selected F1 point');
+dispatchLabInput('metric-class', 'person');
+assert.match(elements['#metric-point-summary'].textContent, /行人/, 'the class selector should describe the selected class');
+dispatchLabInput('metric-iou', '0.75');
+assert.match(elements['#metric-pr-chart'].innerHTML, /role="img"/, 'the precision-recall chart should be accessible to assistive technology');
 console.log('Verified textbook lessons, navigation, reading progress, and interactive learning simulations.');

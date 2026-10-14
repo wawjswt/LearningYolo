@@ -295,3 +295,49 @@ footer{border-color:#e5e2d9}
 .metric-export-guide p{margin:8px 0 0}
 @media(max-width:600px){.metric-import-toolbar{align-items:stretch}.metric-data-mode{align-self:flex-start}.metric-upload-button,.metric-export-link,.metric-reset-button{flex:1 1 145px}.metric-export-guide{font-size:10px}.metric-export-guide pre{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.metric-upload-button,.metric-export-link,.metric-reset-button{transition:none}.metric-upload-button:hover,.metric-export-link:hover,.metric-reset-button:hover{transform:none}}
+
+.swim-case-card{max-width:1200px;margin:0 auto 22px;padding:clamp(17px,2.6vw,28px);border:1px solid #e3dfd5;border-top:2px solid #547e70;border-radius:5px;background:linear-gradient(145deg,#f5f7f3 0%,#fffefa 42%);box-shadow:0 12px 30px #27352c0a}
+.swim-case-heading,.swim-history-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.swim-case-heading h2,.swim-history-heading h3{margin:5px 0 7px;color:#303947;font-family:Georgia,"Noto Serif CJK SC","Songti SC",serif;font-size:clamp(20px,2.4vw,27px);font-weight:600}
+.swim-case-heading p{margin:0;color:#647180;font-size:12px;line-height:1.8}
+.swim-case-badge{flex:none;padding:7px 10px;border:1px solid #d2e0d5;border-radius:99px;background:#edf5ee;color:#41705e;font-size:10px;font-weight:700;letter-spacing:.04em}
+.swim-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:19px 0 9px}
+.swim-kpi-grid>div{display:flex;flex-direction:column;gap:7px;min-width:0;padding:12px;border:1px solid #e5e7df;border-radius:4px;background:#fffefa}
+.swim-kpi-grid span{color:#77818d;font-size:10px;line-height:1.5}
+.swim-kpi-grid strong{color:#3f6d5f;font-size:clamp(16px,2vw,22px);font-variant-numeric:tabular-nums}
+.swim-ap-summary{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 16px;padding:9px 11px;border-left:2px solid #8a79ba;background:#f6f3f8;color:#5d6471;font-size:11px}
+.swim-ap-summary span{display:inline-flex;gap:6px;align-items:center}
+.swim-ap-summary b{color:#4e407a}
+.swim-v9-plot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:14px 0}
+.swim-v9-plot-grid figure{min-width:0;margin:0;padding:9px;border:1px solid #e9e6df;border-radius:4px;background:#fffefa}
+.swim-v9-plot-grid a{display:block;overflow:hidden;border-radius:2px;background:#fff}
+.swim-v9-plot-grid img{display:block;width:100%;height:auto;transition:transform .28s ease}
+.swim-v9-plot-grid a:hover img{transform:scale(1.015)}
+.swim-v9-plot-grid figcaption{padding:8px 3px 1px;color:#6b7783;font-size:10px;line-height:1.75}
+.swim-history-card{margin:16px 0 12px;padding:clamp(14px,2vw,21px);border:1px solid #e6e2d9;border-radius:4px;background:#fffefa}
+.swim-history-heading{align-items:center;margin-bottom:8px}
+.swim-history-heading h3{margin-bottom:0;font-size:clamp(17px,1.9vw,21px)}
+.swim-history-heading label{display:grid;gap:5px;min-width:175px;color:#687480;font-size:10px}
+.swim-history-heading select{min-height:34px;padding:6px 9px;border:1px solid #dedbd2;border-radius:3px;background:#fffefa;color:#45515f;font:inherit;font-size:11px}
+.swim-history-chart{overflow:hidden;border:1px solid #efede7;border-radius:3px;background:linear-gradient(180deg,#fcfbf8,#fffefa)}
+.swim-history-chart svg{display:block;width:100%;height:auto}
+.swim-grid-line{stroke:#e9e6df;stroke-width:1}
+.swim-history-axis{fill:none;stroke:#9ea3a5;stroke-width:1.1}
+.swim-axis-label{fill:#87919b;font:10px "Segoe UI","Microsoft YaHei",sans-serif}
+.swim-axis-title{fill:#65717e;font:11px "Segoe UI","Microsoft YaHei",sans-serif}
+.swim-history-line{fill:none;stroke:#547e70;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.swim-history-dot{fill:#547e70;opacity:.45}
+.swim-history-selected-line{stroke:#9b8abf;stroke-width:1;stroke-dasharray:4 4}
+.swim-history-selected-point{fill:#bd7058;stroke:#fffefa;stroke-width:2.5;vector-effect:non-scaling-stroke}
+.swim-epoch-control{display:grid;grid-template-columns:minmax(105px,.25fr) minmax(0,1fr);gap:4px 14px;align-items:center;margin:12px 0 2px;color:#596574;font-size:10px}
+.swim-epoch-control output{color:#4a5868;font-size:10px;line-height:1.8;font-variant-numeric:tabular-nums}
+.swim-epoch-control input{grid-column:1/-1;width:100%;accent-color:#547e70}
+.swim-v9-source-note{margin:10px 0 0;padding:10px 12px;border-left:2px solid #c4a98a;background:#faf7f0;color:#6b6a68;font-size:10px;line-height:1.8}
+.swim-v9-final-row{display:flex;flex-wrap:wrap;gap:9px 17px;align-items:center;margin:12px 0;padding:11px 13px;border:1px solid #e7e5dc;border-radius:4px;background:#f8f8f4;color:#5e6a76;font-size:10px;font-variant-numeric:tabular-nums}
+.swim-v9-final-row b{color:#3f6d5f}
+.swim-config-note{margin-top:13px;padding:10px 12px;border:1px solid #e8e4dc;border-radius:4px;background:#fbfaf7;color:#66717d;font-size:10px;line-height:1.8}
+.swim-config-note summary{color:#584987;font-weight:650;cursor:pointer}
+.swim-config-note p{margin:8px 0 0}
+@media(max-width:700px){.swim-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.swim-v9-plot-grid{grid-template-columns:1fr}.swim-history-heading{align-items:stretch;flex-direction:column}.swim-history-heading label{max-width:240px}.swim-v9-final-row{gap:7px 11px}}
+@media(max-width:480px){.swim-case-heading{flex-direction:column}.swim-epoch-control{grid-template-columns:1fr;gap:5px}.swim-epoch-control input{grid-column:auto}.swim-history-chart svg{min-width:600px}.swim-history-chart{overflow-x:auto}.swim-v9-final-row{align-items:flex-start;flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.swim-v9-plot-grid img{transition:none}}

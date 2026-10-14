@@ -48,7 +48,7 @@
   }
   const metricPredictions = createTeachingPredictions();
   const tabIds = ['iou', 'gradient', 'convolution', 'nms', 'metrics'];
-  let activeTab = 'iou';
+  let activeTab = 'metrics';
   let convolutionFocus = { row: 1, column: 1 };
   let importedYoloV5Evaluation = null;
 
@@ -435,21 +435,89 @@
       + '<p class="lab-small-note">调高 NMS 的 IoU 阈值会让抑制更宽松；调低则更容易去掉重叠候选框。真实检测器还会按类别分别处理。</p><a class="lab-lesson-link" href="#lesson/metrics">接着学习：NMS、Precision、Recall 与 mAP →</a></div></div></section>';
   }
 
+  function swimV9CasePanel() {
+    const run = window.VisionLabSwimV9;
+    const final = run.history[run.history.length - 1];
+    const percent = value => (value * 100).toFixed(2) + '%';
+    const classes = run.curves.classAp50.map(item => '<span><b>' + escapeHtml(item.name) + '</b> AP@0.50 ' + percent(item.ap) + '</span>').join('');
+    const figure = (file, alt, caption) => '<figure><a href="assets/swim-v9/' + file + '" target="_blank" rel="noreferrer"><img src="assets/swim-v9/' + file + '" alt="' + alt + '" loading="lazy"></a><figcaption>' + caption + '</figcaption></figure>';
+    return '<section class="swim-case-card" aria-labelledby="swim-case-title"><div class="swim-case-heading"><div><span class="chapter-kicker">真实训练记录 · YOLOv5</span><h2 id="swim-case-title">你的 swim_v9 检测实验</h2><p>曲线图直接取自训练结果文件夹；下方历史图按 results.csv 的 126 行记录绘制。</p></div><span class="swim-case-badge">实际训练结果</span></div>'
+      + '<div class="swim-kpi-grid"><div><span>PR 图 · mAP@0.50</span><strong>' + percent(run.curves.prMap50) + '</strong></div><div><span>F1 曲线峰值</span><strong>' + percent(run.curves.peakF1) + '</strong></div><div><span>峰值置信度</span><strong>' + run.curves.peakF1Confidence.toFixed(3) + '</strong></div><div><span>CSV 记录轮数</span><strong>' + run.history.length + ' 轮</strong></div></div>'
+      + '<div class="swim-ap-summary" aria-label="各类别 AP@0.50">' + classes + '</div>'
+      + '<div class="swim-v9-plot-grid swim-v9-primary-plots">' + figure('PR_curve.png', 'swim_v9 原始 Precision Recall 曲线，person AP 0.987，swimmer AP 0.952，全部类别 mAP@0.5 为 0.969', '原始 PR_curve.png · 横轴 Recall，纵轴 Precision；图例同时标出每类 AP 与整体 mAP。') + figure('F1_curve.png', 'swim_v9 原始 F1 与 confidence 曲线，全部类别峰值约 0.94，置信度约 0.662', '原始 F1_curve.png · 峰值约为 F1 0.94，置信度 0.662。阈值过高时，漏检增加，F1 会快速下降。') + '</div>'
+      + '<article class="swim-history-card"><div class="swim-history-heading"><div><span class="chapter-kicker">TRAINING HISTORY · 126 EPOCHS</span><h3>指标怎样随训练轮数变化</h3></div><label for="swim-history-metric">查看指标<select id="swim-history-metric"><option value="map50">mAP@0.50</option><option value="map5095">mAP@0.50:0.95</option><option value="precision">Precision</option><option value="recall">Recall</option><option value="trainBoxLoss">训练 box loss</option><option value="valBoxLoss">验证 box loss</option><option value="trainObjLoss">训练 obj loss</option><option value="valObjLoss">验证 obj loss</option><option value="trainClsLoss">训练 cls loss</option><option value="valClsLoss">验证 cls loss</option></select></label></div>'
+      + '<div id="swim-history-chart" class="swim-history-chart" aria-live="polite"></div><label class="swim-epoch-control" for="swim-history-epoch">选择训练轮次 <output id="swim-history-summary" aria-live="polite"></output><input id="swim-history-epoch" type="range" min="0" max="' + (run.history.length - 1) + '" step="1" value="' + (run.history.length - 1) + '"></label>'
+      + '<p class="swim-v9-source-note">逐轮指标来自 results.csv；图中的 PR 与 F1 曲线则是 YOLOv5 原始 PNG。PR 图图例为 mAP@0.50 0.969，results.csv 第 125 轮记录为 ' + final.map50.toFixed(5) + '；两份原始文件的数值略有差异，页面分别保留并标明来源。results.csv 只有汇总指标，没有每个预测框的置信度和 IoU 匹配记录，因此这里不从汇总值伪造可拖动的真实 PR 曲线。</p></article>'
+      + '<div class="swim-v9-final-row"><b>results.csv · 第 ' + final.epoch + ' 轮</b><span>Precision ' + percent(final.precision) + '</span><span>Recall ' + percent(final.recall) + '</span><span>mAP@0.50 ' + percent(final.map50) + '</span><span>mAP@0.50:0.95 ' + percent(final.map5095) + '</span></div>'
+      + '<div class="swim-v9-plot-grid swim-v9-support-plots">' + figure('results.png', 'swim_v9 原始逐轮训练结果图，含训练和验证损失、Precision、Recall、mAP 曲线', '原始 results.png · 同时展示训练/验证损失、Precision、Recall 与两种 mAP 的变化。') + figure('confusion_matrix.png', 'swim_v9 原始归一化混淆矩阵，包含 person、swimmer 与 background', '原始混淆矩阵 · 对角线代表正确分类；background 行和列帮助观察漏检与误检。') + figure('labels.jpg', 'swim_v9 训练标注的类别数量与目标框位置、宽高分布图', '标签分布 · 可观察训练标注中目标的位置与边界框尺寸。') + figure('labels_correlogram.jpg', 'swim_v9 训练标注的类别数量与边界框尺寸相关图', '标签相关图 · 类别、目标宽高等标注量的联合分布。') + '</div>'
+      + '<details class="swim-config-note"><summary>本次训练的主要配置</summary><p>数据配置 data/swim.yaml · 类别 person、swimmer · 模型结构 PlanD5s-P2.yaml · 初始化权重 Swim_v7.pt · 输入尺寸 960 px · 配置训练 350 轮，文件记录 126 轮。</p></details></section>';
+  }
+
+  function updateSwimV9History() {
+    const run = window.VisionLabSwimV9;
+    const chart = byId('swim-history-chart');
+    const metricInput = byId('swim-history-metric');
+    const epochInput = byId('swim-history-epoch');
+    const summary = byId('swim-history-summary');
+    if (!run || !chart || !metricInput || !epochInput || !summary) return;
+    const definitions = {
+      map50: { label: 'mAP@0.50', field: 'map50', percent: true },
+      map5095: { label: 'mAP@0.50:0.95', field: 'map5095', percent: true },
+      precision: { label: 'Precision', field: 'precision', percent: true },
+      recall: { label: 'Recall', field: 'recall', percent: true },
+      trainBoxLoss: { label: '训练 box loss', field: 'trainBoxLoss' },
+      valBoxLoss: { label: '验证 box loss', field: 'valBoxLoss' },
+      trainObjLoss: { label: '训练 obj loss', field: 'trainObjLoss' },
+      valObjLoss: { label: '验证 obj loss', field: 'valObjLoss' },
+      trainClsLoss: { label: '训练 cls loss', field: 'trainClsLoss' },
+      valClsLoss: { label: '验证 cls loss', field: 'valClsLoss' },
+    };
+    const definition = definitions[metricInput.value] || definitions.map50;
+    const percent = value => (value * 100).toFixed(2) + '%';
+    const finalEpoch = run.history.length - 1;
+    const epoch = Math.max(0, Math.min(finalEpoch, Math.round(number(epochInput.value, finalEpoch))));
+    epochInput.min = '0';
+    epochInput.max = String(finalEpoch);
+    epochInput.value = String(epoch);
+    const values = run.history.map(item => item[definition.field]);
+    const minimum = definition.percent ? 0 : Math.max(0, Math.min(...values) - Math.max((Math.max(...values) - Math.min(...values)) * 0.08, 0.000001));
+    const maximum = definition.percent ? 1 : Math.max(...values) + Math.max((Math.max(...values) - Math.min(...values)) * 0.08, 0.000001);
+    const left = 56, top = 20, width = 720, height = 210;
+    const x = index => left + (index / finalEpoch) * width;
+    const y = value => top + ((maximum - value) / (maximum - minimum || 1)) * height;
+    const tickLines = Array.from({ length: 5 }, (_, index) => {
+      const ratio = index / 4;
+      const value = maximum - ratio * (maximum - minimum);
+      const label = definition.percent ? Math.round(value * 100) + '%' : value.toFixed(4);
+      const tickY = top + ratio * height;
+      return '<path class="swim-grid-line" d="M' + left + ' ' + tickY.toFixed(1) + 'H' + (left + width) + '"/><text class="swim-axis-label" x="' + (left - 9) + '" y="' + (tickY + 4).toFixed(1) + '" text-anchor="end">' + label + '</text>';
+    }).join('');
+    const xTicks = [0, Math.round(finalEpoch / 2), finalEpoch].map(index => '<text class="swim-axis-label" x="' + x(index).toFixed(1) + '" y="' + (top + height + 25) + '" text-anchor="middle">' + index + '</text>').join('');
+    const path = run.history.map((item, index) => (index ? 'L' : 'M') + x(index).toFixed(1) + ' ' + y(item[definition.field]).toFixed(1)).join(' ');
+    const dots = run.history.map((item, index) => '<circle class="swim-history-dot" cx="' + x(index).toFixed(1) + '" cy="' + y(item[definition.field]).toFixed(1) + '" r="1.8"><title>第 ' + item.epoch + ' 轮 · ' + definition.label + ' ' + (definition.percent ? (item[definition.field] * 100).toFixed(2) + '%' : item[definition.field].toFixed(5)) + '</title></circle>').join('');
+    const selected = run.history[epoch];
+    const selectedX = x(epoch);
+    const selectedY = y(selected[definition.field]);
+    chart.innerHTML = '<svg viewBox="0 0 800 280" role="img" aria-label="swim_v9 的 ' + definition.label + ' 随 126 个训练轮次变化"><path class="swim-history-axis" d="M' + left + ' ' + top + 'V' + (top + height) + 'H' + (left + width) + '"/>' + tickLines + xTicks + '<path class="swim-history-line" d="' + path + '"/>' + dots + '<line class="swim-history-selected-line" x1="' + selectedX.toFixed(1) + '" x2="' + selectedX.toFixed(1) + '" y1="' + top + '" y2="' + (top + height) + '"/><circle class="swim-history-selected-point" data-epoch="' + epoch + '" cx="' + selectedX.toFixed(1) + '" cy="' + selectedY.toFixed(1) + '" r="5"><title>第 ' + selected.epoch + ' 轮 · ' + definition.label + ' ' + (definition.percent ? percent(selected[definition.field]) : selected[definition.field].toFixed(5)) + '</title></circle><text class="swim-axis-title" x="416" y="276" text-anchor="middle">训练轮次（epoch）</text><text class="swim-axis-title" x="15" y="126" transform="rotate(-90 15 126)" text-anchor="middle">' + definition.label + '</text></svg>';
+    summary.textContent = '第 ' + selected.epoch + ' 轮 · Precision ' + percent(selected.precision) + ' · Recall ' + percent(selected.recall) + ' · mAP@0.50 ' + percent(selected.map50) + ' · mAP@0.50:0.95 ' + percent(selected.map5095);
+  }
+
   function metricsPanel() {
     const sampleGroundTruthCount = Object.values(metricGroundTruths).reduce((sum, count) => sum + count, 0);
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-metrics" aria-labelledby="lab-tab-metrics" data-lab-panel="metrics" hidden>'
-      + '<div class="metric-intro-card"><span class="chapter-kicker">PRECISION · RECALL · AVERAGE PRECISION</span><h2>用验证集数据读懂 PR、F1 与 mAP</h2><p id="metric-data-description">教学样例包含 ' + sampleGroundTruthCount + ' 个标注目标、' + metricPredictions.length + ' 个预测框和 3 个类别，供操作学习使用。要查看与你模型一致的曲线，请用下方导出工具在自己的 YOLOv5 验证集上生成数据并导入。</p>'
-      + '<div class="metric-import-toolbar"><span id="metric-data-mode" class="metric-data-mode">教学样例</span><label class="metric-upload-button" for="metric-import-file">导入 YOLOv5 验证 JSON<input id="metric-import-file" type="file" accept=".json,application/json"></label><a class="secondary metric-export-link" href="visionlab-yolov5-export.py" download>下载 YOLOv5 导出脚本</a><button class="secondary metric-reset-button" type="button" data-metric-reset>恢复教学样例</button></div><p id="metric-data-status" class="metric-data-status" aria-live="polite">当前为可重复的教学样例，并非你的模型评估结果。</p>'
-      + '<details class="metric-export-guide"><summary>怎样生成与你训练结果一致的真实曲线</summary><ol><li>下载导出脚本，放到 YOLOv5 仓库根目录。</li><li>在训练模型使用的 Python 环境中，对相同权重、验证集和输入尺寸重新运行验证：</li></ol><pre><code>python visionlab-yolov5-export.py --weights runs/train/exp/weights/best.pt --data data/Mydata.yaml --imgsz 640 --device 0 --output runs/val/visionlab-metrics.json</code></pre><p>脚本会调用 YOLOv5 验证流程，保存每个预测框的类别、置信度，以及它在 IoU=0.50 至 0.95 下是否匹配标注。网页只在本机浏览器读取这个 JSON，不会上传权重、图片或标注文件。请把示例中的权重、数据配置和尺寸换成你训练时实际使用的值。</p></details></div>'
-      + '<div class="metric-workbench"><div class="metric-chart-stack"><article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">PRECISION ↔ RECALL</span><h3>PR 曲线</h3></div><span class="lab-step-badge">阈值逐步变化</span></div><div id="metric-pr-chart" class="metric-chart" aria-live="polite"></div><p class="metric-chart-caption">真实数据按 YOLOv5 的匹配结果和 101 点插值绘制；教学样例则由浏览器本地计算。曲线越靠近右上角，通常表示找回更多目标时仍能保持较高准确率。</p></article>'
-      + '<article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">F1 ↔ CONFIDENCE</span><h3>F1 曲线</h3></div><span id="metric-best-f1" class="lab-step-badge"></span></div><div id="metric-f1-chart" class="metric-chart" aria-live="polite"></div><p class="metric-chart-caption">F1 是 Precision 与 Recall 的调和平均。它会显示两者折中较好的置信度范围；并列峰值时取较高阈值。</p></article></div>'
+      + swimV9CasePanel()
+      + '<div class="metric-intro-card"><span class="chapter-kicker">INTERACTIVE TEACHING EXAMPLE · SYNTHETIC DATA</span><h2>交互计算：阈值怎样改变检测指标</h2><p id="metric-data-description">本区教学样例包含 ' + sampleGroundTruthCount + ' 个标注目标、' + metricPredictions.length + ' 个预测框和 3 个类别，用于观察置信度和 IoU 对指标的影响。上方 swim_v9 区域展示你的真实曲线；可导入逐框验证 JSON 来计算其他模型的真实曲线。</p>'
+      + '<div class="metric-import-toolbar"><span id="metric-data-mode" class="metric-data-mode">合成教学样例</span><label class="metric-upload-button" for="metric-import-file">导入 YOLOv5 验证 JSON<input id="metric-import-file" type="file" accept=".json,application/json"></label><a class="secondary metric-export-link" href="visionlab-yolov5-export.py" download>下载 YOLOv5 导出脚本</a><button class="secondary metric-reset-button" type="button" data-metric-reset>恢复合成样例</button></div><p id="metric-data-status" class="metric-data-status" aria-live="polite">这是用于操作学习的合成数据，不是 swim_v9 评估结果。</p>'
+      + '<details class="metric-export-guide"><summary>怎样从 swim_v9 生成可交互的真实曲线</summary><ol><li>下载导出脚本，放到 YOLOv5 仓库根目录。</li><li>用训练时相同的权重、验证集和输入尺寸重新运行验证：</li></ol><pre><code>python visionlab-yolov5-export.py --weights runs/train/swim_v9/weights/best.pt --data data/swim.yaml --imgsz 960 --device 0 --output runs/val/swim_v9.json</code></pre><p>脚本会保存每个预测框的类别、置信度，以及它在 IoU=0.50 至 0.95 下是否匹配标注。网页只在本机浏览器读取导出的 JSON。你的现有结果文件夹保存了 PR/F1 图片和每轮汇总指标，但没有逐框置信度与匹配记录；导入 JSON 后，网页才能让游标沿真实 PR/F1 曲线移动。</p></details></div>'
+      + '<div class="metric-workbench"><div class="metric-chart-stack"><article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">PRECISION ↔ RECALL</span><h3>PR 曲线 · 交互教学样例</h3></div><span class="lab-step-badge">置信度阈值逐步变化</span></div><div id="metric-pr-chart" class="metric-chart" aria-live="polite"></div><p class="metric-chart-caption">本图用合成数据或导入的真实逐框数据重算；真实 swim_v9 原始 PR 图见上方。曲线越靠近右上角，通常表示找回更多目标时仍能保持较高准确率。</p></article>'
+      + '<article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">F1 ↔ CONFIDENCE</span><h3>F1 曲线 · 交互教学样例</h3></div><span id="metric-best-f1" class="lab-step-badge"></span></div><div id="metric-f1-chart" class="metric-chart" aria-live="polite"></div><p class="metric-chart-caption">本图用于学习 Precision 与 Recall 的折中；导入真实逐框 JSON 后会显示所选模型的真实曲线。swim_v9 的原始 F1 图及最优阈值见上方。</p></article></div>'
       + '<aside class="lab-control-card metric-control-card"><label for="metric-class">查看类别</label><select id="metric-class"><option value="all">全部类别 · 汇总</option><option value="pedestrian">行人</option><option value="vehicle">车辆</option><option value="bicycle">自行车</option></select>'
       + '<label for="metric-confidence">置信度阈值 <output id="metric-confidence-value">0.70</output></label><input id="metric-confidence" type="range" min="0" max="1" step="0.01" value="0.70">'
       + '<label for="metric-iou">匹配所需 IoU <output id="metric-iou-value">0.50</output></label><input id="metric-iou" type="range" min="0.50" max="0.95" step="0.05" value="0.50">'
       + '<p id="metric-point-summary" class="lab-callout metric-point-summary" aria-live="polite"></p><div class="metric-score-grid"><div><span>Precision</span><strong id="metric-precision"></strong></div><div><span>Recall</span><strong id="metric-recall"></strong></div><div><span>F1</span><strong id="metric-f1"></strong></div></div>'
       + '<div class="metric-formulas"><p><b>Precision</b> = TP ÷ (TP + FP)</p><p><b>Recall</b> = TP ÷ (TP + FN)</p><p><b>F1</b> = 2 × P × R ÷ (P + R)</p></div><p class="lab-small-note">TP：正确匹配的框；FP：重复、误检或 IoU 未达标的框；FN：没有被找回的标注目标。</p></aside></div>'
-      + '<article class="lab-visual-card metric-map-card"><div class="lab-card-heading"><div><span class="chapter-kicker">AVERAGE PRECISION · MEAN AP</span><h3>从 PR 面积到 mAP</h3></div><div id="metric-map-summary" class="metric-map-summary" aria-live="polite"></div></div><div class="metric-ap-legend"><span><i class="ap50"></i>AP@0.50</span><span><i class="ap5095"></i>AP@0.50:0.95</span></div><div id="metric-map-breakdown" class="metric-map-breakdown"></div><p class="metric-chart-caption">AP 是某一类别 PR 曲线下的插值面积；mAP@0.50 先在 IoU=0.50 计算每类 AP，再对类别求平均。mAP@0.50:0.95 则把 IoU 从 0.50 到 0.95（步长 0.05）的 AP 一并平均，共 10 个阈值。导入数据严格使用 YOLOv5 的验证匹配结果；教学样例单独标记。</p></article>'
-      + '<p class="lab-formula metric-reading-note">调置信度会改变 PR 曲线上的工作点；调匹配 IoU 会改变哪些预测算 TP。AP 看一整条 PR 曲线，mAP 再对类别及指定 IoU 阈值求平均。</p>'
+      + '<article class="lab-visual-card metric-map-card"><div class="lab-card-heading"><div><span class="chapter-kicker">AVERAGE PRECISION · MEAN AP</span><h3>从 PR 面积到 mAP</h3></div><div id="metric-map-summary" class="metric-map-summary" aria-live="polite"></div></div><div class="metric-ap-legend"><span><i class="ap50"></i>AP@0.50</span><span><i class="ap5095"></i>AP@0.50:0.95</span></div><div id="metric-map-breakdown" class="metric-map-breakdown"></div><p class="metric-chart-caption">AP 是某一类别 PR 曲线下的插值面积；mAP@0.50 先在 IoU=0.50 计算每类 AP，再对类别求平均。mAP@0.50:0.95 则把 IoU 从 0.50 到 0.95（步长 0.05）的 AP 一并平均，共 10 个阈值。导入数据严格使用 YOLOv5 的验证匹配结果；上方 swim_v9 数值直接取自原始训练图与 results.csv。</p></article>'
+      + '<p class="lab-formula metric-reading-note">置信度改变 PR 曲线上的工作点；匹配 IoU 改变哪些预测算 TP。AP 是单个类别 PR 曲线下的面积，mAP 再对类别及指定 IoU 阈值求平均。</p>'
       + '<a class="lab-lesson-link" href="#lesson/metrics">接着学习：NMS、Precision、Recall 与 mAP →</a></section>';
   }
 
@@ -582,7 +650,7 @@
     const dataMode = byId('metric-data-mode');
     const dataStatus = byId('metric-data-status');
     const dataDescription = byId('metric-data-description');
-    if (dataMode) dataMode.textContent = importedYoloV5Evaluation ? '真实 YOLOv5 验证结果' : '教学样例';
+    if (dataMode) dataMode.textContent = importedYoloV5Evaluation ? '真实 YOLOv5 验证结果' : '合成教学样例';
     if (dataStatus) dataStatus.textContent = importedYoloV5Evaluation
       ? importedYoloV5Evaluation.source.model + ' · ' + importedYoloV5Evaluation.source.dataset + ' · ' + importedYoloV5Evaluation.source.split + ' 集 · ' + importedYoloV5Evaluation.classes.length + ' 类 · ' + groundTruthCount + ' 个标注目标 · ' + predictionsCount + ' 个预测框 · 输入 ' + importedYoloV5Evaluation.source.imageSize + ' px · NMS IoU ' + importedYoloV5Evaluation.source.nmsIou.toFixed(2)
       : '当前为可重复的教学样例，并非你的模型评估结果；包含 ' + groundTruthCount + ' 个标注目标、' + predictionsCount + ' 个候选框、3 个类别。';
@@ -650,6 +718,7 @@
     updateConvolution();
     updateNms();
     updateMetrics();
+    updateSwimV9History();
   }
 
   window.VisionLabMath = {
@@ -698,6 +767,7 @@
     if (event.target.id === 'conv-kernel') { convolutionFocus = { row: 1, column: 1 }; updateConvolution(); }
     if (event.target.id === 'nms-confidence' || event.target.id === 'nms-iou') updateNms();
     if (event.target.id === 'metric-class' || event.target.id === 'metric-confidence' || event.target.id === 'metric-iou') updateMetrics();
+    if (event.target.id === 'swim-history-metric' || event.target.id === 'swim-history-epoch') updateSwimV9History();
   });
 
   document.addEventListener('change', async event => {

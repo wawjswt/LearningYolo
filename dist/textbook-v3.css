@@ -279,3 +279,19 @@ footer{border-color:#e5e2d9}
 @media(max-width:900px){.metric-workbench{grid-template-columns:1fr}.metric-control-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:8px 12px}.metric-control-card>label,.metric-control-card>input,.metric-control-card>select,.metric-control-card>.metric-point-summary,.metric-control-card>.metric-score-grid,.metric-control-card>.metric-formulas,.metric-control-card>.lab-small-note{grid-column:1/-1}.metric-control-card>label{margin-top:4px}.metric-control-card>input[type=range]{margin-bottom:3px}}
 @media(max-width:600px){.metric-intro-card,.metric-map-card{padding:16px}.metric-map-card .lab-card-heading{flex-direction:column}.metric-map-summary{text-align:left}.metric-ap-row{grid-template-columns:48px minmax(70px,1fr) minmax(100px,.8fr);gap:7px;padding:8px 7px}.metric-ap-values{font-size:9px}.metric-control-card{display:flex}.metric-control-card>label{width:100%;margin-top:5px}.metric-control-card>input[type=range]{width:100%}.metric-score-grid{width:100%}.metric-score-grid>div{padding:8px 6px}.metric-score-grid strong{font-size:15px}.metric-chart-caption{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.metric-chart svg{animation:none}.metric-ap-bar{transition:none}}
+
+.metric-import-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:17px;padding-top:14px;border-top:1px solid #e7e3da}
+.metric-data-mode{padding:7px 10px;border:1px solid #ddd7e8;border-radius:999px;background:#f3f0f7;color:#625392;font-size:11px;font-weight:700}
+.metric-upload-button,.metric-export-link,.metric-reset-button{display:inline-flex;position:relative;align-items:center;justify-content:center;min-height:36px;padding:7px 11px;border:1px solid #dcd8ce;border-radius:4px;background:#fffefa;color:#4d5b6a;font:inherit;font-size:11px;line-height:1.4;text-decoration:none;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.metric-upload-button:hover,.metric-export-link:hover,.metric-reset-button:hover{border-color:#a99cc7;background:#f7f5fa;transform:translateY(-1px)}
+.metric-upload-button:focus-within,.metric-export-link:focus-visible,.metric-reset-button:focus-visible{outline:2px solid #7666a9;outline-offset:2px}
+.metric-upload-button input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.metric-data-status{margin:9px 0 0;color:#697584;font-size:11px;line-height:1.8;overflow-wrap:anywhere}
+.metric-export-guide{margin-top:12px;padding:11px 13px;border:1px solid #e8e4dc;border-radius:4px;background:#fbfaf7;color:#606d7a;font-size:11px;line-height:1.8}
+.metric-export-guide summary{color:#584987;font-weight:650;cursor:pointer}
+.metric-export-guide ol{margin:8px 0;padding-left:19px}
+.metric-export-guide pre{overflow-x:auto;margin:7px 0;padding:10px 12px;border-radius:4px;background:#efede8;color:#3e4a58;font:11px/1.7 Consolas,"Cascadia Code",monospace}
+.metric-export-guide code{font:inherit;white-space:pre}
+.metric-export-guide p{margin:8px 0 0}
+@media(max-width:600px){.metric-import-toolbar{align-items:stretch}.metric-data-mode{align-self:flex-start}.metric-upload-button,.metric-export-link,.metric-reset-button{flex:1 1 145px}.metric-export-guide{font-size:10px}.metric-export-guide pre{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.metric-upload-button,.metric-export-link,.metric-reset-button{transition:none}.metric-upload-button:hover,.metric-export-link:hover,.metric-reset-button:hover{transform:none}}

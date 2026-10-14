@@ -10,7 +10,42 @@ const sidebar = { classList: { remove() {} } };
 const progressRoot = { attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
 const progressFill = { style: {} };
 const windowListeners = [];
+function fakeElement(id = '', value = '') {
+  return {
+    id, value, textContent: '', innerHTML: '', hidden: false, tabIndex: 0, attributes: {},
+    dataset: {},
+    setAttribute(name, next) { this.attributes[name] = next; },
+    getAttribute(name) { return this.attributes[name] || null; },
+    matches() { return false; },
+    focus() { this.focused = true; },
+  };
+}
 const elements = { '#content': content, '#crumb': crumb, '#search': search, '.sidebar': sidebar, '#reading-progress': progressRoot, '#reading-progress-fill': progressFill };
+for (const [id, value] of Object.entries({
+  'box-x': '140', 'box-y': '110', 'prediction-box': '', 'prediction-label': '', 'x-label': '', 'y-label': '', 'iou-value': '', 'iou-detail': '',
+  'gradient-lr': '0.5', 'gradient-steps': '4', 'gradient-lr-value': '', 'gradient-steps-value': '',
+  'gradient-chart': '', 'gradient-explanation': '', 'gradient-result': '',
+  'conv-kernel': 'edge', 'conv-visual': '', 'conv-detail': '',
+  'nms-confidence': '0.3', 'nms-iou': '0.5', 'nms-confidence-value': '', 'nms-iou-value': '',
+  'nms-visual': '', 'nms-summary': '',
+})) elements[`#${id}`] = fakeElement(id, value);
+const labTabs = ['iou', 'gradient', 'convolution', 'nms'].map(id => {
+  const tab = fakeElement();
+  tab.dataset.labTab = id;
+  tab.attributes['aria-selected'] = 'false';
+  tab.attributes.tabindex = '-1';
+  return tab;
+});
+const labPanels = ['iou', 'gradient', 'convolution', 'nms'].map(id => {
+  const panel = fakeElement();
+  panel.dataset.labPanel = id;
+  return panel;
+});
+const convolutionCells = Array.from({ length: 9 }, (_, index) => {
+  const cell = fakeElement();
+  cell.dataset.convCell = `${Math.floor(index / 3)},${index % 3}`;
+  return cell;
+});
 const location = { hash: '#courses', pathname: '/', search: '' };
 const sectionPositions = { 'section-1': 90, 'section-2': 450, 'chapter-review': 1000, 'chapter-notes': 1500 };
 const sections = Object.entries(sectionPositions).map(([id, position]) => ({
@@ -34,6 +69,9 @@ const document = {
   title: '',
   querySelector(selector) { return elements[selector] || null; },
   querySelectorAll(selector) {
+    if (selector === '[data-lab-tab]') return labTabs;
+    if (selector === '[data-lab-panel]') return labPanels;
+    if (selector === '[data-conv-cell]') return convolutionCells;
     if (selector === '.text-section[id^="section-"], #chapter-review, #chapter-notes') return sections;
     if (selector === '.chapter-toc a') return tocLinks;
     return [];
@@ -65,7 +103,7 @@ const context = vm.createContext({
   console,
 });
 
-for (const file of ['data.js', 'textbook-figures.js', 'textbook-v2.js', 'textbook-app.js', 'textbook-ui-v3.js']) {
+for (const file of ['data.js', 'textbook-figures.js', 'textbook-v2.js', 'textbook-app.js', 'textbook-lab.js', 'textbook-ui-v3.js']) {
   vm.runInContext(fs.readFileSync(`dist/${file}`, 'utf8'), context, { filename: file });
 }
 
@@ -89,6 +127,7 @@ assert.match(readingPage, /id="reading-progress-fill"/, 'lesson pages should con
 const textbookCss = fs.readFileSync('dist/textbook-v3.css', 'utf8');
 assert.match(textbookCss, /@keyframes textbook-enter/, 'page sections should use the restrained entrance animation');
 assert.match(textbookCss, /prefers-reduced-motion:\s*reduce/, 'motion should respect the reduced-motion preference');
+assert.match(textbookCss, /\.lab-canvas svg pattern path,\.nms-visual svg pattern path\{fill:none\}/, 'open SVG grid paths should not fill triangular cells');
 assert.match(textbookCss, /\.chapter-toc a\.is-current/, 'the current reading section should be highlighted in the table of contents');
 const manifest = JSON.parse(fs.readFileSync('.openai/hosting.json', 'utf8'));
 assert.equal(manifest.static.directory, 'dist');
@@ -96,7 +135,8 @@ const html = fs.readFileSync('dist/index.html', 'utf8');
 assert.match(html, /href="textbook-v3\.css"/);
 assert.match(html, /src="textbook-ui-v3\.js"/);
 assert.match(html, /src="textbook-figures\.js"/);
-for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-figures.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css']) {
+assert.match(html, /src="textbook-lab\.js"/);
+for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-figures.js', 'textbook-lab.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css']) {
   assert.ok(fs.statSync(`dist/${file}`).size > 0, `${file} should be present`);
 }
 
@@ -130,4 +170,85 @@ windowListeners.find(item => item.type === 'scroll').listener();
 assert.equal(progressRoot.attributes['aria-valuenow'], '41', 'reading progress should follow page scrolling');
 assert.ok(tocLinks[1].classes.has('is-current'), 'the active table-of-contents item should follow the visible section');
 assert.equal(tocLinks[1].attributes['aria-current'], 'location', 'the current section should be announced to assistive technology');
-console.log('Verified 24 textbook chapters, course navigation, and accessible reading progress.');
+
+location.hash = '#lab';
+context.window.render();
+const labPage = content.innerHTML;
+assert.match(labPage, /role="tablist"/, 'the experiment lab should expose an accessible experiment selector');
+for (const experiment of ['iou', 'gradient', 'convolution', 'nms']) {
+  assert.match(labPage, new RegExp(`data-lab-tab="${experiment}"`), `${experiment} should be available in the experiment lab`);
+  assert.match(labPage, new RegExp(`id="lab-panel-${experiment}"`), `${experiment} should have a dedicated panel`);
+}
+for (const lessonId of ['iou', 'optimizer', 'cnn', 'metrics']) {
+  assert.ok(lessons.some(lesson => lesson.id === lessonId), `${lessonId} should be a real textbook chapter`);
+  assert.ok(labPage.includes(`href="#lesson/${lessonId}"`), `the experiment lab should link to the existing ${lessonId} chapter`);
+}
+
+const labMath = context.window.VisionLabMath;
+assert.ok(labMath, 'the experiment lab should expose its real calculations to the page');
+const descent = labMath.gradientDescent(0.5, 4);
+assert.equal(descent[0].weight, -4, 'gradient descent should begin at the documented starting point');
+assert.equal(descent[1].weight, -0.5, 'a learning rate of 0.5 should move one step toward the minimum');
+assert.equal(descent[4].weight, 2.5625, 'gradient descent should report the fourth update');
+assert.ok(descent[4].loss < descent[0].loss, 'gradient descent should lower loss for a stable learning rate');
+
+const impulse = labMath.convolve([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[0, 0, 0], [0, 1, 0], [0, 0, 0]]);
+assert.deepEqual(Array.from(impulse[0]), [5], 'the center-only kernel should select the center pixel');
+
+const nms = labMath.nonMaximumSuppression([
+  { id: 'top', score: 0.9, box: [0, 0, 10, 10] },
+  { id: 'overlap', score: 0.8, box: [1, 1, 11, 11] },
+  { id: 'low-score', score: 0.6, box: [20, 20, 30, 30] },
+], 0.75, 0.5);
+assert.deepEqual(Array.from(nms.kept, item => item.id), ['top'], 'NMS should keep the strongest overlapping prediction');
+assert.deepEqual(Array.from(nms.suppressed, item => item.id), ['overlap'], 'NMS should report a duplicate above the IoU threshold');
+assert.deepEqual(Array.from(nms.filtered, item => item.id), ['low-score'], 'the confidence threshold should filter weak predictions first');
+const relaxedNms = labMath.nonMaximumSuppression([
+  { id: 'top', score: 0.9, box: [0, 0, 10, 10] },
+  { id: 'overlap', score: 0.8, box: [1, 1, 11, 11] },
+], 0.3, 0.7);
+assert.deepEqual(Array.from(relaxedNms.kept, item => item.id), ['top', 'overlap'], 'a higher NMS IoU threshold should retain more overlapping predictions');
+
+const clickListeners = listeners.filter(item => item.type === 'click');
+const tabClickTarget = {
+  closest(selector) {
+    if (selector === '[data-lab-tab]' || selector === 'button') return labTabs[1];
+    return null;
+  },
+};
+for (const item of clickListeners) item.listener({ target: tabClickTarget, preventDefault() {} });
+assert.equal(labTabs[1].attributes['aria-selected'], 'true', 'clicking a lab tab should activate its experiment');
+assert.equal(labPanels[1].hidden, false, 'the selected experiment panel should be visible');
+assert.equal(labPanels[0].hidden, true, 'other experiment panels should be hidden');
+
+const keyListeners = listeners.filter(item => item.type === 'keydown');
+const tabKeyTarget = { closest(selector) { return selector === '[data-lab-tab]' ? labTabs[1] : null; } };
+for (const item of keyListeners) item.listener({ target: tabKeyTarget, key: 'ArrowRight', preventDefault() {} });
+assert.equal(labTabs[2].attributes['aria-selected'], 'true', 'arrow keys should move through the experiment tabs');
+assert.equal(labTabs[2].focused, true, 'keyboard navigation should focus the newly selected tab');
+
+const convolutionClickTarget = {
+  closest(selector) {
+    if (selector === '[data-conv-cell]' || selector === 'button') return convolutionCells[8];
+    return null;
+  },
+};
+for (const item of clickListeners) item.listener({ target: convolutionClickTarget, preventDefault() {} });
+assert.match(elements['#conv-detail'].textContent, /输出位置（3, 3）/, 'selecting an output cell should explain its input patch');
+assert.equal(convolutionCells[8].focused, true, 'selecting an output cell should restore focus after redrawing the matrix');
+
+function dispatchLabInput(id, value) {
+  const target = elements[`#${id}`];
+  target.value = value;
+  for (const item of listeners.filter(listener => listener.type === 'input')) item.listener({ target });
+}
+dispatchLabInput('gradient-lr', '0.5');
+assert.match(elements['#gradient-chart'].innerHTML, /<circle/, 'changing the learning rate should redraw the gradient path');
+dispatchLabInput('conv-kernel', 'blur');
+assert.match(elements['#conv-visual'].innerHTML, /conv-grid/, 'changing the convolution kernel should redraw its feature map');
+dispatchLabInput('nms-confidence', '0.8');
+assert.match(elements['#nms-summary'].textContent, /置信度筛选后剩余 1 个候选框/, 'changing the confidence threshold should filter weaker predictions');
+dispatchLabInput('nms-confidence', '0.3');
+dispatchLabInput('nms-iou', '0.7');
+assert.match(elements['#nms-summary'].textContent, /抑制 0 个重叠框，最终保留 3 个/, 'raising the NMS IoU threshold should keep the overlapping box');
+console.log('Verified textbook lessons, navigation, reading progress, and interactive learning simulations.');

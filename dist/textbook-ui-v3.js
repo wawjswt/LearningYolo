@@ -69,19 +69,59 @@
     +'<section class="reading-note"><span>✳</span><p><strong>建议这样学习</strong><br>先读每章目标与图解，再按小节顺序学习；遇到公式时，联系旁边的直觉说明。代码可以复制到本地尝试，自测和笔记帮助你确认真正掌握的部分。</p></section>';
   }
   function courseList(items){
-    if(!items.length)return '<div class="empty">没有找到匹配章节。试试“卷积”“梯度”“标签”或“YOLO”。</div>';
+    if(!items.length)return '<div class="empty">未找到“'+esc(query)+'”。换个关键词试试。</div>';
+    if(query)return '<ol class="chapter-list search-results">'+items.map(hit=>{
+      const l=hit.lesson,index=lessons.indexOf(l)+1,section=hit.sectionIndex;
+      const href='#lesson/'+l.id+(section===null?'':'/section-'+(section+1));
+      return '<li><a class="chapter-row search-result '+l.group+'" href="'+href+'"><span class="chapter-index">'+String(index).padStart(2,'0')+'</span><span class="chapter-row-copy search-result-copy"><span class="search-match-label">'+hit.label+'</span><strong>'+l.title+'</strong>'+(hit.sectionTitle?'<span class="search-match-section">'+(section===null?'相关内容':'第 '+(section+1)+' 节 · ')+hit.sectionTitle+'</span>':'')+(hit.excerpt?'<span class="search-match-excerpt">'+esc(hit.excerpt)+'</span>':'')+'</span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">→</span></a></li>';
+    }).join('')+'</ol>';
     return '<ol class="chapter-list">'+items.map(l=>'<li><a class="chapter-row '+l.group+'" href="#lesson/'+l.id+'"><span class="chapter-index">'+String(lessons.indexOf(l)+1).padStart(2,'0')+'</span><span class="chapter-row-copy"><strong>'+l.title+'</strong><small>'+l.desc+'</small></span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">'+(state.done.includes(l.id)?'✓':'→')+'</span></a></li>').join('')+'</ol>';
   }
   function filters(){
     return '<div class="textbook-filters">'+[['all','全部章节'],['dl','深度学习'],['cv','计算机视觉'],['yolo','YOLOv5 实战']].map(([id,name])=>'<a class="'+(filter===id?'selected':'')+'"'+(filter===id?' aria-current="page"':'')+' href="#courses'+(id==='all'?'':'/'+id)+'">'+name+'</a>').join('')+'</div>';
   }
+  function normalized(value){return String(value||'').toLocaleLowerCase().replace(/\s+/g,' ').trim()}
+  function excerpt(value,term){
+    const text=String(value||'').replace(/\s+/g,' ').trim(),position=normalized(text).indexOf(term);
+    if(position<0)return '';
+    const start=Math.max(0,position-48),end=Math.min(text.length,position+term.length+96);
+    return (start?'…':'')+text.slice(start,end)+(end<text.length?'…':'');
+  }
+  function searchHit(lesson,term){
+    let best=null;
+    const consider=(rank,label,text,sectionIndex=null,sectionTitle='',context='')=>{
+      if(!normalized(text).includes(term))return;
+      const candidate={rank,label,sectionIndex,sectionTitle,excerpt:excerpt(context||text,term)};
+      if(!best||candidate.rank<best.rank)best=candidate;
+    };
+    consider(0,'课程标题',lesson.title,null,'',lesson.desc);
+    consider(2,'课程简介',lesson.desc,null,'',lesson.desc);
+    (lesson.goals||[]).forEach(goal=>consider(2,'学习目标',goal,null,'',goal));
+    (lesson.keypoints||[]).forEach(point=>consider(2,'本章要点',point,null,'',point));
+    (lesson.sections||[]).forEach((section,index)=>{
+      const title=Array.isArray(section)?section[0]:section.title||'';
+      const paragraphs=Array.isArray(section)?section.slice(1):section.paragraphs||[];
+      const matchingParagraph=paragraphs.find(paragraph=>normalized(paragraph).includes(term))||paragraphs[0]||'';
+      consider(1,'小节标题命中',title,index,title,matchingParagraph);
+      paragraphs.forEach(paragraph=>consider(3,'正文命中',paragraph,index,title,paragraph));
+    });
+    const additional=[lesson.worked?.title,lesson.worked?.prompt,lesson.worked?.solution,lesson.quiz?.q,...(lesson.quiz?.options||[])];
+    additional.filter(Boolean).forEach(text=>consider(4,'例题或自测命中',text,null,'',text));
+    if(lesson.code)consider(5,'代码命中',lesson.code,null,'','');
+    return best?{lesson,...best}:null;
+  }
   function matched(){
-    return lessons.filter(l=>(filter==='all'||filter===l.group)&&(!query||JSON.stringify(l).toLowerCase().includes(query.toLowerCase())));
+    const available=lessons.filter(l=>filter==='all'||filter===l.group);
+    if(!query)return available;
+    const term=normalized(query);
+    return available.map(lesson=>searchHit(lesson,term)).filter(Boolean).sort((a,b)=>a.rank-b.rank||lessons.indexOf(a.lesson)-lessons.indexOf(b.lesson));
   }
   function courses(){
     const items=matched();
-    return heading(query?'搜索结果：'+esc(query):'课程目录','按顺序阅读，或用上方搜索框查找概念。每章都附有学习目标、图解、例题与自测。','THE TEXTBOOK')
-      +filters()+'<p class="catalog-count">共 '+items.length+' 章 · '+lessons.length+' 章完整课程</p>'+courseList(items);
+    const subtitle=query?'按标题、小节和正文匹配；点击结果可直达命中位置。':'按学习路线阅读，或搜索课程、概念与代码。每章提供目标、图解和练习。';
+    const count=query?'找到 '+items.length+' 条相关结果':'共 '+items.length+' 章 · '+lessons.length+' 章完整课程';
+    return heading(query?'搜索结果：'+esc(query):'课程目录',subtitle,'THE TEXTBOOK')
+      +filters()+'<p class="catalog-count">'+count+'</p>'+courseList(items);
   }
   function path(){
     return heading('从基础出发，走向 YOLOv5 实战。','路线由概念、模型与实践三阶段组成。阶段内的顺序对应前置知识关系，也可以点击目录中的任意章节跳读。','LEARNING ROADMAP')
@@ -119,6 +159,7 @@
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     const badge=document.querySelector('[data-nav="courses"] em');if(badge)badge.textContent=lessons.length;
     document.getElementById('content').innerHTML=content;
+    if(route==='lesson'&&parts[2])document.getElementById(parts[2])?.scrollIntoView({behavior:'smooth',block:'start'});
     if(route==='lab'){updateIoU();window.initializeInteractiveLab?.();}
     document.querySelector('.sidebar').classList.remove('open');
     updateReadingEffects(route);
@@ -138,8 +179,9 @@
     event.preventDefault();
     history.pushState({},'',location.pathname+location.search+'#'+destination);
     window.render();
-    window.scrollTo(0,0);
+    if(destination.split('/').length<3)window.scrollTo(0,0);
   },true);
   window.addEventListener('popstate',()=>{window.render();window.scrollTo(0,0)});
   render();
 })();
+

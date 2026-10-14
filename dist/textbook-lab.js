@@ -7,6 +7,11 @@
     [0, 0, 0, 1, 1],
     [0, 0, 0, 1, 1],
   ];
+  const convolutionInputs = {
+    shape: { label: '方块边缘', values: lessonMatrix },
+    vertical: { label: '竖直亮边', values: [[0, 0, 1, 1, 0], [0, 0, 1, 1, 0], [0, 0, 1, 1, 0], [0, 0, 1, 1, 0], [0, 0, 1, 1, 0]] },
+    checker: { label: '棋盘图案', values: [[1, 0, 1, 0, 1], [0, 1, 0, 1, 0], [1, 0, 1, 0, 1], [0, 1, 0, 1, 0], [1, 0, 1, 0, 1]] },
+  };
   const kernels = {
     edge: { label: '边缘检测', values: [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]] },
     blur: { label: '均值模糊', values: [[1 / 9, 1 / 9, 1 / 9], [1 / 9, 1 / 9, 1 / 9], [1 / 9, 1 / 9, 1 / 9]] },
@@ -16,6 +21,22 @@
     { id: 'A', score: 0.92, className: 'person', box: [62, 70, 214, 226] },
     { id: 'B', score: 0.78, className: 'person', box: [84, 90, 236, 246] },
     { id: 'C', score: 0.66, className: 'person', box: [290, 92, 412, 250] },
+  ];
+  const nmsGroundTruths = [
+    { id: 'G1', box: [70, 78, 212, 220] },
+    { id: 'G2', box: [292, 95, 410, 247] },
+  ];
+  const mapWalkthroughClasses = [
+    { key: 'person', label: 'person · 行人', groundTruthCount: 2, predictions: [
+      { score: 0.95, targetId: 'person-1', iou: 0.82 },
+      { score: 0.83, targetId: 'person-1', iou: 0.75 },
+      { score: 0.67, targetId: 'person-2', iou: 0.61 },
+      { score: 0.42, targetId: null, iou: 0 },
+    ] },
+    { key: 'swimmer', label: 'swimmer · 游泳者', groundTruthCount: 1, predictions: [
+      { score: 0.91, targetId: 'swimmer-1', iou: 0.77 },
+      { score: 0.38, targetId: null, iou: 0 },
+    ] },
   ];
   const metricGroundTruths = { pedestrian: 60, vehicle: 44, bicycle: 32 };
   const metricClassLabels = { pedestrian: '行人', vehicle: '车辆', bicycle: '自行车' };
@@ -50,6 +71,7 @@
   const tabIds = ['iou', 'gradient', 'convolution', 'nms', 'metrics'];
   let activeTab = 'metrics';
   let convolutionFocus = { row: 1, column: 1 };
+  let mapWalkthroughStep = 0;
   let importedYoloV5Evaluation = null;
 
   const byId = id => document.getElementById(id);
@@ -255,17 +277,18 @@
     return path;
   }
 
-  function convolve(input, kernel) {
+  function convolve(input, kernel, stride = 1) {
     if (!Array.isArray(input) || !Array.isArray(kernel) || !input.length || !kernel.length) return [];
     const inputWidth = input[0]?.length || 0;
     const kernelWidth = kernel[0]?.length || 0;
+    const step = Math.max(1, Math.floor(number(stride, 1)));
     if (!inputWidth || !kernelWidth || input.some(row => !Array.isArray(row) || row.length !== inputWidth)
       || kernel.some(row => !Array.isArray(row) || row.length !== kernelWidth)
       || input.length < kernel.length || inputWidth < kernelWidth) return [];
     const output = [];
-    for (let row = 0; row <= input.length - kernel.length; row++) {
+    for (let row = 0; row <= input.length - kernel.length; row += step) {
       const outputRow = [];
-      for (let column = 0; column <= inputWidth - kernelWidth; column++) {
+      for (let column = 0; column <= inputWidth - kernelWidth; column += step) {
         let sum = 0;
         for (let ky = 0; ky < kernel.length; ky++) {
           for (let kx = 0; kx < kernelWidth; kx++) sum += input[row + ky][column + kx] * kernel[ky][kx];
@@ -418,10 +441,12 @@
 
   function convolutionPanel() {
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-convolution" aria-labelledby="lab-tab-convolution" data-lab-panel="convolution" hidden>'
-      + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">KERNEL × IMAGE</span><h2>卷积核怎样留下特征</h2></div><span class="lab-step-badge">5×5 → 3×3</span></div>'
+      + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">KERNEL × IMAGE</span><h2>卷积核怎样留下特征</h2></div><span id="conv-output-shape" class="lab-step-badge">输出 3×3</span></div>'
       + '<div id="conv-visual" class="conv-visual" aria-live="polite"></div><p id="conv-detail" class="lab-callout" aria-live="polite"></p></div>'
-      + '<div class="lab-control-card"><label for="conv-kernel">选择一个 3×3 卷积核</label><select id="conv-kernel"><option value="edge">边缘检测</option><option value="blur">均值模糊</option><option value="sharpen">锐化</option></select>'
-      + '<p class="lab-formula">每个输出格都来自对应的 3×3 输入区域：对应元素相乘，再把 9 个乘积相加。</p><p class="lab-small-note">点击输出特征图中的格子，可以高亮它在输入图像上对应的感受野。深度学习框架通常使用不翻转卷积核的互相关运算。</p>'
+      + '<div class="lab-control-card"><label for="conv-input">选择输入图案</label><select id="conv-input"><option value="shape">方块边缘</option><option value="vertical">竖直亮边</option><option value="checker">棋盘图案</option></select>'
+      + '<label for="conv-kernel">选择一个 3×3 卷积核</label><select id="conv-kernel"><option value="edge">边缘检测</option><option value="blur">均值模糊</option><option value="sharpen">锐化</option></select>'
+      + '<label for="conv-stride">步长 <output id="conv-stride-value">1</output></label><select id="conv-stride"><option value="1">1 · 每格移动</option><option value="2">2 · 隔格移动</option></select>'
+      + '<p class="lab-formula">每个输出格都来自对应的 3×3 输入区域：对应元素相乘，再把 9 个乘积相加。无填充时，输出边长 = ⌊(输入边长 − 卷积核边长) ÷ 步长⌋ + 1。</p><p class="lab-small-note">点击输出特征图中的格子，可以高亮它在输入图像上对应的感受野。深度学习框架通常使用不翻转卷积核的互相关运算。</p>'
       + '<a class="lab-lesson-link" href="#lesson/cnn">接着学习：卷积神经网络与感受野 →</a></div></div></section>';
   }
 
@@ -431,8 +456,16 @@
       + '<div id="nms-visual" class="nms-visual" aria-live="polite"></div><p id="nms-summary" class="lab-callout" aria-live="polite"></p></div>'
       + '<div class="lab-control-card"><label for="nms-confidence">置信度阈值 <output id="nms-confidence-value">0.30</output></label><input id="nms-confidence" type="range" min="0.20" max="0.90" step="0.05" value="0.30">'
       + '<label for="nms-iou">NMS 的 IoU 阈值 <output id="nms-iou-value">0.50</output></label><input id="nms-iou" type="range" min="0.10" max="0.90" step="0.05" value="0.50">'
-      + '<ol class="nms-steps"><li>先按置信度阈值移除低分框。</li><li>按分数从高到低选框。</li><li>同类框与已选框的 IoU 超过阈值时，移除重叠较大的框。</li></ol>'
+      + '<div id="nms-metric-summary" class="nms-metric-summary" aria-live="polite"></div><h3 class="lab-subheading">这次筛选的过程</h3><ol id="nms-step-list" class="nms-steps"></ol>'
       + '<p class="lab-small-note">调高 NMS 的 IoU 阈值会让抑制更宽松；调低则更容易去掉重叠候选框。真实检测器还会按类别分别处理。</p><a class="lab-lesson-link" href="#lesson/metrics">接着学习：NMS、Precision、Recall 与 mAP →</a></div></div></section>';
+  }
+
+  function mapWalkthroughPanel() {
+    return '<section class="map-walkthrough-card" aria-labelledby="map-walkthrough-title"><div class="lab-card-heading"><div><span class="chapter-kicker">STEP-BY-STEP · TEACHING EXAMPLE</span><h3 id="map-walkthrough-title">逐框计算 AP，再对类别求 mAP</h3><p>按置信度从高到低逐个判断；同一个真实目标只能匹配一次。这里是教学样例，不是 swim_v9 预测结果。</p></div></div>'
+      + '<div class="map-walk-controls"><label for="map-walk-class">查看类别<select id="map-walk-class"><option value="person">person · 行人</option><option value="swimmer">swimmer · 游泳者</option></select></label>'
+      + '<label for="map-walk-iou">匹配 IoU 阈值 <output id="map-walk-iou-value">0.50</output></label><input id="map-walk-iou" type="range" min="0.50" max="0.95" step="0.05" value="0.50"></div>'
+      + '<div class="map-walk-body"><div><h4>置信度排序与逐步匹配</h4><ol id="map-walk-predictions" class="map-walk-predictions"></ol></div><div class="map-walk-explainer"><div class="map-walk-step-controls"><button class="secondary" type="button" data-map-step="prev">← 上一个框</button><output id="map-walk-position" aria-live="polite"></output><button class="secondary" type="button" data-map-step="next">下一个框 →</button></div><p id="map-walk-detail" class="lab-callout" aria-live="polite"></p><p class="lab-small-note">AP 会扫描完整的置信度排序，不只看某一个置信度截点；mAP 是各类别 AP 的算术平均。</p></div></div>'
+      + '<div id="map-walk-summary" class="map-walk-summary" aria-live="polite"></div><p class="lab-formula">AP：在 PR 曲线上对 Recall 的 0～1 区间做 101 点插值平均。mAP@0.50：各类别 AP@0.50 的平均值；mAP@0.50:0.95：再对 10 个 IoU 阈值下的 AP 求平均。</p></section>';
   }
 
   function swimV9CasePanel() {
@@ -517,6 +550,7 @@
       + '<p id="metric-point-summary" class="lab-callout metric-point-summary" aria-live="polite"></p><div class="metric-score-grid"><div><span>Precision</span><strong id="metric-precision"></strong></div><div><span>Recall</span><strong id="metric-recall"></strong></div><div><span>F1</span><strong id="metric-f1"></strong></div></div>'
       + '<div class="metric-formulas"><p><b>Precision</b> = TP ÷ (TP + FP)</p><p><b>Recall</b> = TP ÷ (TP + FN)</p><p><b>F1</b> = 2 × P × R ÷ (P + R)</p></div><p class="lab-small-note">TP：正确匹配的框；FP：重复、误检或 IoU 未达标的框；FN：没有被找回的标注目标。</p></aside></div>'
       + '<article class="lab-visual-card metric-map-card"><div class="lab-card-heading"><div><span class="chapter-kicker">AVERAGE PRECISION · MEAN AP</span><h3>从 PR 面积到 mAP</h3></div><div id="metric-map-summary" class="metric-map-summary" aria-live="polite"></div></div><div class="metric-ap-legend"><span><i class="ap50"></i>AP@0.50</span><span><i class="ap5095"></i>AP@0.50:0.95</span></div><div id="metric-map-breakdown" class="metric-map-breakdown"></div><p class="metric-chart-caption">AP 是某一类别 PR 曲线下的插值面积；mAP@0.50 先在 IoU=0.50 计算每类 AP，再对类别求平均。mAP@0.50:0.95 则把 IoU 从 0.50 到 0.95（步长 0.05）的 AP 一并平均，共 10 个阈值。导入数据严格使用 YOLOv5 的验证匹配结果；上方 swim_v9 数值直接取自原始训练图与 results.csv。</p></article>'
+      + mapWalkthroughPanel()
       + '<p class="lab-formula metric-reading-note">置信度改变 PR 曲线上的工作点；匹配 IoU 改变哪些预测算 TP。AP 是单个类别 PR 曲线下的面积，mAP 再对类别及指定 IoU 阈值求平均。</p>'
       + '<a class="lab-lesson-link" href="#lesson/metrics">接着学习：NMS、Precision、Recall 与 mAP →</a></section>';
   }
@@ -566,18 +600,25 @@
   }
 
   function updateConvolution() {
+    const inputControl = byId('conv-input');
     const kernelInput = byId('conv-kernel');
+    const strideInput = byId('conv-stride');
     const visual = byId('conv-visual');
     const detail = byId('conv-detail');
-    if (!kernelInput || !visual || !detail) return;
+    if (!inputControl || !kernelInput || !strideInput || !visual || !detail) return;
+    const input = convolutionInputs[inputControl.value] || convolutionInputs.shape;
     const selected = kernels[kernelInput.value] || kernels.edge;
-    const output = convolve(lessonMatrix, selected.values);
+    const stride = Math.max(1, Math.floor(number(strideInput.value, 1)));
+    const output = convolve(input.values, selected.values, stride);
+    if (!output.length) return;
     const maxAbs = Math.max(1, ...output.flat().map(value => Math.abs(value)));
     const focusRow = Math.min(Math.max(0, convolutionFocus.row), output.length - 1);
     const focusColumn = Math.min(Math.max(0, convolutionFocus.column), output[0].length - 1);
     convolutionFocus = { row: focusRow, column: focusColumn };
-    const inputCells = lessonMatrix.map((row, r) => row.map((value, c) => {
-      const inPatch = r >= focusRow && r < focusRow + 3 && c >= focusColumn && c < focusColumn + 3;
+    const inputTop = focusRow * stride;
+    const inputLeft = focusColumn * stride;
+    const inputCells = input.values.map((row, r) => row.map((value, c) => {
+      const inPatch = r >= inputTop && r < inputTop + selected.values.length && c >= inputLeft && c < inputLeft + selected.values[0].length;
       return '<span class="conv-cell' + (inPatch ? ' is-active-patch' : '') + '" aria-label="像素 ' + value + '">' + value + '</span>';
     }).join('')).join('');
     const outputCells = output.map((row, r) => row.map((value, c) => {
@@ -587,10 +628,80 @@
     }).join('')).join('');
     const kernelCells = selected.values.map(row => row.map(value => '<span class="conv-cell kernel-cell">' + format(value) + '</span>').join('')).join('');
     const result = output[focusRow][focusColumn];
-    visual.innerHTML = '<div class="conv-workbench"><div><span class="conv-grid-title">输入图像 · 5×5</span><div class="conv-grid conv-input-grid" style="--cols:5" role="img" aria-label="输入图像像素矩阵">' + inputCells + '</div></div>'
+    const patch = input.values.slice(inputTop, inputTop + selected.values.length).map(row => row.slice(inputLeft, inputLeft + selected.values[0].length));
+    const products = patch.flatMap((row, r) => row.map((value, c) => format(value) + '×' + format(selected.values[r][c])));
+    const expression = products.join(' + ') + ' = ' + format(result);
+    byId('conv-stride-value').textContent = String(stride);
+    byId('conv-output-shape').textContent = '输出 ' + output.length + '×' + output[0].length;
+    visual.innerHTML = '<div class="conv-workbench"><div><span class="conv-grid-title">输入图案 · ' + input.label + ' · 5×5</span><div class="conv-grid conv-input-grid" style="--cols:5" role="img" aria-label="' + input.label + '输入像素矩阵">' + inputCells + '</div></div>'
       + '<div class="conv-arrow" aria-hidden="true">→</div><div><span class="conv-grid-title">3×3 ' + selected.label + '核</span><div class="conv-grid kernel-grid" style="--cols:3" role="img" aria-label="' + selected.label + '卷积核">' + kernelCells + '</div></div>'
-      + '<div class="conv-arrow" aria-hidden="true">→</div><div><span class="conv-grid-title">输出特征图 · 3×3</span><div class="conv-grid conv-output-grid" style="--cols:3" role="group" aria-label="选择一个输出像素查看计算区域">' + outputCells + '</div></div></div>';
-    detail.textContent = '输出位置（' + (focusRow + 1) + ', ' + (focusColumn + 1) + '）来自输入图像第 ' + (focusRow + 1) + ' 至 ' + (focusRow + 3) + ' 行、第 ' + (focusColumn + 1) + ' 至 ' + (focusColumn + 3) + ' 列；对应相乘并求和，得到 ' + format(result) + '。';
+      + '<div class="conv-arrow" aria-hidden="true">→</div><div><span class="conv-grid-title">输出特征图 · ' + output.length + '×' + output[0].length + '</span><div class="conv-grid conv-output-grid" style="--cols:' + output[0].length + '" role="group" aria-label="选择一个输出像素查看计算区域">' + outputCells + '</div></div></div>';
+    detail.textContent = '在“' + input.label + '”图案中，输出位置（' + (focusRow + 1) + ', ' + (focusColumn + 1) + '）读取输入第 ' + (inputTop + 1) + '–' + (inputTop + 3) + ' 行、第 ' + (inputLeft + 1) + '–' + (inputLeft + 3) + ' 列；逐项乘加：' + expression + '。';
+  }
+
+  function evaluateNmsTeachingCase(items) {
+    const matched = new Set();
+    let tp = 0;
+    let fp = 0;
+    for (const item of items.slice().sort((a, b) => b.score - a.score)) {
+      const target = nmsGroundTruths.map(groundTruth => ({ groundTruth, overlap: intersectionOverUnion(item.box, groundTruth.box) }))
+        .filter(candidate => !matched.has(candidate.groundTruth.id))
+        .sort((a, b) => b.overlap - a.overlap)[0];
+      if (target && target.overlap >= 0.5) { matched.add(target.groundTruth.id); tp++; }
+      else fp++;
+    }
+    const fn = nmsGroundTruths.length - tp;
+    const precision = tp + fp ? tp / (tp + fp) : 0;
+    const recall = nmsGroundTruths.length ? tp / nmsGroundTruths.length : 0;
+    return { tp, fp, fn, precision, recall, f1: precision + recall ? 2 * precision * recall / (precision + recall) : 0 };
+  }
+
+  function evaluateWalkthroughClass(classInfo, iouThreshold) {
+    const matched = new Set();
+    let tp = 0;
+    let fp = 0;
+    const records = classInfo.predictions.slice().sort((a, b) => b.score - a.score).map((prediction, index) => {
+      const correct = prediction.targetId != null && prediction.iou >= iouThreshold && !matched.has(prediction.targetId);
+      if (correct) { matched.add(prediction.targetId); tp++; }
+      else fp++;
+      const precision = tp / (tp + fp);
+      const recall = tp / classInfo.groundTruthCount;
+      const reason = correct ? 'TP：匹配到尚未匹配的真实框'
+        : prediction.targetId != null && matched.has(prediction.targetId) && prediction.iou >= iouThreshold ? 'FP：该真实框已被更高置信度预测匹配'
+          : prediction.targetId != null && prediction.iou < iouThreshold ? 'FP：IoU 低于匹配阈值'
+            : 'FP：没有匹配的真实框';
+      return { ...prediction, index, tp, fp, precision, recall, correct, reason };
+    });
+    const area = yoloAveragePrecision(records.map(item => item.recall), records.map(item => item.precision));
+    return { records, ap: area.ap, mrec: area.mrec, mpre: area.mpre };
+  }
+
+  function updateMapWalkthrough() {
+    const classInput = byId('map-walk-class');
+    const iouInput = byId('map-walk-iou');
+    const predictions = byId('map-walk-predictions');
+    const detail = byId('map-walk-detail');
+    const position = byId('map-walk-position');
+    const summary = byId('map-walk-summary');
+    if (!classInput || !iouInput || !predictions || !detail || !position || !summary) return;
+    const classInfo = mapWalkthroughClasses.find(item => item.key === classInput.value) || mapWalkthroughClasses[0];
+    const iou = number(iouInput.value, 0.5);
+    const result = evaluateWalkthroughClass(classInfo, iou);
+    mapWalkthroughStep = Math.max(0, Math.min(mapWalkthroughStep, result.records.length - 1));
+    const current = result.records[mapWalkthroughStep];
+    const percent = value => (value * 100).toFixed(1) + '%';
+    byId('map-walk-iou-value').textContent = iou.toFixed(2);
+    predictions.innerHTML = result.records.map((item, index) => '<li class="map-walk-row' + (index === mapWalkthroughStep ? ' is-current' : '') + (item.correct ? ' is-tp' : ' is-fp') + '"><button type="button" data-map-step-index="' + index + '" aria-current="' + String(index === mapWalkthroughStep) + '"><span>#' + (index + 1) + ' · ' + item.score.toFixed(2) + '</span><b>' + (item.correct ? 'TP' : 'FP') + '</b><span>IoU ' + item.iou.toFixed(2) + '</span><span>P ' + percent(item.precision) + ' · R ' + percent(item.recall) + '</span></button></li>').join('');
+    position.textContent = '第 ' + (mapWalkthroughStep + 1) + ' / ' + result.records.length + ' 个框';
+    detail.textContent = '置信度 ' + current.score.toFixed(2) + ' · IoU ' + current.iou.toFixed(2) + ' · ' + current.reason + '。累计 TP ' + current.tp + '、FP ' + current.fp + '；Precision ' + percent(current.precision) + '，Recall ' + percent(current.recall) + '。';
+    const classResults = mapWalkthroughClasses.map(item => {
+      const ap50 = evaluateWalkthroughClass(item, 0.5).ap;
+      const ap5095 = yoloV5IouThresholds.reduce((sum, threshold) => sum + evaluateWalkthroughClass(item, threshold).ap, 0) / yoloV5IouThresholds.length;
+      return { ...item, ap50, ap5095 };
+    });
+    const meanAp50 = classResults.reduce((sum, item) => sum + item.ap50, 0) / classResults.length;
+    const meanAp5095 = classResults.reduce((sum, item) => sum + item.ap5095, 0) / classResults.length;
+    summary.innerHTML = '<div class="map-walk-ap-rows">' + classResults.map(item => '<span><b>' + escapeHtml(item.label) + '</b><i>AP@0.50 ' + percent(item.ap50) + '</i><i>AP@0.50:0.95 ' + percent(item.ap5095) + '</i></span>').join('') + '</div><strong>mAP@0.50 ' + percent(meanAp50) + ' · mAP@0.50:0.95 ' + percent(meanAp5095) + '</strong>';
   }
 
   function updateNms() {
@@ -607,14 +718,29 @@
     const kept = new Set(result.kept.map(item => item.id));
     const suppressed = new Map(result.suppressed.map(item => [item.id, item]));
     const filtered = new Set(result.filtered.map(item => item.id));
+    const groundTruthBoxes = nmsGroundTruths.map(item => {
+      const [x, y, x2, y2] = item.box;
+      return '<g class="nms-ground-truth"><rect x="' + x + '" y="' + y + '" width="' + (x2 - x) + '" height="' + (y2 - y) + '" rx="4"/><text x="' + (x + 4) + '" y="' + (y + 13) + '">' + item.id + ' · 标注框</text></g>';
+    }).join('');
     const boxes = candidates.map(item => {
       const [x, y, x2, y2] = item.box;
       const state = kept.has(item.id) ? 'kept' : suppressed.has(item.id) ? 'suppressed' : 'filtered';
       const reason = state === 'kept' ? '保留' : state === 'suppressed' ? 'IoU ' + format(suppressed.get(item.id).overlap) + ' · 被抑制' : '低于置信度';
       return '<g class="nms-box nms-' + state + '"><rect x="' + x + '" y="' + y + '" width="' + (x2 - x) + '" height="' + (y2 - y) + '" rx="4"/><rect class="nms-label-bg" x="' + x + '" y="' + Math.max(16, y - 24) + '" width="148" height="20" rx="3"/><text x="' + (x + 5) + '" y="' + (Math.max(16, y - 24) + 14) + '">' + item.id + ' · ' + item.score.toFixed(2) + ' · ' + reason + '</text></g>';
     }).join('');
-    visual.innerHTML = '<svg viewBox="0 0 480 290" role="img" aria-label="调整阈值后显示保留、抑制和低置信度目标框"><defs><pattern id="nms-grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" stroke="#dedbd2" stroke-width=".7"/></pattern></defs><rect width="480" height="290" fill="url(#nms-grid)"/><path d="M24 254H456M42 270H128M300 270H430" stroke="#b8c8b9" stroke-width="4" stroke-linecap="round"/><circle cx="138" cy="94" r="19" fill="#d9dfd1"/><path d="M120 117Q138 103 156 117L170 218H108Z" fill="#d9dfd1"/><circle cx="352" cy="120" r="15" fill="#d9dfd1"/><path d="M338 139Q352 129 366 139L378 226H326Z" fill="#d9dfd1"/>' + boxes + '</svg>';
+    visual.innerHTML = '<svg viewBox="0 0 480 290" role="img" aria-label="虚线框为标注，实线框显示 NMS 处理后的预测结果"><defs><pattern id="nms-grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" stroke="#dedbd1" stroke-width=".7"/></pattern></defs><rect width="480" height="290" fill="url(#nms-grid)"/><path d="M24 254H456M42 270H128M300 270H430" stroke="#b8c8b9" stroke-width="4" stroke-linecap="round"/><circle cx="138" cy="94" r="19" fill="#d9dfd1"/><path d="M120 117Q138 103 156 117L170 218H108Z" fill="#d9dfd1"/><circle cx="352" cy="120" r="15" fill="#d9dfd1"/><path d="M338 139Q352 129 366 139L378 226H326Z" fill="#d9dfd1"/>' + groundTruthBoxes + boxes + '</svg>';
+    const metrics = evaluateNmsTeachingCase(result.kept);
+    const percent = value => (value * 100).toFixed(1) + '%';
     summary.textContent = '置信度筛选后剩余 ' + (candidates.length - result.filtered.length) + ' 个候选框；NMS 抑制 ' + result.suppressed.length + ' 个重叠框，最终保留 ' + result.kept.length + ' 个。';
+    byId('nms-metric-summary').textContent = '教学样例匹配结果：TP ' + metrics.tp + ' · FP ' + metrics.fp + ' · FN ' + metrics.fn + '　P ' + percent(metrics.precision) + ' · R ' + percent(metrics.recall) + ' · F1 ' + percent(metrics.f1);
+    const steps = ['置信度筛选：移除 ' + (result.filtered.map(item => item.id).join('、') || '无低分框') + '。'];
+    for (const item of result.kept) {
+      steps.push('保留 ' + item.id + '（置信度 ' + item.score.toFixed(2) + '），作为当前最高分框。');
+      for (const suppressedItem of result.suppressed.filter(candidate => candidate.suppressedBy === item.id)) {
+        steps.push('抑制 ' + suppressedItem.id + '：与 ' + item.id + ' 的 IoU 为 ' + suppressedItem.overlap.toFixed(2) + '，高于阈值 ' + overlap.toFixed(2) + '。');
+      }
+    }
+    byId('nms-step-list').innerHTML = steps.map(step => '<li>' + escapeHtml(step) + '</li>').join('');
   }
 
   function updateMetrics() {
@@ -717,6 +843,7 @@
     updateGradient();
     updateConvolution();
     updateNms();
+    updateMapWalkthrough();
     updateMetrics();
     updateSwimV9History();
   }
@@ -737,6 +864,20 @@
   document.addEventListener('click', event => {
     const tab = event.target.closest('[data-lab-tab]');
     if (tab) { setActiveTab(tab.dataset.labTab); return; }
+    const mapStep = event.target.closest('[data-map-step]');
+    if (mapStep) {
+      const selectedClass = mapWalkthroughClasses.find(item => item.key === byId('map-walk-class').value) || mapWalkthroughClasses[0];
+      mapWalkthroughStep += mapStep.dataset.mapStep === 'next' ? 1 : -1;
+      mapWalkthroughStep = Math.max(0, Math.min(mapWalkthroughStep, selectedClass.predictions.length - 1));
+      updateMapWalkthrough();
+      return;
+    }
+    const mapStepIndex = event.target.closest('[data-map-step-index]');
+    if (mapStepIndex) {
+      mapWalkthroughStep = number(mapStepIndex.dataset.mapStepIndex, 0);
+      updateMapWalkthrough();
+      return;
+    }
     const cell = event.target.closest('[data-conv-cell]');
     if (cell) {
       const [row, column] = cell.dataset.convCell.split(',').map(Number);
@@ -764,8 +905,10 @@
 
   document.addEventListener('input', event => {
     if (event.target.id === 'gradient-lr' || event.target.id === 'gradient-steps') updateGradient();
-    if (event.target.id === 'conv-kernel') { convolutionFocus = { row: 1, column: 1 }; updateConvolution(); }
+    if (event.target.id === 'conv-input' || event.target.id === 'conv-kernel' || event.target.id === 'conv-stride') { convolutionFocus = { row: 1, column: 1 }; updateConvolution(); }
     if (event.target.id === 'nms-confidence' || event.target.id === 'nms-iou') updateNms();
+    if (event.target.id === 'map-walk-class') { mapWalkthroughStep = 0; updateMapWalkthrough(); }
+    if (event.target.id === 'map-walk-iou') updateMapWalkthrough();
     if (event.target.id === 'metric-class' || event.target.id === 'metric-confidence' || event.target.id === 'metric-iou') updateMetrics();
     if (event.target.id === 'swim-history-metric' || event.target.id === 'swim-history-epoch') updateSwimV9History();
   });

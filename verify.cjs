@@ -29,13 +29,14 @@ for (const [id, value] of Object.entries({
   'box-x': '140', 'box-y': '110', 'prediction-box': '', 'prediction-label': '', 'x-label': '', 'y-label': '', 'iou-value': '', 'iou-detail': '',
   'gradient-lr': '0.5', 'gradient-steps': '4', 'gradient-lr-value': '', 'gradient-steps-value': '',
   'gradient-chart': '', 'gradient-explanation': '', 'gradient-result': '',
-  'conv-kernel': 'edge', 'conv-visual': '', 'conv-detail': '',
+  'conv-input': 'shape', 'conv-kernel': 'edge', 'conv-stride': '1', 'conv-stride-value': '', 'conv-output-shape': '', 'conv-visual': '', 'conv-detail': '',
   'nms-confidence': '0.3', 'nms-iou': '0.5', 'nms-confidence-value': '', 'nms-iou-value': '',
-  'nms-visual': '', 'nms-summary': '',
+  'nms-visual': '', 'nms-summary': '', 'nms-step-list': '', 'nms-metric-summary': '',
   'metric-class': 'all', 'metric-confidence': '0.70', 'metric-iou': '0.50',
   'metric-confidence-value': '', 'metric-iou-value': '', 'metric-point-summary': '',
   'metric-precision': '', 'metric-recall': '', 'metric-f1': '', 'metric-best-f1': '',
   'metric-pr-chart': '', 'metric-f1-chart': '', 'metric-map-summary': '', 'metric-map-breakdown': '',
+  'map-walk-class': 'person', 'map-walk-iou': '0.50', 'map-walk-iou-value': '', 'map-walk-position': '', 'map-walk-detail': '', 'map-walk-predictions': '', 'map-walk-summary': '',
   'metric-data-description': '', 'metric-data-mode': '', 'metric-data-status': '', 'metric-import-file': '',
   'swim-history-metric': 'map50', 'swim-history-epoch': '125', 'swim-history-chart': '', 'swim-history-summary': '',
 })) elements[`#${id}`] = fakeElement(id, value);
@@ -293,6 +294,9 @@ for (const experiment of ['iou', 'gradient', 'convolution', 'nms']) {
 assert.match(labPage, /data-lab-tab="metrics"/, 'the lab should include a detector metrics experiment');
 assert.match(labPage, /id="metric-pr-chart"[\s\S]*id="metric-f1-chart"[\s\S]*class="metric-ap-legend"[\s\S]*id="metric-map-breakdown"/, 'the metrics experiment should include PR, F1, and labeled mAP visualizations');
 assert.match(labPage, /id="metric-import-file"[^>]*type="file"/, 'the metrics experiment should allow importing exported YOLOv5 validation data');
+assert.match(labPage, /id="map-walk-predictions"[\s\S]*data-map-step="next"[\s\S]*id="map-walk-summary"/, 'the mAP teaching card should show ranked prediction steps and class AP averaging');
+assert.match(labPage, /id="nms-metric-summary"[\s\S]*id="nms-step-list"/, 'the NMS experiment should show matching counts and individual suppression decisions');
+assert.ok(['id="conv-input"', 'id="conv-stride"', 'id="conv-output-shape"'].every(marker => labPage.includes(marker)), 'the convolution experiment should select input patterns and stride and report output dimensions');
 assert.match(labPage, /class="swim-case-card"[\s\S]*id="swim-history-chart"[\s\S]*id="swim-history-epoch"/, 'the metrics experiment should lead with the real swim_v9 case and its epoch browser');
 assert.match(labPage, /assets\/swim-v9\/PR_curve\.png[\s\S]*assets\/swim-v9\/F1_curve\.png[\s\S]*assets\/swim-v9\/confusion_matrix\.png/, 'the swim_v9 case should show the original YOLOv5 plots');
 assert.match(labPage, /results\.csv[\s\S]*126 轮/, 'the swim_v9 history should identify its exact per-epoch source and length');
@@ -308,6 +312,9 @@ assert.ok(labMath, 'the experiment lab should expose its real calculations to th
 assert.equal(typeof labMath.evaluateDetectionMetrics, 'function', 'the metrics lab should expose its detection metric calculations');
 assert.equal(typeof labMath.normalizeYoloV5Evaluation, 'function', 'the metrics lab should validate exported YOLOv5 evaluation data');
 assert.equal(typeof labMath.evaluateYoloV5Evaluation, 'function', 'the metrics lab should calculate curves from exported YOLOv5 predictions');
+assert.match(elements['#map-walk-position'].textContent, /1\s*\/\s*4/, 'the mAP walkthrough should begin at the first ranked prediction');
+assert.match(elements['#map-walk-detail'].textContent, /TP/, 'the first high-confidence matched teaching prediction should be explained as a true positive');
+assert.match(elements['#map-walk-summary'].innerHTML, /mAP@0\.50/, 'the walkthrough should show the mean AP across its teaching classes');
 assert.equal(context.window.VisionLabSwimV9.history.length, 126, 'the real swim_v9 training record should contain all 126 saved epochs');
 assert.deepEqual(
   { epoch: context.window.VisionLabSwimV9.history.at(-1).epoch, precision: context.window.VisionLabSwimV9.history.at(-1).precision, recall: context.window.VisionLabSwimV9.history.at(-1).recall, map50: context.window.VisionLabSwimV9.history.at(-1).map50, map5095: context.window.VisionLabSwimV9.history.at(-1).map5095 },
@@ -457,11 +464,22 @@ dispatchLabInput('gradient-lr', '0.5');
 assert.match(elements['#gradient-chart'].innerHTML, /<circle/, 'changing the learning rate should redraw the gradient path');
 dispatchLabInput('conv-kernel', 'blur');
 assert.match(elements['#conv-visual'].innerHTML, /conv-grid/, 'changing the convolution kernel should redraw its feature map');
+dispatchLabInput('conv-stride', '2');
+assert.match(elements['#conv-output-shape'].textContent, /2×2/, 'stride two should shrink a 5×5 input and 3×3 kernel to a 2×2 output');
+dispatchLabInput('conv-input', 'checker');
+assert.match(elements['#conv-detail'].textContent, /棋盘/, 'changing the input pattern should describe the newly selected image');
 dispatchLabInput('nms-confidence', '0.8');
 assert.match(elements['#nms-summary'].textContent, /置信度筛选后剩余 1 个候选框/, 'changing the confidence threshold should filter weaker predictions');
 dispatchLabInput('nms-confidence', '0.3');
 dispatchLabInput('nms-iou', '0.7');
 assert.match(elements['#nms-summary'].textContent, /抑制 0 个重叠框，最终保留 3 个/, 'raising the NMS IoU threshold should keep the overlapping box');
+assert.match(elements['#nms-metric-summary'].textContent, /TP 2.*FP 1.*FN 0/, 'retaining a duplicate after NMS should count it as a false positive against teaching ground truth');
+const mapNextTarget = { closest(selector) { return selector === '[data-map-step]' ? { dataset: { mapStep: 'next' } } : null; } };
+for (const item of clickListeners) item.listener({ target: mapNextTarget, preventDefault() {} });
+for (const item of clickListeners) item.listener({ target: mapNextTarget, preventDefault() {} });
+assert.match(elements['#map-walk-detail'].textContent, /FP/, 'the walkthrough should explain a duplicate prediction as a false positive');
+dispatchLabInput('map-walk-iou', '0.75');
+assert.match(elements['#map-walk-detail'].textContent, /FP/, 'raising the match IoU should update the current walkthrough decision');
 const firstF1Chart = elements['#metric-f1-chart'].innerHTML;
 dispatchLabInput('metric-confidence', '0.95');
 assert.notEqual(elements['#metric-point-summary'].textContent, '', 'the metrics panel should report its current operating point');

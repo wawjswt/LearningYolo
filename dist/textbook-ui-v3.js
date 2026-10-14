@@ -39,6 +39,12 @@
     readingEffectsHandler();
   }
   function rich(value){const mark=String.fromCharCode(96);const pattern=new RegExp(mark+'([^'+mark+']+)'+mark,'g');return esc(value).replace(pattern,'<code>$1</code>').replace(/\n/g,'<br>')}
+  function exerciseCard(l,exercise,type,index){
+    const label=type==='section'?'本节练习':'章末综合题 '+(index+1);
+    const indexAttribute=type==='section'?'data-section-index':'data-exercise-index';
+    const options=exercise.options.map((option,i)=>'<button type="button" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'">'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>').join('');
+    return '<section class="exercise-card '+type+'-exercise"><span class="exercise-label">'+label+'</span><p class="exercise-prompt">'+rich(exercise.q)+'</p><div class="exercise-options" role="group" aria-label="'+label+'">'+options+'</div><div class="quiz-result exercise-feedback" role="status" aria-live="polite"></div></section>';
+  }
   function articleSections(l){
     const placement=window.lessonFigures.placement(l);
     let placed=false;
@@ -49,7 +55,7 @@
         return markup;
       }).join('');
       const fallback=!placed&&placement&&placement.section===i?(placed=true,window.lessonFigures.render(l)):'';
-      return '<section class="text-section" id="section-'+(i+1)+'"><span class="section-number">0'+(i+1)+'</span><h2>'+s.title+'</h2>'+paragraphs+fallback+'</section>';
+      return '<section class="text-section" id="section-'+(i+1)+'"><span class="section-number">0'+(i+1)+'</span><h2>'+s.title+'</h2>'+paragraphs+fallback+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
     }).join('');
   }
   function heading(title,sub,eyebrow){
@@ -139,12 +145,12 @@
     const articleContent=articleSections(l);
     const examples=l.worked?'<section class="worked-example"><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+l.worked.title+'</h2><p><strong>问题</strong>　'+rich(l.worked.prompt)+'</p><p><strong>解析</strong>　'+rich(l.worked.solution)+'</p></section>':'';
     const code=l.code?'<section class="text-section code-section"><div class="code-block"><div class="code-head"><span>'+esc(l.language||'代码示例')+' · 建议逐行阅读</span><button class="copy" data-copy="'+l.id+'">复制代码</button></div><pre><code>'+esc(l.code)+'</code></pre></div><p class="code-note">先运行原始示例并观察结果，再一次只改变一个输入或参数。'+(l.group==='yolo'?'YOLOv5 命令行选项会随仓库版本变化，请用本地脚本的帮助信息核对。':'每做一步，先预测输入与输出形状，再用实际结果核对。')+'</p></section>':'';
-    const quiz=l.quiz?'<section class="chapter-quiz quiz"><span class="chapter-kicker">CHECK YOUR UNDERSTANDING · 章末自测</span><h2>检查一下你的理解</h2><p>'+l.quiz.q+'</p>'+l.quiz.options.map((o,i)=>'<button data-answer="'+i+'" data-lesson="'+l.id+'">'+String.fromCharCode(65+i)+'. '+o+'</button>').join('')+'<div class="quiz-result" aria-live="polite"></div></section>':'';
+    const quiz=l.chapterExercises?.length?'<section class="chapter-quiz" id="chapter-quiz"><span class="chapter-kicker">CHAPTER REVIEW · 章末综合练习</span><h2>本章综合练习</h2><p>结合本章概念完成练习；每题作答后查看解析。</p>'+l.chapterExercises.map((exercise,i)=>exerciseCard(l,exercise,'chapter',i)).join('')+'</section>':'';
     const keypoints=l.keypoints?'<section class="keypoint-review"><span class="chapter-kicker">CHAPTER REVIEW</span><h2>本章要点</h2><ul>'+l.keypoints.map(x=>'<li>'+x+'</li>').join('')+'</ul></section>':'';
     const source=l.source?'<p class="source-note">延伸阅读：<a href="'+esc(l.source)+'" target="_blank" rel="noopener noreferrer">官方文档与参考资料 ↗</a>。概念解释为本课程整理；具体接口、参数和仓库实现请以对应版本文档为准。</p>':'';
     return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(index+1).padStart(2,'0')+' 章　/　'+lessons.length+' 章</span></div>'
       +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span></div></header>'
-      +'<div class="chapter-layout"><aside class="chapter-toc"><strong>本章导航</strong><ol>'+l.sections.map((s,i)=>'<li><a href="#section-'+(i+1)+'">'+s.title+'</a></li>').join('')+'<li><a href="#chapter-review">本章要点</a></li><li><a href="#chapter-notes">笔记与进度</a></li></ol></aside>'
+      +'<div class="chapter-layout"><aside class="chapter-toc"><strong>本章导航</strong><ol>'+l.sections.map((s,i)=>'<li><a href="#section-'+(i+1)+'">'+s.title+'</a></li>').join('')+'<li><a href="#chapter-review">本章要点</a></li><li><a href="#chapter-quiz">本章综合练习</a></li><li><a href="#chapter-notes">笔记与进度</a></li></ol></aside>'
       +'<div class="chapter-body">'+objectiveBox(l)+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
       +'<section class="chapter-notes" id="chapter-notes"><span class="chapter-kicker">MY STUDY NOTES</span><h2>写下你的思考</h2><p>用自己的话总结一个概念，或记下尚未解决的问题。笔记保存在当前浏览器。</p><textarea class="note-input" id="lesson-note" placeholder="例如：我现在可以用自己的话解释…… / 我还不确定的是……" aria-label="课程笔记">'+esc(state.notes[id]||'')+'</textarea><div class="lesson-actions"><button class="secondary" data-save-note="'+id+'">保存笔记</button><span id="note-status" class="saved" role="status"></span><button class="primary complete-button" data-complete="'+id+'">'+(state.done.includes(id)?'已完成 · 点击撤销':'标记本章已完成 ✓')+'</button></div></section>'
       +'<nav class="chapter-pagination">'+(prev?'<a href="#lesson/'+prev.id+'"><small>上一章</small><strong>← '+prev.title+'</strong></a>':'<a href="#path"><small>学习路线</small><strong>浏览课程阶段 →</strong></a>')+(next?'<a class="pagination-next" href="#lesson/'+next.id+'"><small>接下来</small><strong>'+next.title+' →</strong></a>':'<a class="pagination-next" href="#path"><small>全部完成</small><strong>回顾完整学习路线 →</strong></a>')+'</nav></div></div></article>';

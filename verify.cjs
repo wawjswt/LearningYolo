@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
+const richText = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]).replace(/`([^`]+)`/g, '<code>$1</code>');
 
 const listeners = [];
 const content = { innerHTML: '' };
@@ -112,7 +113,7 @@ const context = vm.createContext({
   console,
 });
 
-for (const file of ['data.js', 'textbook-figures.js', 'textbook-v2.js', 'textbook-app.js', 'swim-v9-history.js', 'textbook-lab.js', 'textbook-ui-v3.js']) {
+for (const file of ['data.js', 'textbook-figures.js', 'textbook-v2.js', 'textbook-exercises.js', 'textbook-app.js', 'swim-v9-history.js', 'textbook-lab.js', 'textbook-ui-v3.js']) {
   vm.runInContext(fs.readFileSync(`dist/${file}`, 'utf8'), context, { filename: file });
 }
 
@@ -120,16 +121,84 @@ const lessons = vm.runInContext('lessons', context);
 assert.equal(lessons.length, 24);
 assert.equal(new Set(lessons.map(lesson => lesson.id)).size, 24);
 for (const group of ['dl', 'cv', 'yolo']) assert.equal(lessons.filter(lesson => lesson.group === group).length, 8);
+let totalPracticeQuestions = 0;
 for (const lesson of lessons) {
   assert.ok(lesson.sections.length >= 3, `${lesson.id} should have detailed sections`);
   assert.ok(lesson.code.trim(), `${lesson.id} should include a code example`);
   assert.ok(lesson.quiz.answer >= 0 && lesson.quiz.answer < lesson.quiz.options.length, `${lesson.id} should have a valid quiz answer`);
+  assert.equal(lesson.sections.length, 4, `${lesson.id} should expose all four textbook sections for practice`);
+  assert.equal(lesson.chapterExercises?.length, 3, `${lesson.id} should have three chapter review exercises`);
+  for (const [sectionIndex, section] of lesson.sections.entries()) {
+    const exercise = section.exercise;
+    assert.ok(exercise?.q && Array.isArray(exercise.options), `${lesson.id} section ${sectionIndex + 1} should have its own exercise`);
+    assert.equal(exercise.options.length, 4, `${lesson.id} section ${sectionIndex + 1} should have four answer choices`);
+    assert.ok(Number.isInteger(exercise.answer) && exercise.answer >= 0 && exercise.answer < exercise.options.length, `${lesson.id} section ${sectionIndex + 1} should have a valid answer`);
+    assert.ok(exercise.why?.length > 20, `${lesson.id} section ${sectionIndex + 1} should explain the answer`);
+    totalPracticeQuestions++;
+  }
+  for (const [exerciseIndex, exercise] of lesson.chapterExercises.entries()) {
+    assert.ok(exercise.options.length >= 3 && exercise.options.length <= 4, `${lesson.id} chapter exercise ${exerciseIndex + 1} should have three or four choices`);
+    assert.ok(Number.isInteger(exercise.answer) && exercise.answer >= 0 && exercise.answer < exercise.options.length, `${lesson.id} chapter exercise ${exerciseIndex + 1} should have a valid answer`);
+    assert.ok(exercise.why?.length > 10, `${lesson.id} chapter exercise ${exerciseIndex + 1} should explain the answer`);
+    totalPracticeQuestions++;
+  }
   const page = context.window.lesson(lesson.id);
+  assert.equal((page.match(/class="exercise-card section-exercise"/g) || []).length, 4, `${lesson.id} should render one exercise after each section`);
+  assert.equal((page.match(/class="exercise-card chapter-exercise"/g) || []).length, 3, `${lesson.id} should render three chapter review exercises`);
+  assert.match(page, /href="#chapter-quiz">本章综合练习/);
+  assert.match(page, /<section class="chapter-quiz" id="chapter-quiz">/);
+  for (const section of lesson.sections) assert.ok(page.includes(richText(section.exercise.q)), `${lesson.id} should render each section's own exercise text`);
+  for (const exercise of lesson.chapterExercises) assert.ok(page.includes(richText(exercise.q)), `${lesson.id} should render every chapter exercise`);
   assert.match(page, new RegExp(`<figure class="chapter-concept-figure" data-visual="${lesson.visual}"`), `${lesson.id} should have a chapter-specific concept figure`);
   assert.match(page, /<figure class="chapter-concept-figure"[^>]*tabindex="0"/, `${lesson.id} figure should be keyboard scrollable on narrow screens`);
   assert.match(page, /<svg[^>]+aria-labelledby="[^"]+"[\s\S]*?<title id="[^"]+">[\s\S]*?<desc id="[^"]+">/, `${lesson.id} figure should explain its visual to assistive technology`);
   assert.match(page, /<section class="text-section" id="section-\d+">[\s\S]*?<figure class="chapter-concept-figure"/, `${lesson.id} figure should sit beside its related explanation`);
 }
+assert.equal(totalPracticeQuestions, 168, 'the complete course should contain 96 section exercises and 72 chapter exercises');
+const sectionAnswerPositions = new Set(lessons.flatMap(lesson => lesson.sections.map(section => section.exercise.answer)));
+assert.ok(sectionAnswerPositions.size >= 3, 'correct section answers should not always use the same option position');
+const answerListener = listeners.find(item => item.type === 'click' && !item.capture);
+function submitExerciseAnswer(lesson, type, index, answerIndex) {
+  const exercise = type === 'section' ? lesson.sections[index].exercise : lesson.chapterExercises[index];
+  const feedback = fakeElement();
+  let card;
+  const buttons = exercise.options.map((_, optionIndex) => {
+    const classes = new Set();
+    const button = {
+      dataset: {
+        exerciseAnswer: String(optionIndex),
+        lesson: lesson.id,
+        exerciseType: type,
+        ...(type === 'section' ? { sectionIndex: String(index) } : { exerciseIndex: String(index) }),
+      },
+      classes,
+      classList: { add(name) { classes.add(name); }, remove(...names) { names.forEach(name => classes.delete(name)); } },
+      matches() { return false; },
+      closest(selector) { return selector === 'button' ? this : selector === '.exercise-card' ? card : null; },
+    };
+    return button;
+  });
+  card = {
+    querySelectorAll() { return buttons; },
+    querySelector(selector) { return selector === '.quiz-result' ? feedback : null; },
+  };
+  const clickAnswer = (optionIndex) => answerListener.listener({ target: { closest(selector) { return selector === 'button' ? buttons[optionIndex] : null; } } });
+  clickAnswer(answerIndex);
+  return { buttons, feedback, exercise, clickAnswer };
+}
+const sectionWrongIndex = (lessons[0].sections[1].exercise.answer + 1) % 4;
+const sectionWrong = submitExerciseAnswer(lessons[0], 'section', 1, sectionWrongIndex);
+assert.match(sectionWrong.feedback.textContent, /再想一想/, 'a wrong section answer should give immediate feedback');
+assert.match(sectionWrong.feedback.textContent, /解析/, 'section feedback should identify the explanation');
+assert.ok(sectionWrong.buttons[sectionWrongIndex].classes.has('wrong'), 'the selected wrong answer should be marked');
+const sectionCorrect = submitExerciseAnswer(lessons[0], 'section', 1, sectionWrong.exercise.answer);
+assert.match(sectionCorrect.feedback.textContent, /回答正确/, 'a correct section answer should be acknowledged');
+assert.ok(sectionCorrect.buttons[sectionWrong.exercise.answer].classes.has('correct'), 'the selected correct answer should be marked');
+sectionWrong.clickAnswer(sectionWrong.exercise.answer);
+assert.ok(sectionWrong.buttons[sectionWrong.exercise.answer].classes.has('correct'), 'a learner should be able to retry and change an answer');
+assert.ok(!sectionWrong.buttons[sectionWrongIndex].classes.has('wrong'), 'retrying should clear the previous wrong marker');
+const chapterWrong = submitExerciseAnswer(lessons[0], 'chapter', 2, (lessons[0].chapterExercises[2].answer + 1) % 4);
+assert.match(chapterWrong.feedback.textContent, /再想一想/, 'chapter review answers should use the same immediate feedback');
 const readingPage = context.window.lesson('iou');
 assert.match(readingPage, /class="reading-progress"[^>]*role="progressbar"/, 'lesson pages should expose an accessible reading progress bar');
 assert.match(readingPage, /id="reading-progress-fill"/, 'lesson pages should contain a progress indicator');
@@ -138,6 +207,8 @@ assert.match(textbookCss, /@keyframes textbook-enter/, 'page sections should use
 assert.match(textbookCss, /prefers-reduced-motion:\s*reduce/, 'motion should respect the reduced-motion preference');
 assert.match(textbookCss, /\.lab-canvas svg pattern path,\.nms-visual svg pattern path\{fill:none\}/, 'open SVG grid paths should not fill triangular cells');
 assert.match(textbookCss, /\.chapter-toc a\.is-current/, 'the current reading section should be highlighted in the table of contents');
+assert.match(textbookCss, /\.exercise-card/, 'section and chapter exercises should have dedicated readable styling');
+assert.match(textbookCss, /prefers-reduced-motion:reduce\)\{\.exercise-options button/, 'exercise choice motion should respect reduced-motion preferences');
 assert.match(textbookCss, /\.metric-pr-line[\s\S]*\.metric-f1-line/, 'the metric charts should have separate readable curve styles');
 assert.match(textbookCss, /\.metric-ap-bar\.ap5095/, 'the mAP breakdown should distinguish AP@0.50 from AP@0.50:0.95');
 assert.match(textbookCss, /@media\(max-width:600px\)\{\.metric-intro-card/, 'the metric lab should adapt to narrow screens');
@@ -151,11 +222,12 @@ const exporter = fs.readFileSync('dist/visionlab-yolov5-export.py', 'utf8');
 assert.match(html, /href="textbook-v3\.css"/);
 assert.match(html, /src="textbook-ui-v3\.js"/);
 assert.match(html, /src="textbook-figures\.js"/);
+assert.match(html, /src="textbook-exercises\.js"/);
 assert.match(html, /src="textbook-lab\.js"/);
 assert.match(exporter, /val\.ap_per_class\s*=\s*capture_ap_per_class/, 'the exporter should collect the predictions YOLOv5 actually matched during validation');
 assert.match(exporter, /"visionlab-yolov5-eval-v1"/, 'the exporter should write the data format accepted by the lab');
 assert.match(exporter, /np\.argsort\(-np\.asarray\(confidence\)\)/, 'the exporter should preserve YOLOv5 confidence tie ordering');
-for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-figures.js', 'textbook-lab.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css', 'visionlab-yolov5-export.py']) {
+for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-figures.js', 'textbook-exercises.js', 'textbook-lab.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css', 'visionlab-yolov5-export.py']) {
   assert.ok(fs.statSync(`dist/${file}`).size > 0, `${file} should be present`);
 }
 
@@ -418,7 +490,7 @@ async function verifyYoloV5ImportInteraction() {
   for (const item of clickListeners) item.listener({ target: resetTarget, preventDefault() {} });
   assert.equal(elements['#metric-data-mode'].textContent, '合成教学样例', 'reset should return to the clearly labeled synthetic teaching data');
   assert.match(elements['#metric-data-status'].textContent, /136 个标注目标/, 'reset should restore the larger teaching sample');
-  console.log('Verified textbook lessons, navigation, imported YOLOv5 metrics, and interactive learning simulations.');
+  console.log('Verified 168 section and chapter exercises, answer feedback and retry behavior, textbook navigation, YOLOv5 metrics, and interactive simulations.');
 }
 
 verifyYoloV5ImportInteraction().catch(error => {

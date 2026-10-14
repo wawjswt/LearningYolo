@@ -114,12 +114,12 @@
     if(route==='courses')filter=id&&groups[id]?id:'all';
     const names={home:'学习概览',courses:'课程目录',path:'学习路线',lab:'交互实验室',notes:'我的笔记',resources:'资源导航',lesson:'教材阅读'};
     const crumb=route==='lesson'?(lessons.find(l=>l.id===id)||{}).title||'教材阅读':names[route]||'学习概览';
-    const content=route==='home'?home():route==='courses'?courses():route==='path'?path():route==='lesson'?lesson(id):route==='lab'?lab():route==='notes'?notes():route==='resources'?resources():home();
+    const content=route==='home'?home():route==='courses'?courses():route==='path'?path():route==='lesson'?lesson(id):route==='lab'?(window.renderInteractiveLab?window.renderInteractiveLab():lab()):route==='notes'?notes():route==='resources'?resources():home();
     document.getElementById('crumb').textContent=crumb;
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     const badge=document.querySelector('[data-nav="courses"] em');if(badge)badge.textContent=lessons.length;
     document.getElementById('content').innerHTML=content;
-    if(route==='lab')updateIoU();
+    if(route==='lab'){updateIoU();window.initializeInteractiveLab?.();}
     document.querySelector('.sidebar').classList.remove('open');
     updateReadingEffects(route);
     document.title=(route==='lesson'?crumb:names[route]||'学习概览')+' · VisionLab';

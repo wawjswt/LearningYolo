@@ -32,6 +32,7 @@ for (const [id, value] of Object.entries({
   'metric-confidence-value': '', 'metric-iou-value': '', 'metric-point-summary': '',
   'metric-precision': '', 'metric-recall': '', 'metric-f1': '', 'metric-best-f1': '',
   'metric-pr-chart': '', 'metric-f1-chart': '', 'metric-map-summary': '', 'metric-map-breakdown': '',
+  'metric-data-description': '', 'metric-data-mode': '', 'metric-data-status': '', 'metric-import-file': '',
 })) elements[`#${id}`] = fakeElement(id, value);
 const labTabs = ['iou', 'gradient', 'convolution', 'nms', 'metrics'].map(id => {
   const tab = fakeElement();
@@ -137,14 +138,20 @@ assert.match(textbookCss, /\.metric-pr-line[\s\S]*\.metric-f1-line/, 'the metric
 assert.match(textbookCss, /\.metric-ap-bar\.ap5095/, 'the mAP breakdown should distinguish AP@0.50 from AP@0.50:0.95');
 assert.match(textbookCss, /@media\(max-width:600px\)\{\.metric-intro-card/, 'the metric lab should adapt to narrow screens');
 assert.match(textbookCss, /@media\(prefers-reduced-motion:reduce\)\{\.metric-chart svg/, 'chart motion should respect reduced-motion preferences');
+assert.match(textbookCss, /\.metric-import-toolbar/, 'the validation data importer should have a responsive toolbar');
+assert.match(textbookCss, /\.metric-export-guide/, 'the YOLOv5 exporter instructions should be readable');
 const manifest = JSON.parse(fs.readFileSync('.openai/hosting.json', 'utf8'));
 assert.equal(manifest.static.directory, 'dist');
 const html = fs.readFileSync('dist/index.html', 'utf8');
+const exporter = fs.readFileSync('dist/visionlab-yolov5-export.py', 'utf8');
 assert.match(html, /href="textbook-v3\.css"/);
 assert.match(html, /src="textbook-ui-v3\.js"/);
 assert.match(html, /src="textbook-figures\.js"/);
 assert.match(html, /src="textbook-lab\.js"/);
-for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-figures.js', 'textbook-lab.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css']) {
+assert.match(exporter, /val\.ap_per_class\s*=\s*capture_ap_per_class/, 'the exporter should collect the predictions YOLOv5 actually matched during validation');
+assert.match(exporter, /"visionlab-yolov5-eval-v1"/, 'the exporter should write the data format accepted by the lab');
+assert.match(exporter, /np\.argsort\(-np\.asarray\(confidence\)\)/, 'the exporter should preserve YOLOv5 confidence tie ordering');
+for (const file of ['index.html', 'style.css', 'app.js', 'data.js', 'textbook-app.js', 'textbook-figures.js', 'textbook-lab.js', 'textbook-ui-v3.js', 'textbook-v2.js', 'textbook-v3.css', 'visionlab-yolov5-export.py']) {
   assert.ok(fs.statSync(`dist/${file}`).size > 0, `${file} should be present`);
 }
 
@@ -190,6 +197,8 @@ for (const experiment of ['iou', 'gradient', 'convolution', 'nms']) {
 }
 assert.match(labPage, /data-lab-tab="metrics"/, 'the lab should include a detector metrics experiment');
 assert.match(labPage, /id="metric-pr-chart"[\s\S]*id="metric-f1-chart"[\s\S]*class="metric-ap-legend"[\s\S]*id="metric-map-breakdown"/, 'the metrics experiment should include PR, F1, and labeled mAP visualizations');
+assert.match(labPage, /id="metric-import-file"[^>]*type="file"/, 'the metrics experiment should allow importing exported YOLOv5 validation data');
+assert.match(labPage, /visionlab-yolov5-export\.py/, 'the metrics experiment should offer the matching YOLOv5 data exporter');
 assert.match(labPage, /href="#lesson\/metrics"/, 'the metrics experiment should link back to its textbook chapter');
 for (const lessonId of ['iou', 'optimizer', 'cnn', 'metrics']) {
   assert.ok(lessons.some(lesson => lesson.id === lessonId), `${lessonId} should be a real textbook chapter`);
@@ -199,6 +208,57 @@ for (const lessonId of ['iou', 'optimizer', 'cnn', 'metrics']) {
 const labMath = context.window.VisionLabMath;
 assert.ok(labMath, 'the experiment lab should expose its real calculations to the page');
 assert.equal(typeof labMath.evaluateDetectionMetrics, 'function', 'the metrics lab should expose its detection metric calculations');
+assert.equal(typeof labMath.normalizeYoloV5Evaluation, 'function', 'the metrics lab should validate exported YOLOv5 evaluation data');
+assert.equal(typeof labMath.evaluateYoloV5Evaluation, 'function', 'the metrics lab should calculate curves from exported YOLOv5 predictions');
+const teachingStats = labMath.getTeachingSampleStats();
+assert.ok(teachingStats.groundTruths >= 100, 'the teaching example should include at least one hundred labeled objects');
+assert.ok(teachingStats.predictions >= 250, 'the teaching example should include enough detections for a readable curve');
+assert.deepEqual({ ...teachingStats }, { groundTruths: 136, predictions: 272, classes: 3 }, 'the expanded teaching sample should have a documented, repeatable data volume');
+const yoloV5Fixture = {
+  format: 'visionlab-yolov5-eval-v1',
+  source: { model: 'best.pt', dataset: 'custom.yaml', split: 'val', imageSize: 640, nmsIou: 0.6 },
+  iouThresholds: Array.from({ length: 10 }, (_, index) => Number((0.5 + index * 0.05).toFixed(2))),
+  classes: [{ id: 0, name: '猫', groundTruthCount: 2 }, { id: 1, name: '狗', groundTruthCount: 1 }],
+  predictions: [
+    { classId: 0, confidence: 0.9, correct: [true, true, true, true, true, true, true, true, true, false] },
+    { classId: 0, confidence: 0.8, correct: Array(10).fill(false) },
+    { classId: 0, confidence: 0.7, correct: [true, true, true, true, true, false, false, false, false, false] },
+    { classId: 1, confidence: 0.95, correct: Array(10).fill(false) },
+    { classId: 1, confidence: 0.6, correct: Array(10).fill(true) },
+  ],
+};
+const importedYoloV5 = labMath.normalizeYoloV5Evaluation(yoloV5Fixture);
+const importedMetrics = labMath.evaluateYoloV5Evaluation(importedYoloV5, {
+  confidenceThreshold: 0.75, iouThreshold: 0.5, className: 'all',
+});
+yoloV5Fixture.yoloV5Metrics = importedYoloV5.classes.map(item => ({
+  classId: item.id,
+  ap50: importedMetrics.ap50ByClass[String(item.id)],
+  ap50_95: importedMetrics.ap5095ByClass[String(item.id)],
+}));
+const summaryCheckedData = labMath.normalizeYoloV5Evaluation(yoloV5Fixture);
+const summaryCheckedMetrics = labMath.evaluateYoloV5Evaluation(summaryCheckedData, { confidenceThreshold: 0.75, iouThreshold: 0.5 });
+assert.ok(Math.abs(summaryCheckedMetrics.map50 - importedMetrics.map50) < 1e-12, 'imported AP should reproduce YOLOv5’s own per-class AP summary');
+assert.deepEqual(
+  { tp: importedMetrics.operatingPoint.tp, fp: importedMetrics.operatingPoint.fp, fn: importedMetrics.operatingPoint.fn },
+  { tp: 1, fp: 2, fn: 2 },
+  'imported YOLOv5 data should preserve exact threshold counts from validation predictions',
+);
+assert.ok(Math.abs(importedMetrics.operatingPoint.precision - 0.25) < 1e-9, 'all-class imported precision should use the YOLOv5 macro average');
+assert.ok(Math.abs(importedMetrics.operatingPoint.recall - 0.25) < 1e-9, 'all-class imported recall should use the YOLOv5 macro average');
+assert.ok(Math.abs(importedMetrics.map50 - 2 / 3) < 0.01, 'imported AP@0.50 should use YOLOv5 101-point interpolation');
+assert.equal(importedMetrics.curve.length, 1000, 'imported PR curves should use the 1000 recall samples plotted by YOLOv5');
+assert.equal(importedMetrics.confidenceCurve.length, 1000, 'imported F1 curves should use the 1000 confidence samples plotted by YOLOv5');
+const strictImported = labMath.evaluateYoloV5Evaluation(importedYoloV5, {
+  confidenceThreshold: 0.65, iouThreshold: 0.75, className: '0',
+});
+assert.deepEqual(
+  { tp: strictImported.operatingPoint.tp, fp: strictImported.operatingPoint.fp, fn: strictImported.operatingPoint.fn },
+  { tp: 1, fp: 2, fn: 1 },
+  'raising the IoU threshold should use each exported prediction’s stricter YOLOv5 match flag',
+);
+assert.throws(() => labMath.normalizeYoloV5Evaluation({ ...yoloV5Fixture, iouThresholds: [0.5] }), /IoU/, 'the importer should reject incompatible IoU grids');
+assert.throws(() => labMath.normalizeYoloV5Evaluation({ ...yoloV5Fixture, predictions: [{ classId: 0, confidence: 1.2, correct: Array(10).fill(false) }] }), /confidence/, 'the importer should reject invalid confidence scores');
 const sampleMetrics = labMath.evaluateDetectionMetrics([
   { className: 'cat', score: 0.9, targetId: 'cat-1', iou: 0.8 },
   { className: 'dog', score: 0.85, targetId: 'dog-1', iou: 0.4 },
@@ -300,8 +360,31 @@ const firstF1Chart = elements['#metric-f1-chart'].innerHTML;
 dispatchLabInput('metric-confidence', '0.95');
 assert.notEqual(elements['#metric-point-summary'].textContent, '', 'the metrics panel should report its current operating point');
 assert.notEqual(elements['#metric-f1-chart'].innerHTML, firstF1Chart, 'changing confidence should move the selected F1 point');
-dispatchLabInput('metric-class', 'person');
+dispatchLabInput('metric-class', 'pedestrian');
 assert.match(elements['#metric-point-summary'].textContent, /行人/, 'the class selector should describe the selected class');
 dispatchLabInput('metric-iou', '0.75');
 assert.match(elements['#metric-pr-chart'].innerHTML, /role="img"/, 'the precision-recall chart should be accessible to assistive technology');
-console.log('Verified textbook lessons, navigation, reading progress, and interactive learning simulations.');
+async function verifyYoloV5ImportInteraction() {
+  const fileInput = elements['#metric-import-file'];
+  fileInput.files = [{ size: 300, text: async () => JSON.stringify(yoloV5Fixture) }];
+  fileInput.value = 'selected';
+  const importHandler = listeners.find(item => item.type === 'change' && item.listener.constructor.name === 'AsyncFunction');
+  assert.ok(importHandler, 'the metrics panel should read a selected JSON file');
+  await importHandler.listener({ target: fileInput });
+  assert.equal(elements['#metric-data-mode'].textContent, '真实 YOLOv5 验证结果', 'a valid JSON file should switch the panel to real evaluation data');
+  assert.match(elements['#metric-data-status'].textContent, /best\.pt.*custom\.yaml.*3 个标注目标.*5 个预测框/, 'the panel should identify the imported model, validation set, and data volume');
+  assert.match(elements['#metric-data-status'].textContent, /网页复算 mAP 与 YOLOv5 验证摘要一致/, 'the panel should compare its mAP calculation with YOLOv5’s own summary');
+  assert.match(elements['#metric-map-breakdown'].innerHTML, /猫/, 'the class breakdown should use the imported class names');
+  assert.equal(fileInput.value, '', 'the input should allow importing the same file again');
+
+  const resetTarget = { closest(selector) { return selector === '[data-metric-reset]' ? this : null; } };
+  for (const item of clickListeners) item.listener({ target: resetTarget, preventDefault() {} });
+  assert.equal(elements['#metric-data-mode'].textContent, '教学样例', 'reset should return to the clearly labeled teaching data');
+  assert.match(elements['#metric-data-status'].textContent, /136 个标注目标/, 'reset should restore the larger teaching sample');
+  console.log('Verified textbook lessons, navigation, imported YOLOv5 metrics, and interactive learning simulations.');
+}
+
+verifyYoloV5ImportInteraction().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

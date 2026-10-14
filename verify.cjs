@@ -33,6 +33,7 @@ for (const [id, value] of Object.entries({
   'metric-precision': '', 'metric-recall': '', 'metric-f1': '', 'metric-best-f1': '',
   'metric-pr-chart': '', 'metric-f1-chart': '', 'metric-map-summary': '', 'metric-map-breakdown': '',
   'metric-data-description': '', 'metric-data-mode': '', 'metric-data-status': '', 'metric-import-file': '',
+  'swim-history-metric': 'map50', 'swim-history-epoch': '125', 'swim-history-chart': '', 'swim-history-summary': '',
 })) elements[`#${id}`] = fakeElement(id, value);
 const labTabs = ['iou', 'gradient', 'convolution', 'nms', 'metrics'].map(id => {
   const tab = fakeElement();
@@ -108,7 +109,7 @@ const context = vm.createContext({
   console,
 });
 
-for (const file of ['data.js', 'textbook-figures.js', 'textbook-v2.js', 'textbook-app.js', 'textbook-lab.js', 'textbook-ui-v3.js']) {
+for (const file of ['data.js', 'textbook-figures.js', 'textbook-v2.js', 'textbook-app.js', 'swim-v9-history.js', 'textbook-lab.js', 'textbook-ui-v3.js']) {
   vm.runInContext(fs.readFileSync(`dist/${file}`, 'utf8'), context, { filename: file });
 }
 
@@ -198,6 +199,9 @@ for (const experiment of ['iou', 'gradient', 'convolution', 'nms']) {
 assert.match(labPage, /data-lab-tab="metrics"/, 'the lab should include a detector metrics experiment');
 assert.match(labPage, /id="metric-pr-chart"[\s\S]*id="metric-f1-chart"[\s\S]*class="metric-ap-legend"[\s\S]*id="metric-map-breakdown"/, 'the metrics experiment should include PR, F1, and labeled mAP visualizations');
 assert.match(labPage, /id="metric-import-file"[^>]*type="file"/, 'the metrics experiment should allow importing exported YOLOv5 validation data');
+assert.match(labPage, /class="swim-case-card"[\s\S]*id="swim-history-chart"[\s\S]*id="swim-history-epoch"/, 'the metrics experiment should lead with the real swim_v9 case and its epoch browser');
+assert.match(labPage, /assets\/swim-v9\/PR_curve\.png[\s\S]*assets\/swim-v9\/F1_curve\.png[\s\S]*assets\/swim-v9\/confusion_matrix\.png/, 'the swim_v9 case should show the original YOLOv5 plots');
+assert.match(labPage, /results\.csv[\s\S]*126 轮/, 'the swim_v9 history should identify its exact per-epoch source and length');
 assert.match(labPage, /visionlab-yolov5-export\.py/, 'the metrics experiment should offer the matching YOLOv5 data exporter');
 assert.match(labPage, /href="#lesson\/metrics"/, 'the metrics experiment should link back to its textbook chapter');
 for (const lessonId of ['iou', 'optimizer', 'cnn', 'metrics']) {
@@ -210,6 +214,14 @@ assert.ok(labMath, 'the experiment lab should expose its real calculations to th
 assert.equal(typeof labMath.evaluateDetectionMetrics, 'function', 'the metrics lab should expose its detection metric calculations');
 assert.equal(typeof labMath.normalizeYoloV5Evaluation, 'function', 'the metrics lab should validate exported YOLOv5 evaluation data');
 assert.equal(typeof labMath.evaluateYoloV5Evaluation, 'function', 'the metrics lab should calculate curves from exported YOLOv5 predictions');
+assert.equal(context.window.VisionLabSwimV9.history.length, 126, 'the real swim_v9 training record should contain all 126 saved epochs');
+assert.deepEqual(
+  { epoch: context.window.VisionLabSwimV9.history.at(-1).epoch, precision: context.window.VisionLabSwimV9.history.at(-1).precision, recall: context.window.VisionLabSwimV9.history.at(-1).recall, map50: context.window.VisionLabSwimV9.history.at(-1).map50, map5095: context.window.VisionLabSwimV9.history.at(-1).map5095 },
+  { epoch: 125, precision: 0.95488, recall: 0.92851, map50: 0.96758, map5095: 0.63198 },
+  'the displayed swim_v9 final-epoch metrics should match results.csv literals',
+);
+assert.match(elements['#swim-history-chart'].innerHTML, /role="img"/, 'the real training history chart should describe itself to assistive technology');
+assert.match(elements['#swim-history-summary'].textContent, /125.*96\.76%.*63\.20%/, 'the default epoch selection should show the actual final-epoch scores');
 const teachingStats = labMath.getTeachingSampleStats();
 assert.ok(teachingStats.groundTruths >= 100, 'the teaching example should include at least one hundred labeled objects');
 assert.ok(teachingStats.predictions >= 250, 'the teaching example should include enough detections for a readable curve');
@@ -364,6 +376,9 @@ dispatchLabInput('metric-class', 'pedestrian');
 assert.match(elements['#metric-point-summary'].textContent, /行人/, 'the class selector should describe the selected class');
 dispatchLabInput('metric-iou', '0.75');
 assert.match(elements['#metric-pr-chart'].innerHTML, /role="img"/, 'the precision-recall chart should be accessible to assistive technology');
+dispatchLabInput('swim-history-epoch', '0');
+assert.match(elements['#swim-history-summary'].textContent, /第 0 轮.*62\.42%/, 'moving the epoch control should show the selected row from the actual results.csv');
+dispatchLabInput('swim-history-epoch', '125');
 async function verifyYoloV5ImportInteraction() {
   const fileInput = elements['#metric-import-file'];
   fileInput.files = [{ size: 300, text: async () => JSON.stringify(yoloV5Fixture) }];
@@ -379,7 +394,7 @@ async function verifyYoloV5ImportInteraction() {
 
   const resetTarget = { closest(selector) { return selector === '[data-metric-reset]' ? this : null; } };
   for (const item of clickListeners) item.listener({ target: resetTarget, preventDefault() {} });
-  assert.equal(elements['#metric-data-mode'].textContent, '教学样例', 'reset should return to the clearly labeled teaching data');
+  assert.equal(elements['#metric-data-mode'].textContent, '合成教学样例', 'reset should return to the clearly labeled synthetic teaching data');
   assert.match(elements['#metric-data-status'].textContent, /136 个标注目标/, 'reset should restore the larger teaching sample');
   console.log('Verified textbook lessons, navigation, imported YOLOv5 metrics, and interactive learning simulations.');
 }

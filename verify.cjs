@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const listeners = [];
 const content = { innerHTML: '' };
 const crumb = { textContent: '' };
-const search = { addEventListener() {} };
+const searchListeners = [];
+const search = { value: '', addEventListener(type, listener) { searchListeners.push({ type, listener }); } };
 const sidebar = { classList: { remove() {} } };
 const progressRoot = { attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
 const progressFill = { style: {} };
@@ -21,6 +22,8 @@ function fakeElement(id = '', value = '') {
   };
 }
 const elements = { '#content': content, '#crumb': crumb, '#search': search, '.sidebar': sidebar, '#reading-progress': progressRoot, '#reading-progress-fill': progressFill };
+let scrolledToSection = '';
+elements['#section-2'] = { scrollIntoView() { scrolledToSection = 'section-2'; } };
 for (const [id, value] of Object.entries({
   'box-x': '140', 'box-y': '110', 'prediction-box': '', 'prediction-label': '', 'x-label': '', 'y-label': '', 'iou-value': '', 'iou-detail': '',
   'gradient-lr': '0.5', 'gradient-steps': '4', 'gradient-lr-value': '', 'gradient-steps-value': '',
@@ -177,6 +180,25 @@ for (const group of ['dl', 'cv', 'yolo']) {
 clickCourseFilter('all');
 assert.equal(location.hash, '#courses');
 assert.match(content.innerHTML, /共 24 章/);
+search.value = '激活函数';
+searchListeners.find(item => item.type === 'input').listener({ target: search });
+assert.match(content.innerHTML, /找到 3 条相关结果/, 'search results should state the actual number of matches');
+assert.match(content.innerHTML, /激活函数让多层网络变得更有表达力/, 'search should expose the matching concept section');
+assert.match(content.innerHTML, /href="#lesson\/network\/section-2"/, 'a matching section should open directly in the lesson');
+assert.ok(content.innerHTML.indexOf('href="#lesson/network/section-2"') < content.innerHTML.indexOf('href="#lesson/gradient'), 'the exact activation-function section should rank before incidental mentions');
+assert.doesNotMatch(content.innerHTML, /共 3 章 · 24 章完整课程/, 'search results should not use the full-catalog count label');
+const searchResultLink = {
+  getAttribute(name) { return name === 'href' ? '#lesson/network/section-2' : null; },
+};
+const navigationClick = listeners.find(item => item.type === 'click' && item.capture);
+navigationClick.listener({
+  target: { closest(selector) { return selector === 'a[href^="#"]' ? searchResultLink : null; } },
+  preventDefault() {},
+});
+assert.equal(location.hash, '#lesson/network/section-2', 'search result navigation should preserve its section target');
+assert.equal(scrolledToSection, 'section-2', 'search result navigation should scroll to the matching section');
+assert.doesNotMatch(html, /<kbd>⌘ K<\/kbd>/, 'the Apple shortcut hint should not be visible');
+assert.doesNotMatch(html, /把好奇心，变成看得见的能力。/, 'the generic footer slogan should be removed');
 location.hash = '#lesson/iou';
 context.window.render();
 assert.equal(progressRoot.attributes['aria-valuenow'], '0', 'reading progress should initialize at the top of a lesson');

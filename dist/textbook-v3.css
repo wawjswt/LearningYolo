@@ -80,6 +80,7 @@ footer{border-color:#e5e2d9}
 .chapter-heading h1{font:600 clamp(28px,3vw,39px)/1.4 Georgia,"Noto Serif CJK SC","Songti SC",serif;letter-spacing:-.025em;margin:8px 0 9px;color:#263443}
 .chapter-heading .chapter-kicker{font-size:9px}.chapter-deck{font:15px/1.85 "Segoe UI","Microsoft YaHei",sans-serif;color:#697787;margin:0}
 .chapter-byline{display:flex;gap:22px;flex-wrap:wrap;border-top:1px solid #edeae2;margin-top:18px;padding-top:13px;color:#7c8790;font-size:10px}
+.chapter-byline .chapter-video-link{color:#6656a5;font-weight:650;text-decoration:underline;text-underline-offset:3px}.chapter-byline .chapter-video-link:focus-visible{outline:2px solid #6656a5;outline-offset:3px}
 .chapter-layout{display:grid;grid-template-columns:175px minmax(0,690px);gap:clamp(25px,5vw,64px);align-items:start;justify-content:center}
 .chapter-toc{position:sticky;top:25px;padding:13px 0 13px 15px;border-left:1px solid #dedbd2}
 .chapter-toc strong{font-size:11px;color:#41505d}.chapter-toc ol{padding-left:16px;margin:11px 0 0;color:#8b929b}.chapter-toc li{padding:4px 0;font-size:10px;line-height:1.65}.chapter-toc a{color:#697785}.chapter-toc a:hover{color:#6756a6}

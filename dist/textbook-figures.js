@@ -11,6 +11,21 @@
   const cell=(x,y,w,h,label,fill,color=colors.ink)=>rect(x,y,w,h,fill,'#ffffff',3,1)+text(x+w/2,y+h/2+5,label,14,color,650);
 
   const figures={
+    'neuron-intro':{concept:'从输入到节点输出',section:0,paragraph:0,title:'输入经过权重、求和与激活后得到输出',description:'三个数值输入沿带有权重的连接进入同一节点，节点加权求和并加上偏置，再经激活函数产生输出。',caption:'每条连接的权重会影响节点输出；层层重复这种计算，就组成了神经网络。',draw:()=>{
+      let s='';
+      s+=text(86,43,'输入数值',14,colors.muted,600)+text(304,43,'加权求和 + 偏置',14,colors.muted,600)+text(480,43,'激活函数',14,colors.muted,600)+text(654,43,'输出',14,colors.muted,600);
+      [[91,90,'x₁'],[91,150,'x₂'],[91,210,'x₃']].forEach((n,i)=>s+=circle(n[0],n[1],20,colors.blueSoft,colors.blue,1.7)+text(n[0],n[1]+5,n[2],15,colors.blue,700));
+      s+=arrow(112,90,242,132,colors.slate,1.8)+text(176,99,'w₁',13,colors.orange,700);
+      s+=arrow(112,150,242,150,colors.slate,1.8)+text(177,140,'w₂',13,colors.orange,700);
+      s+=arrow(112,210,242,168,colors.slate,1.8)+text(176,202,'w₃',13,colors.orange,700);
+      s+=rect(244,105,120,90,colors.purpleSoft,'none',9,0)+text(304,140,'Σ wᵢxᵢ + b',17,colors.purple,700)+text(304,166,'加权组合',12,colors.muted,550);
+      s+=arrow(366,150,413,150,colors.slate,2);
+      s+=rect(420,108,120,84,colors.orangeSoft,'none',9,0)+text(480,143,'ReLU',18,colors.orange,700)+text(480,166,'非线性变换',12,colors.muted,550);
+      s+=arrow(542,150,612,150,colors.slate,2);
+      s+=circle(650,150,27,colors.greenSoft,colors.green,2)+text(650,156,'y',20,colors.green,700);
+      s+=text(380,259,'y = ReLU(w₁x₁ + w₂x₂ + w₃x₃ + b)',16,colors.ink,650);
+      return s;
+    }},
     tensor:{concept:'张量的四条轴',section:0,paragraph:1,title:'图像批次张量的 N、C、H、W 轴',description:'从八张 RGB 图像开始：N 表示批次中的图像数，C 表示颜色通道，H 和 W 分别表示像素行与列。右侧的形状 [8,3,224,224] 与四条轴一一对应。',caption:'读形状时逐轴命名：[8, 3, 224, 224] 表示 8 张 RGB 图像，每张高和宽均为 224 像素。',draw:()=>{
       let s='';
       s+=text(115,42,'一批图像',16,colors.muted,600)+text(380,42,'每张图像',16,colors.muted,600)+text(647,42,'张量形状',16,colors.muted,600);

@@ -28,7 +28,12 @@ elements['#section-2'] = { scrollIntoView() { scrolledToSection = 'section-2'; }
 for (const [id, value] of Object.entries({
   'box-x': '140', 'box-y': '110', 'prediction-box': '', 'prediction-label': '', 'x-label': '', 'y-label': '', 'iou-value': '', 'iou-detail': '',
   'gradient-lr': '0.5', 'gradient-steps': '4', 'gradient-lr-value': '', 'gradient-steps-value': '',
-  'gradient-chart': '', 'gradient-explanation': '', 'gradient-result': '',
+  'gradient-chart': '', 'gradient-comparison': '', 'gradient-explanation': '', 'gradient-result': '',
+  'gradient-forward': '', 'gradient-loss': '', 'gradient-backprop': '', 'gradient-update': '',
+  'augmentation-mode': 'flip', 'augmentation-strength': '1.20', 'augmentation-badge': '', 'augmentation-visual': '',
+  'augmentation-caption': '', 'augmentation-explanation': '', 'augmentation-box-math': '', 'augmentation-strength-label': '', 'augmentation-strength-value': '',
+  'diagnosis-iou': '0.50', 'diagnosis-iou-value': '', 'diagnosis-progress': '', 'diagnosis-prompt': '',
+  'diagnosis-scene': '', 'diagnosis-feedback': '', 'diagnosis-counts': '',
   'conv-input': 'shape', 'conv-kernel': 'edge', 'conv-stride': '1', 'conv-stride-value': '', 'conv-output-shape': '', 'conv-visual': '', 'conv-detail': '',
   'nms-confidence': '0.3', 'nms-iou': '0.5', 'nms-confidence-value': '', 'nms-iou-value': '',
   'nms-visual': '', 'nms-summary': '', 'nms-step-list': '', 'nms-metric-summary': '',
@@ -40,14 +45,14 @@ for (const [id, value] of Object.entries({
   'metric-data-description': '', 'metric-data-mode': '', 'metric-data-status': '', 'metric-import-file': '',
   'swim-history-metric': 'map50', 'swim-history-epoch': '125', 'swim-history-chart': '', 'swim-history-summary': '',
 })) elements[`#${id}`] = fakeElement(id, value);
-const labTabs = ['iou', 'gradient', 'convolution', 'nms', 'metrics'].map(id => {
+const labTabs = ['iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'].map(id => {
   const tab = fakeElement();
   tab.dataset.labTab = id;
   tab.attributes['aria-selected'] = 'false';
   tab.attributes.tabindex = '-1';
   return tab;
 });
-const labPanels = ['iou', 'gradient', 'convolution', 'nms', 'metrics'].map(id => {
+const labPanels = ['iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'].map(id => {
   const panel = fakeElement();
   panel.dataset.labPanel = id;
   return panel;
@@ -409,6 +414,42 @@ assert.equal(descent[0].weight, -4, 'gradient descent should begin at the docume
 assert.equal(descent[1].weight, -0.5, 'a learning rate of 0.5 should move one step toward the minimum');
 assert.equal(descent[4].weight, 2.5625, 'gradient descent should report the fourth update');
 assert.ok(descent[4].loss < descent[0].loss, 'gradient descent should lower loss for a stable learning rate');
+const neuronStep = labMath.linearNeuronStep(-4, 1, 3, 0.5);
+assert.deepEqual(
+  { prediction: neuronStep.prediction, loss: neuronStep.loss, gradient: neuronStep.gradient, nextWeight: neuronStep.nextWeight },
+  { prediction: -4, loss: 24.5, gradient: -7, nextWeight: -0.5 },
+  'the neuron experiment should backpropagate the output error through its weight and apply one learning-rate update',
+);
+const slowNeuron = labMath.linearNeuronTraining(0.05, 8);
+const stableNeuron = labMath.linearNeuronTraining(0.5, 8);
+const oversizedNeuron = labMath.linearNeuronTraining(2.1, 8);
+assert.ok(stableNeuron.at(-1).loss < slowNeuron.at(-1).loss, 'a useful learning rate should improve the loss faster than a very small one');
+assert.ok(oversizedNeuron.at(-1).loss > oversizedNeuron[0].loss, 'a learning rate above the stability limit should increase loss');
+assert.deepEqual(
+  Array.from(labMath.transformAugmentationBox([20, 30, 60, 90], 'flip', { width: 320, height: 200 })),
+  [260, 30, 300, 90],
+  'horizontal flip should mirror the target box along with the image',
+);
+assert.deepEqual(
+  Array.from(labMath.transformAugmentationBox([20, 30, 60, 90], 'mosaic', { width: 320, height: 200, quadrant: 3 })),
+  [170, 115, 190, 145],
+  'Mosaic should scale and translate a source label into the selected canvas quadrant',
+);
+assert.deepEqual(
+  Array.from(labMath.transformAugmentationBox([95, 39, 174, 172], 'scale', { width: 320, height: 200, scale: 1.2 }), value => Number(value.toFixed(1))),
+  [82, 26.8, 176.8, 186.4],
+  'scaling should move the label around the image center by the same factor as the pixels',
+);
+for (const [caseId, expected] of [
+  ['missed', { tp: 0, fp: 0, fn: 1 }],
+  ['false-positive', { tp: 0, fp: 1, fn: 1 }],
+  ['class-error', { tp: 0, fp: 1, fn: 1 }],
+  ['box-shift', { tp: 0, fp: 1, fn: 1 }],
+]) {
+  const result = labMath.evaluateTeachingDiagnosis(caseId, 0.5);
+  assert.deepEqual({ tp: result.tp, fp: result.fp, fn: result.fn }, expected, `${caseId} should report the correct detection counts`);
+}
+assert.equal(labMath.evaluateTeachingDiagnosis('box-shift', 0.4).tp, 1, 'lowering the IoU threshold should accept a shifted box whose overlap clears it');
 
 const impulse = labMath.convolve([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[0, 0, 0], [0, 1, 0], [0, 0, 0]]);
 assert.deepEqual(Array.from(impulse[0]), [5], 'the center-only kernel should select the center pixel');
@@ -426,6 +467,10 @@ const relaxedNms = labMath.nonMaximumSuppression([
   { id: 'overlap', score: 0.8, box: [1, 1, 11, 11] },
 ], 0.3, 0.7);
 assert.deepEqual(Array.from(relaxedNms.kept, item => item.id), ['top', 'overlap'], 'a higher NMS IoU threshold should retain more overlapping predictions');
+const interactiveLabMarkup = window.renderInteractiveLab();
+assert.match(interactiveLabMarkup, /data-lab-tab="augmentation"/, 'the lab should expose the data-augmentation experiment');
+assert.match(interactiveLabMarkup, /data-lab-tab="diagnosis"/, 'the lab should expose the annotation-diagnosis exercise');
+assert.match(interactiveLabMarkup, /data-diagnosis-choice="类别错误"/, 'the diagnosis exercise should offer an explicit class-error answer');
 
 const clickListeners = listeners.filter(item => item.type === 'click');
 const tabClickTarget = {
@@ -462,6 +507,32 @@ function dispatchLabInput(id, value) {
 }
 dispatchLabInput('gradient-lr', '0.5');
 assert.match(elements['#gradient-chart'].innerHTML, /<circle/, 'changing the learning rate should redraw the gradient path');
+assert.match(elements['#gradient-comparison'].innerHTML, /η = 2\.10/, 'the gradient panel should compare a learning rate above the convergence limit');
+assert.match(elements['#gradient-backprop'].textContent, /-7/, 'the gradient panel should show the first backpropagated weight gradient');
+dispatchLabInput('augmentation-mode', 'mosaic');
+assert.match(elements['#augmentation-visual'].innerHTML, /Mosaic 四图拼接/, 'selecting Mosaic should display the four-image composite');
+assert.match(elements['#augmentation-box-math'].textContent, /207\.50, 119\.50, 247, 186/, 'the augmentation panel should report transformed label coordinates');
+dispatchLabInput('augmentation-mode', 'flip');
+assert.match(elements['#augmentation-visual'].innerHTML, /原图.*增强后/s, 'geometric augmentation should compare the original and transformed image');
+dispatchLabInput('diagnosis-iou', '0.5');
+assert.match(elements['#diagnosis-scene'].innerHTML, /GT · person.*预测/s, 'the diagnosis exercise should draw both ground-truth and predicted boxes');
+const diagnosisClickTarget = {
+  closest(selector) {
+    if (selector === '[data-diagnosis-choice]') return { getAttribute: () => '漏检' };
+    return null;
+  },
+};
+for (const item of clickListeners) item.listener({ target: diagnosisClickTarget, preventDefault() {} });
+assert.match(elements['#diagnosis-feedback'].textContent, /判断正确.*FN/s, 'answering a missed-detection case should explain its false-negative count');
+assert.match(elements['#diagnosis-counts'].innerHTML, /FN <b>1<\/b>/, 'the diagnosis exercise should show the resulting detection counts');
+const diagnosisNextTarget = {
+  closest(selector) {
+    if (selector === '[data-diagnosis-nav]') return { getAttribute: () => 'next' };
+    return null;
+  },
+};
+for (const item of clickListeners) item.listener({ target: diagnosisNextTarget, preventDefault() {} });
+assert.match(elements['#diagnosis-progress'].textContent, /练习 2 \/ 4/, 'the diagnosis exercise should advance to the next case');
 dispatchLabInput('conv-kernel', 'blur');
 assert.match(elements['#conv-visual'].innerHTML, /conv-grid/, 'changing the convolution kernel should redraw its feature map');
 dispatchLabInput('conv-stride', '2');
@@ -508,7 +579,7 @@ async function verifyYoloV5ImportInteraction() {
   for (const item of clickListeners) item.listener({ target: resetTarget, preventDefault() {} });
   assert.equal(elements['#metric-data-mode'].textContent, '合成教学样例', 'reset should return to the clearly labeled synthetic teaching data');
   assert.match(elements['#metric-data-status'].textContent, /136 个标注目标/, 'reset should restore the larger teaching sample');
-  console.log('Verified 168 section and chapter exercises, answer feedback and retry behavior, textbook navigation, YOLOv5 metrics, and interactive simulations.');
+  console.log('Verified 168 section and chapter exercises, answer feedback and retry behavior, textbook navigation, YOLOv5 metrics, backpropagation, augmentation labels, diagnosis feedback, and interactive simulations.');
 }
 
 verifyYoloV5ImportInteraction().catch(error => {

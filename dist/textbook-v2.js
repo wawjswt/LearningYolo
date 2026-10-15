@@ -1,5 +1,18 @@
 /* 教材章节补充：让路线、目标、分步讲解、例题与原始代码分开维护。 */
 const textbook = {
+  'ai-foundations': {
+    goals: ['读懂输入、隐藏层与输出层的基本关系。','用自己的话解释神经元中的权重和偏置。','概括模型如何通过训练调整参数。'],
+    prereq:'无须预先学习线性代数或编写 Python；会做简单的加减乘即可。',
+    visual:'neuron-intro',
+    sections:[
+      {title:'1. 先看输入怎样变成输出',paragraphs:['视频把神经网络画成输入层、隐藏层与输出层相连的结构。图片等信息会先转成数字，作为模型的输入；数字沿着连接经过一层层计算，最后得到模型输出。把整个过程先看成一个函数：输入 x 经过模型后产生输出 y，也就是 y=f(x)。','这里说模型“处理图片”，不是说它像人一样看见和理解了图片。对于模型来说，图片已经变成了数字；模型按照学到的计算关系给出类别、分数或其他预测。']},
+      {title:'2. 一个神经元在算什么',paragraphs:['每个节点会把上一层传来的输入分别乘上连接上的权重，再把结果相加并加上偏置。对多个输入，可以写成 z = w1*x1 + w2*x2 + … + b。视频把它和 y=ax+b 这样的简单函数联系起来：权重像系数，偏置像整体平移量。','权重描述某条连接上的数值会怎样影响当前节点。权重的正负决定影响方向，绝对值大小影响贡献幅度；它不是由人预先写死的“特征重要性”，而是训练过程中调整出来的参数。']},
+      {title:'3. 多层连接成一个更灵活的函数',paragraphs:['一个节点的结果可以传给下一层，下一层再做自己的加权计算。把许多层接起来，最终得到的是一个由大量参数共同决定的函数。视频用一次函数作对照，帮助理解神经网络也是输入到输出的映射。','进一步严谨地说，如果每层都只有线性计算，那么连续堆叠仍能合并成一个线性变换。像 ReLU 这样的激活函数加入非线性，网络才有能力表示更复杂的关系。视频的代码画面出现了 ReLU；具体激活函数的作用，后面的神经网络课程会再展开。']},
+      {title:'4. 参数怎样学会有用的取值',paragraphs:['权重和偏置一开始还没有适合任务的取值。训练时，模型先根据当前参数做预测，再用损失衡量预测与已知目标之间的差异；优化过程根据这个差异调整参数，并在许多训练样本上重复。视频在结尾把话题转到“这个参数是怎么学习的”，这里先建立直觉即可。','训练完成后，模型把学到的参数用于新的输入并给出预测。它不保证每次都正确，也不会因为画出了神经元就拥有人的理解能力。接下来的课程会分别讲张量如何表示数据、梯度如何指导更新，以及如何搭建网络。']}
+    ],
+    keypoints:['神经网络把数字输入映射成模型输出。','每个节点做加权组合；权重和偏置是训练中调整的参数。','多层网络需要非线性环节，才能表达超出线性函数的关系。','训练通过预测、比较误差和更新参数，让模型逐步适应任务。'],
+    worked:{title:'例题：手算一个节点的输出',prompt:'令 x1=2、x2=1、w1=3、w2=-2、b=1。只计算加权求和 z，不经过激活函数。',solution:'z = 3×2 + (-2)×1 + 1 = 5。真实网络会有大量这样的计算；权重由训练调整，节点算出的结果再传到后续层。'}
+  },
   tensor: {
     goals: ['看懂常见张量形状，并能自己追踪每一维的含义。','能区分矩阵乘法、逐元素运算和广播。'], prereq:'会使用 Python 变量、列表和函数；无需预先掌握线性代数。', visual:'tensor',
     sections:[
@@ -150,6 +163,7 @@ const textbook = {
 };
 
 const additions = [
+  {id:'ai-foundations',group:'dl',title:'AI 从哪里开始：一张图看懂神经网络',desc:'从输入、权重和层间传递，建立神经网络与参数学习的第一层直觉。',time:15,level:'入门',videoUrl:'https://v.douyin.com/xWnMHtxVPHM/',quiz:{q:'神经网络中的隐藏层通常怎样得到自己的输入？',options:['接收前一层节点计算出的结果','直接读取人类写下的最终答案','每次训练都重新生成图片'],answer:0,why:'每一层接收前一层的输出，再进行新的计算。'}},
   {id:'losses',group:'dl',title:'损失函数：模型怎样知道自己错了',desc:'理解回归、交叉熵与多标签损失，选择与任务相符的学习目标。',time:35,level:'基础',code:'import torch\nfrom torch import nn\n\n# 单标签互斥多分类：logits [N, K]，target [N]\nclass_logits = torch.randn(8, 4)\nclass_target = torch.randint(0, 4, (8,))\nce = nn.CrossEntropyLoss()(class_logits, class_target)\n\n# 多标签：每个类别独立为 0 或 1\nmulti_logits = torch.randn(8, 4)\nmulti_target = torch.randint(0, 2, (8, 4)).float()\nbce = nn.BCEWithLogitsLoss()(multi_logits, multi_target)',quiz:{q:'CrossEntropyLoss 的常见训练输入组合是什么？',options:['softmax 后的概率与 one-hot','原始 logits 与类别编号','已经 argmax 的类别'],answer:1,why:'交叉熵内部处理 logits；argmax 会丢失可用于优化的信息。'},language:'Python'},
   {id:'optimizer',group:'dl',title:'优化器与学习率：怎样走下损失曲面',desc:'看懂 SGD、动量、AdamW 与学习率计划的取舍。',time:35,level:'基础',code:'optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-2)\nscheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)\n\nfor epoch in range(100):\n    model.train()\n    for images, labels in train_loader:\n        loss = loss_fn(model(images), labels)\n        optimizer.zero_grad()\n        loss.backward()\n        optimizer.step()\n    scheduler.step()\n    print(epoch, scheduler.get_last_lr()[0])',quiz:{q:'训练发散时，最先检查哪个设置？',options:['导航颜色','学习率和数值是否有限','文件名长短'],answer:1,why:'过高学习率或非有限输入可能使优化快速发散。'},language:'Python'},
   {id:'regularization',group:'dl',title:'泛化与正则化：从记住样本到学会规律',desc:'用验证曲线识别过拟合，合理使用增强、权重衰减和早停。',time:35,level:'进阶',code:'# 根据验证指标保存最佳模型，而不是默认使用最后一轮\nbest_score = float("-inf")\nfor epoch in range(num_epochs):\n    train_one_epoch(model, train_loader, optimizer)\n    score = evaluate(model, val_loader)\n    if score > best_score:\n        best_score = score\n        torch.save(model.state_dict(), "best.pt")',quiz:{q:'训练效果好、验证效果变差，先调查什么？',options:['过拟合、数据划分与分布','页脚颜色','只增加 epoch'],answer:0,why:'验证退化需要先区分过拟合与数据/划分问题。'},language:'Python'},
@@ -166,9 +180,9 @@ const additions = [
 
 const authored=[...lessons,...additions];
 for(const lesson of authored) Object.assign(lesson,textbook[lesson.id]||{});
-const idOrder=['tensor','gradient','network','losses','optimizer','training','regularization','transfer','image','cnn','pooling','augmentation','tasks','iou','metrics','data-quality','architecture','dataset','anchors','yolo-loss','train-yolo','yolo-augment','inference','debugging'];
+const idOrder=['ai-foundations','tensor','gradient','network','losses','optimizer','training','regularization','transfer','image','cnn','pooling','augmentation','tasks','iou','metrics','data-quality','architecture','dataset','anchors','yolo-loss','train-yolo','yolo-augment','inference','debugging'];
 const byId=new Map(authored.map(item=>[item.id,item]));
 lessons.splice(0,lessons.length,...idOrder.map(id=>byId.get(id)).filter(Boolean));
-groups.dl.desc='从张量与自动求导出发，逐步理解网络、损失、优化和泛化。';
+groups.dl.desc='先建立神经网络直觉，再理解张量、梯度、损失、优化和泛化。';
 groups.cv.desc='认识图像、卷积和视觉任务，再练习评估与数据诊断。';
 groups.yolo.desc='读懂 YOLOv5 结构，准备数据，完成训练、验证和项目复盘。';

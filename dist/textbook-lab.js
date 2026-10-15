@@ -68,10 +68,12 @@
     return predictions.sort((a, b) => b.score - a.score);
   }
   const metricPredictions = createTeachingPredictions();
-  const tabIds = ['iou', 'gradient', 'convolution', 'nms', 'metrics'];
+  const tabIds = ['iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'];
   let activeTab = 'metrics';
   let convolutionFocus = { row: 1, column: 1 };
   let mapWalkthroughStep = 0;
+  let diagnosisIndex = 0;
+  let diagnosisAnswer = '';
   let importedYoloV5Evaluation = null;
 
   const byId = id => document.getElementById(id);
@@ -277,6 +279,107 @@
     return path;
   }
 
+  function linearNeuronStep(weight, input, target, learningRate) {
+    const w = number(weight, 0);
+    const x = number(input, 1);
+    const y = number(target, 0);
+    const rate = number(learningRate, 0);
+    const prediction = w * x;
+    const error = prediction - y;
+    const gradient = error * x;
+    return { weight: w, input: x, target: y, prediction, error, loss: 0.5 * error ** 2, gradient, nextWeight: w - rate * gradient };
+  }
+
+  function linearNeuronTraining(learningRate = 0.5, steps = 8, start = -4, input = 1, target = 3) {
+    const count = Math.max(0, Math.min(100, Math.floor(number(steps, 8))));
+    const trace = [];
+    let weight = number(start, -4);
+    for (let step = 0; step <= count; step++) {
+      const point = linearNeuronStep(weight, input, target, learningRate);
+      trace.push({ step, ...point });
+      if (step < count) weight = point.nextWeight;
+    }
+    return trace;
+  }
+
+  function transformAugmentationBox(box, mode, options = {}) {
+    if (!Array.isArray(box) || box.length !== 4 || box.some(value => !Number.isFinite(Number(value)))) return [];
+    const [x1, y1, x2, y2] = box.map(Number);
+    const width = number(options.width, 320);
+    const height = number(options.height, 200);
+    if (mode === 'flip') return [width - x2, y1, width - x1, y2];
+    if (mode === 'scale') {
+      const scale = number(options.scale, 1.2);
+      const centerX = width / 2;
+      const centerY = height / 2;
+      return [centerX + (x1 - centerX) * scale, centerY + (y1 - centerY) * scale,
+        centerX + (x2 - centerX) * scale, centerY + (y2 - centerY) * scale];
+    }
+    if (mode === 'mosaic') {
+      const quadrant = Math.max(0, Math.min(3, Math.floor(number(options.quadrant, 0))));
+      const halfWidth = width / 2;
+      const halfHeight = height / 2;
+      const offsetX = (quadrant % 2) * halfWidth;
+      const offsetY = Math.floor(quadrant / 2) * halfHeight;
+      return [
+        Math.max(offsetX, Math.min(offsetX + halfWidth, offsetX + x1 * 0.5)),
+        Math.max(offsetY, Math.min(offsetY + halfHeight, offsetY + y1 * 0.5)),
+        Math.max(offsetX, Math.min(offsetX + halfWidth, offsetX + x2 * 0.5)),
+        Math.max(offsetY, Math.min(offsetY + halfHeight, offsetY + y2 * 0.5)),
+      ];
+    }
+    return [x1, y1, x2, y2];
+  }
+
+  const teachingDiagnosisCases = [
+    {
+      id: 'missed', answer: '漏检', groundTruths: [{ className: 'person', box: [76, 42, 162, 170], kind: 'person' }], predictions: [],
+      explanation: '图中有一个真实目标，却没有任何预测框。目标没有被找回，因此计为 FN。',
+    },
+    {
+      id: 'false-positive', answer: '误检', groundTruths: [{ className: 'person', box: [56, 46, 142, 174], kind: 'person' }],
+      predictions: [{ className: 'person', score: 0.81, box: [210, 68, 286, 142], kind: 'buoy' }],
+      explanation: '预测框没有匹配到真实目标，计为 FP；真实行人也没有被找回，计为 FN。',
+    },
+    {
+      id: 'class-error', answer: '类别错误', groundTruths: [{ className: 'person', box: [110, 38, 194, 170], kind: 'person' }],
+      predictions: [{ className: 'swimmer', score: 0.88, box: [110, 38, 194, 170], kind: 'person' }],
+      explanation: '位置重合但类别不一致。对 person 来说是真实目标漏检（FN）；对 swimmer 来说是错误预测（FP）。',
+    },
+    {
+      id: 'box-shift', answer: '框偏移', groundTruths: [{ className: 'person', box: [72, 42, 158, 170], kind: 'person' }],
+      predictions: [{ className: 'person', score: 0.76, box: [108, 42, 194, 170], kind: 'person' }],
+      explanation: '类别正确，但框向右偏移；IoU 约为 0.41。阈值 0.50 时不能匹配，降低阈值到 IoU 以下后才计为 TP。',
+    },
+  ];
+
+  function evaluateTeachingDiagnosis(caseId, iouThreshold = 0.5) {
+    const item = teachingDiagnosisCases.find(example => example.id === caseId);
+    if (!item) return null;
+    const threshold = Math.max(0, Math.min(1, number(iouThreshold, 0.5)));
+    const matched = new Set();
+    let tp = 0;
+    let fp = 0;
+    let classErrors = 0;
+    const predictions = item.predictions.slice().sort((a, b) => b.score - a.score);
+    for (const prediction of predictions) {
+      const candidates = item.groundTruths.map((groundTruth, index) => ({ groundTruth, index, overlap: intersectionOverUnion(prediction.box, groundTruth.box) }));
+      const best = candidates.filter(candidate => candidate.groundTruth.className === prediction.className && !matched.has(candidate.index))
+        .sort((a, b) => b.overlap - a.overlap)[0];
+      if (best && best.overlap >= threshold) {
+        matched.add(best.index);
+        tp++;
+      } else {
+        fp++;
+        if (candidates.some(candidate => candidate.groundTruth.className !== prediction.className && candidate.overlap >= threshold)) classErrors++;
+      }
+    }
+    const fn = item.groundTruths.length - matched.size;
+    const precision = tp + fp ? tp / (tp + fp) : 0;
+    const recall = item.groundTruths.length ? tp / item.groundTruths.length : 0;
+    return { caseId, answer: item.answer, tp, fp, fn, classErrors, precision, recall, f1: precision + recall ? 2 * precision * recall / (precision + recall) : 0 };
+  }
+
   function convolve(input, kernel, stride = 1) {
     if (!Array.isArray(input) || !Array.isArray(kernel) || !input.length || !kernel.length) return [];
     const inputWidth = input[0]?.length || 0;
@@ -432,11 +535,33 @@
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-gradient" aria-labelledby="lab-tab-gradient" data-lab-panel="gradient" hidden>'
       + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">LOSS LANDSCAPE</span><h2>沿着斜坡，一步步找低点</h2></div><strong id="gradient-result"></strong></div>'
       + '<div id="gradient-chart" class="lab-chart" aria-live="polite"></div><div class="lab-chart-legend"><span></span>损失曲线 <i></i>参数更新路径</div></div>'
-      + '<div class="lab-control-card"><label for="gradient-lr">学习率 η <output id="gradient-lr-value">0.50</output></label><input id="gradient-lr" type="range" min="0.05" max="1.90" step="0.05" value="0.50">'
+      + '<div class="lab-control-card"><h3 class="lab-subheading">误差沿计算链反传</h3><div class="gradient-equation-grid"><div><span>前向：ŷ = w × x</span><b id="gradient-forward"></b></div><div><span>损失：L = ½(ŷ − y)²</span><b id="gradient-loss"></b></div><div><span>反向：∂L/∂w</span><b id="gradient-backprop"></b></div><div><span>更新：w ← w − η∇L</span><b id="gradient-update"></b></div></div>'
+      + '<label for="gradient-lr">学习率 η <output id="gradient-lr-value">0.50</output></label><input id="gradient-lr" type="range" min="0.05" max="1.90" step="0.05" value="0.50">'
       + '<label for="gradient-steps">更新步数 <output id="gradient-steps-value">4</output></label><input id="gradient-steps" type="range" min="1" max="8" step="1" value="4">'
-      + '<div id="gradient-explanation" class="lab-callout" aria-live="polite"></div><p class="lab-formula">本实验的损失为 <code>L(w)=½(w−3)²</code>，梯度为 <code>w−3</code>。每一步按 <code>w ← w−η∇L</code> 更新。</p>'
-      + '<button class="secondary" type="button" data-lab-reset="gradient">重置参数</button><p class="lab-small-note">学习率较小时收敛慢；偏大时会越过谷底。这里的稳定范围是 0 &lt; η &lt; 2。</p></div></div>'
+      + '<div id="gradient-explanation" class="lab-callout" aria-live="polite"></div><p class="lab-formula">单神经元示例：固定输入 x=1、目标 y=3，<code>ŷ=wx</code>；链式法则给出 <code>∂L/∂w = ∂L/∂ŷ × ∂ŷ/∂w = (ŷ−y)x</code>。每次更新后重新前向计算。</p>'
+      + '<button class="secondary" type="button" data-lab-reset="gradient">重置参数</button><p class="lab-small-note">下方以同一初始权重比较 η=0.05、0.50、2.10；η≥2 时，这个二次损失不再收敛。</p></div></div>'
+      + '<section class="gradient-comparison-card"><div class="lab-card-heading"><div><span class="chapter-kicker">SAME START · DIFFERENT LEARNING RATES</span><h3>训练损失对比</h3></div><span>8 次更新</span></div><div id="gradient-comparison" class="gradient-comparison" aria-live="polite"></div><div class="gradient-comparison-legend"><span class="slow">η = 0.05 · 慢</span><span class="steady">η = 0.50 · 稳</span><span class="oversized">η = 2.10 · 过大</span></div></section>'
       + '<a class="lab-lesson-link" href="#lesson/optimizer">接着学习：优化器与学习率 →</a></section>';
+  }
+
+  function augmentationPanel() {
+    return '<section class="experiment-panel" role="tabpanel" id="lab-panel-augmentation" aria-labelledby="lab-tab-augmentation" data-lab-panel="augmentation" hidden>'
+      + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">YOLOV5 · TRAINING AUGMENTATION</span><h2>变换图像，也要同步变换标签</h2></div><span id="augmentation-badge" class="lab-step-badge">水平翻转</span></div>'
+      + '<div id="augmentation-visual" class="augmentation-visual" aria-live="polite"></div><p id="augmentation-caption" class="lab-callout"></p></div>'
+      + '<div class="lab-control-card"><label for="augmentation-mode">选择增强方式</label><select id="augmentation-mode"><option value="flip">水平翻转</option><option value="scale">缩放与裁剪</option><option value="color">颜色扰动（HSV 示意）</option><option value="mosaic">Mosaic 四图拼接</option></select>'
+      + '<label for="augmentation-strength"><span id="augmentation-strength-label">缩放比例</span><output id="augmentation-strength-value">1.20×</output></label><input id="augmentation-strength" type="range" min="0.75" max="1.50" step="0.05" value="1.20">'
+      + '<div id="augmentation-explanation" class="lab-callout" aria-live="polite"></div><div id="augmentation-box-math" class="augmentation-box-math"></div><p class="lab-small-note">边界框用绿色虚线表示，红紫色细框表示变换后的标注位置。Mosaic 示例把四张图像缩放后放入四个象限。</p></div></div></section>';
+  }
+
+  function diagnosisPanel() {
+    return '<section class="experiment-panel" role="tabpanel" id="lab-panel-diagnosis" aria-labelledby="lab-tab-diagnosis" data-lab-panel="diagnosis" hidden>'
+      + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">ANNOTATION · PREDICTION · METRICS</span><h2>看图找出检测错误</h2></div><span id="diagnosis-progress" class="lab-step-badge">练习 1 / 4</span></div>'
+      + '<div id="diagnosis-scene" class="diagnosis-scene" aria-live="polite"></div><p class="diagnosis-legend"><span>绿色虚线：真实标注</span><span>紫色实线：模型预测</span></p><p id="diagnosis-prompt" class="lab-callout">观察真实框和预测框，判断主要问题。</p>'
+      + '<div class="diagnosis-navigation"><button type="button" class="secondary" data-diagnosis-nav="prev">← 上一题</button><button type="button" class="secondary" data-diagnosis-nav="next">下一题 →</button></div></div>'
+      + '<div class="lab-control-card"><h3 class="lab-subheading">这是什么问题？</h3><div class="diagnosis-choices" role="radiogroup" aria-label="选择检测错误类型">' + ['漏检', '误检', '类别错误', '框偏移'].map(choice => '<button type="button" role="radio" aria-checked="false" data-diagnosis-choice="' + choice + '">' + choice + '</button>').join('') + '</div>'
+      + '<div id="diagnosis-feedback" class="lab-callout" aria-live="polite">选择一个答案，查看判断依据。</div><div id="diagnosis-counts" class="diagnosis-counts" aria-live="polite"></div>'
+      + '<label for="diagnosis-iou">匹配 IoU 阈值 <output id="diagnosis-iou-value">0.50</output></label><input id="diagnosis-iou" type="range" min="0.30" max="0.80" step="0.05" value="0.50">'
+      + '<p class="lab-small-note">预测框只有在类别相同、IoU 达到阈值且真实目标尚未匹配时，才算 TP。一个错类框会造成一个 FP 和一个 FN。</p></div></div></section>';
   }
 
   function convolutionPanel() {
@@ -560,13 +685,13 @@
     const gridStart = oldMarkup.indexOf('<div class="lab-grid">');
     const iouMarkup = gridStart >= 0 ? oldMarkup.slice(gridStart) : '<p class="lab-callout">IoU 实验暂时无法加载，请刷新页面重试。</p>';
     const tabs = [
-      ['iou', 'IoU 框重叠'], ['gradient', '梯度下降'], ['convolution', '卷积特征'], ['nms', 'YOLO 后处理'], ['metrics', 'PR · F1 · mAP'],
+      ['iou', 'IoU 框重叠'], ['gradient', '反向传播'], ['convolution', '卷积特征'], ['augmentation', '数据增强'], ['diagnosis', '错误诊断'], ['nms', 'YOLO 后处理'], ['metrics', 'PR · F1 · mAP'],
     ];
     return '<section class="page-intro"><p class="eyebrow">LEARN BY INTERACTION</p><h1>让概念动起来。</h1><p>拖动参数、切换算子、观察结果变化。每个实验都把图像、计算步骤和教材章节连在一起。</p></section>'
       + '<p class="lab-notice"><strong>建议：</strong>先预测参数变化会带来什么结果，再操作控件验证自己的判断。</p>'
       + '<div class="lab-tabs" role="tablist" aria-label="选择学习实验">' + tabs.map(([id, label], index) => '<button type="button" role="tab" id="lab-tab-' + id + '" aria-controls="lab-panel-' + id + '" aria-selected="' + String(activeTab === id) + '" tabindex="' + (activeTab === id ? '0' : '-1') + '" data-lab-tab="' + id + '">' + label + '<span>0' + (index + 1) + '</span></button>').join('') + '</div>'
       + '<section class="experiment-panel" role="tabpanel" id="lab-panel-iou" aria-labelledby="lab-tab-iou" data-lab-panel="iou"' + (activeTab === 'iou' ? '' : ' hidden') + '>' + iouMarkup + '<a class="lab-lesson-link" href="#lesson/iou">接着学习：交并比与检测评价 →</a></section>'
-      + gradientPanel() + convolutionPanel() + nmsPanel() + metricsPanel();
+      + gradientPanel() + convolutionPanel() + augmentationPanel() + diagnosisPanel() + nmsPanel() + metricsPanel();
   }
 
   function updateGradient() {
@@ -592,11 +717,180 @@
     chart.innerHTML = '<svg viewBox="0 0 510 260" role="img" aria-label="抛物线损失曲线上的梯度下降路径"><path class="chart-axis" d="M52 18V210H472"/><path class="loss-curve" d="' + curve + '"/><path class="gradient-walk" d="' + walk + '"/><path class="minimum-line" d="M262 18V210"/><text x="267" y="32">最低点 w=3</text><text x="52" y="235">w = -4</text><text x="443" y="235">w = 10</text>' + marks + '</svg>';
     const last = path[path.length - 1];
     byId('gradient-result').textContent = 'w = ' + format(last.weight) + ' · L = ' + format(last.loss);
+    const firstStep = linearNeuronStep(-4, 1, 3, rate);
+    const forward = byId('gradient-forward');
+    const loss = byId('gradient-loss');
+    const backprop = byId('gradient-backprop');
+    const update = byId('gradient-update');
+    if (forward) forward.textContent = 'ŷ = ' + format(firstStep.prediction) + '（目标 3）';
+    if (loss) loss.textContent = format(firstStep.loss);
+    if (backprop) backprop.textContent = format(firstStep.gradient);
+    if (update) update.textContent = '-4 → ' + format(firstStep.nextWeight);
     byId('gradient-explanation').textContent = rate < 0.25
       ? '学习率较小，每次沿斜坡前进一小步，下降平稳但需要更多轮。'
       : rate > 1
         ? '学习率偏大，更新点会跨过谷底并左右摆动；当前 η 小于 2，仍会逐步靠近最低点。'
         : '每一步都沿负梯度方向更新参数。绿色路径逐渐靠近损失最低点，损失值随之下降。';
+    updateGradientComparison();
+  }
+
+  function updateGradientComparison() {
+    const chart = byId('gradient-comparison');
+    if (!chart) return;
+    const series = [
+      { rate: 0.05, className: 'gradient-series-slow', label: '0.05' },
+      { rate: 0.5, className: 'gradient-series-steady', label: '0.50' },
+      { rate: 2.1, className: 'gradient-series-oversized', label: '2.10' },
+    ].map(item => ({ ...item, points: linearNeuronTraining(item.rate, 8) }));
+    const maximum = Math.max(1, ...series.flatMap(item => item.points.map(point => point.loss)));
+    const ceiling = Math.ceil(maximum / 25) * 25;
+    const left = 44, top = 16, width = 418, height = 132;
+    const x = step => left + step / 8 * width;
+    const y = value => top + height - Math.min(value, ceiling) / ceiling * height;
+    const grid = [0, 0.5, 1].map(ratio => {
+      const tickY = top + ratio * height;
+      const value = ceiling * (1 - ratio);
+      return '<path class="gradient-grid-line" d="M' + left + ' ' + tickY.toFixed(1) + 'H' + (left + width) + '"/><text class="gradient-axis-label" x="' + (left - 7) + '" y="' + (tickY + 4).toFixed(1) + '" text-anchor="end">' + format(value) + '</text>';
+    }).join('');
+    const xLabels = [0, 4, 8].map(step => '<text class="gradient-axis-label" x="' + x(step).toFixed(1) + '" y="' + (top + height + 19) + '" text-anchor="middle">' + step + '</text>').join('');
+    const paths = series.map(item => {
+      const d = item.points.map((point, index) => (index ? 'L' : 'M') + x(point.step).toFixed(1) + ' ' + y(point.loss).toFixed(1)).join(' ');
+      return '<path class="' + item.className + '" d="' + d + '"><title>η = ' + item.label + '</title></path>';
+    }).join('');
+    chart.innerHTML = '<svg viewBox="0 0 500 184" role="img" aria-label="三种学习率经过八次更新后的损失曲线对比"><path class="gradient-chart-axis" d="M44 16V148H462"/>' + grid + paths + xLabels + '<text class="gradient-axis-title" x="250" y="178" text-anchor="middle">更新步数</text></svg>';
+  }
+
+  function augmentationScene(index = 0) {
+    const palettes = [
+      { bg: '#e5f0ed', water: '#bad8d3', line: '#7daca8', person: '#355c67', box: [95, 39, 174, 172] },
+      { bg: '#e9edf2', water: '#c6d6e2', line: '#8aafc4', person: '#4b5c77', box: [135, 31, 208, 165] },
+      { bg: '#e8f0e7', water: '#c3dac8', line: '#89b4a0', person: '#416c61', box: [70, 48, 143, 176] },
+      { bg: '#eef0e8', water: '#d2d9be', line: '#a4b28d', person: '#56694b', box: [162, 42, 235, 169] },
+    ];
+    return palettes[index % palettes.length];
+  }
+
+  function augmentationSceneContent(index, mode, strength, idSuffix) {
+    const width = 320, height = 200;
+    const scene = augmentationScene(index);
+    const [x1, y1, x2, y2] = scene.box;
+    let transform = '';
+    let filter = '';
+    let box = scene.box;
+    if (mode === 'flip') {
+      transform = 'translate(320 0) scale(-1 1)';
+      box = transformAugmentationBox(scene.box, 'flip', { width, height });
+    } else if (mode === 'scale') {
+      const scale = number(strength, 1.2);
+      transform = 'translate(' + (width / 2 * (1 - scale)).toFixed(2) + ' ' + (height / 2 * (1 - scale)).toFixed(2) + ') scale(' + scale.toFixed(2) + ')';
+      box = transformAugmentationBox(scene.box, 'scale', { width, height, scale });
+    } else if (mode === 'color') {
+      const hue = Math.round((number(strength, 1.2) - 0.75) * 80);
+      filter = 'filter:hue-rotate(' + hue + 'deg) saturate(1.25)';
+    }
+    const x = box[0], y = box[1], w = box[2] - box[0], h = box[3] - box[1];
+    const headX = (x1 + x2) / 2;
+    const bodyTop = y1 + 35;
+    const bodyBottom = y2 - 32;
+    const hueStyle = filter ? ' style="' + filter + '"' : '';
+    return '<g class="augmentation-art" transform="' + transform + '"' + hueStyle + '><rect width="320" height="200" fill="' + scene.bg + '"/><path d="M0 126H320M0 155H320" stroke="' + scene.line + '" stroke-width="3" opacity=".65"/><rect y="126" width="320" height="74" fill="' + scene.water + '" opacity=".45"/><path d="M0 138q24 -8 48 0t48 0t48 0t48 0t48 0t48 0t48 0M0 169q24 -8 48 0t48 0t48 0t48 0t48 0t48 0t48 0" fill="none" stroke="' + scene.line + '" stroke-width="2" opacity=".58"/><circle cx="' + headX.toFixed(1) + '" cy="' + (y1 + 17).toFixed(1) + '" r="12" fill="' + scene.person + '"/><path d="M' + headX.toFixed(1) + ' ' + bodyTop.toFixed(1) + 'L' + headX.toFixed(1) + ' ' + bodyBottom.toFixed(1) + 'M' + (headX - 20).toFixed(1) + ' ' + (bodyTop + 15).toFixed(1) + 'L' + headX.toFixed(1) + ' ' + (bodyTop + 7).toFixed(1) + 'L' + (headX + 20).toFixed(1) + ' ' + (bodyTop + 16).toFixed(1) + 'M' + headX.toFixed(1) + ' ' + bodyBottom.toFixed(1) + 'L' + (headX - 18).toFixed(1) + ' ' + (y2 - 5).toFixed(1) + 'M' + headX.toFixed(1) + ' ' + bodyBottom.toFixed(1) + 'L' + (headX + 18).toFixed(1) + ' ' + (y2 - 5).toFixed(1) + '" fill="none" stroke="' + scene.person + '" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></g><rect class="augmentation-box" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '"/><text class="augmentation-box-label" x="' + x.toFixed(1) + '" y="' + Math.max(13, y - 4).toFixed(1) + '">person · GT' + (idSuffix ? ' ' + idSuffix : '') + '</text>';
+  }
+
+  function updateAugmentation() {
+    const modeInput = byId('augmentation-mode');
+    const strengthInput = byId('augmentation-strength');
+    const visual = byId('augmentation-visual');
+    if (!modeInput || !strengthInput || !visual) return;
+    const mode = modeInput.value || 'flip';
+    const strength = number(strengthInput.value, 1.2);
+    const metadata = {
+      flip: { label: '水平翻转', title: '图像与标注同步镜像', text: '左右镜像会同步反射目标和边界框；类别保持不变。若目标含文字或固定左右方向，翻转可能制造不合理样本。' },
+      scale: { label: '缩放与裁剪', title: '目标尺寸发生变化', text: '缩放时图像和框使用同一变换；目标触及画布边缘时会被裁切，训练代码需要同步裁剪框坐标。' },
+      color: { label: '颜色扰动（HSV 示意）', title: '只改变颜色，不移动框', text: 'HSV 增强扰动色调和饱和度，几何位置不变。颜色变化过强可能抹掉区分类别所需的色彩线索。' },
+      mosaic: { label: 'Mosaic 四图拼接', title: '四张训练图组成一张', text: '每张图缩放并平移到一个象限，框坐标随之缩放和平移；目标会变小，边缘裁切和场景拼接也会改变上下文。' },
+    }[mode] || { label: '水平翻转', title: '图像与标注同步镜像', text: '几何增强必须同步更新目标框。' };
+    const badge = byId('augmentation-badge');
+    const caption = byId('augmentation-caption');
+    const explanation = byId('augmentation-explanation');
+    const formula = byId('augmentation-box-math');
+    const parameterLabel = byId('augmentation-strength-label');
+    const parameterValue = byId('augmentation-strength-value');
+    const box = transformAugmentationBox(augmentationScene(0).box, mode, { width: 320, height: 200, scale: strength, quadrant: 3 });
+    if (badge) badge.textContent = metadata.label;
+    if (caption) caption.textContent = metadata.text;
+    if (explanation) explanation.textContent = metadata.title + '。观察右图的真实框变化。';
+    if (parameterLabel) parameterLabel.textContent = mode === 'color' ? '色调变化' : '缩放比例';
+    if (parameterValue) parameterValue.textContent = mode === 'color' ? '+' + Math.round((strength - 0.75) * 80) + '°' : strength.toFixed(2) + '×';
+    strengthInput.disabled = mode === 'flip' || mode === 'mosaic';
+    if (mode === 'mosaic') {
+      const tiles = Array.from({ length: 4 }, (_, index) => '<svg x="' + (index % 2 * 160) + '" y="' + (Math.floor(index / 2) * 100) + '" width="160" height="100" viewBox="0 0 320 200" aria-label="Mosaic 象限 ' + (index + 1) + '">' + augmentationSceneContent(index, 'mosaic', strength, '') + '</svg>').join('');
+      const mosaic = '<svg class="augmentation-svg mosaic-svg" viewBox="0 0 320 200" role="img" aria-label="Mosaic 四图拼接，四个象限各有一个行人目标">' + tiles + '<path class="mosaic-divider" d="M160 0V200M0 100H320"/></svg>';
+      visual.innerHTML = '<div class="augmentation-compare"><figure><figcaption>原图</figcaption><svg class="augmentation-svg" viewBox="0 0 320 200" role="img" aria-label="原始行人图像和真实边界框">' + augmentationSceneContent(0, 'original', strength, '') + '</svg></figure><figure><figcaption>增强后 · Mosaic</figcaption>' + mosaic + '</figure></div>';
+    } else {
+      visual.innerHTML = '<div class="augmentation-compare"><figure><figcaption>原图</figcaption><svg class="augmentation-svg" viewBox="0 0 320 200" role="img" aria-label="原始行人图像和真实边界框">' + augmentationSceneContent(0, 'original', strength, '') + '</svg></figure><figure><figcaption>增强后 · ' + metadata.label + '</figcaption><svg class="augmentation-svg" viewBox="0 0 320 200" role="img" aria-label="' + metadata.label + '后的行人图像与同步变化的真实边界框">' + augmentationSceneContent(0, mode, strength, '') + '</svg></figure></div>';
+    }
+    if (formula) formula.textContent = mode === 'mosaic'
+      ? '右下象限示例框：[' + box.map(value => format(value)).join(', ') + ']'
+      : mode === 'flip' || mode === 'scale' ? '变换后真实框：[ ' + box.map(value => format(value)).join(', ') + ' ]' : '颜色扰动只改像素颜色，真实框坐标不变。';
+  }
+
+  function diagnosisSceneMarkup(item) {
+    const objectMarkup = item.groundTruths.map(target => {
+      const [x1, y1, x2, y2] = target.box;
+      const centerX = (x1 + x2) / 2;
+      const centerY = (y1 + y2) / 2;
+      return '<g class="diagnosis-object"><circle cx="' + centerX.toFixed(1) + '" cy="' + (y1 + 17).toFixed(1) + '" r="9"/><path d="M' + centerX.toFixed(1) + ' ' + (y1 + 28).toFixed(1) + 'V' + (y2 - 25).toFixed(1) + 'M' + (centerX - 18).toFixed(1) + ' ' + (centerY - 5).toFixed(1) + 'H' + (centerX + 18).toFixed(1) + 'M' + centerX.toFixed(1) + ' ' + (y2 - 25).toFixed(1) + 'L' + (centerX - 15).toFixed(1) + ' ' + (y2 - 4).toFixed(1) + 'M' + centerX.toFixed(1) + ' ' + (y2 - 25).toFixed(1) + 'L' + (centerX + 15).toFixed(1) + ' ' + (y2 - 4).toFixed(1) + '"/></g>';
+    }).join('');
+    const falseObjectMarkup = item.predictions.filter(prediction => prediction.kind === 'buoy').map(prediction => {
+      const x = (prediction.box[0] + prediction.box[2]) / 2;
+      const y = (prediction.box[1] + prediction.box[3]) / 2;
+      return '<g class="diagnosis-buoy"><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="12"/><path d="M' + (x - 8).toFixed(1) + ' ' + (y - 8).toFixed(1) + 'L' + (x + 8).toFixed(1) + ' ' + (y + 8).toFixed(1) + 'M' + (x + 8).toFixed(1) + ' ' + (y - 8).toFixed(1) + 'L' + (x - 8).toFixed(1) + ' ' + (y + 8).toFixed(1) + '"/></g>';
+    }).join('');
+    const groundTruthMarkup = item.groundTruths.map(target => {
+      const [x1, y1, x2, y2] = target.box;
+      return '<g><rect class="diagnosis-ground-truth" x="' + x1 + '" y="' + y1 + '" width="' + (x2 - x1) + '" height="' + (y2 - y1) + '"/><text class="diagnosis-gt-label" x="' + x1 + '" y="' + Math.max(13, y1 - 4) + '">GT · ' + escapeHtml(target.className) + '</text></g>';
+    }).join('');
+    const predictionMarkup = item.predictions.map(prediction => {
+      const [x1, y1, x2, y2] = prediction.box;
+      return '<g><rect class="diagnosis-prediction" x="' + x1 + '" y="' + y1 + '" width="' + (x2 - x1) + '" height="' + (y2 - y1) + '"/><text class="diagnosis-pred-label" x="' + x1 + '" y="' + Math.max(13, y1 - 4) + '">预测 · ' + escapeHtml(prediction.className) + ' · ' + prediction.score.toFixed(2) + '</text></g>';
+    }).join('') || '<text class="diagnosis-empty-label" x="310" y="22" text-anchor="end">没有预测框</text>';
+    return '<svg viewBox="0 0 320 200" role="img" aria-label="目标检测教学图，显示真实标注框和模型预测框"><rect width="320" height="200" fill="#e6efec"/><rect y="126" width="320" height="74" fill="#c2dcd6"/><path d="M0 130H320M0 159H320M0 185H320" stroke="#8cb8af" stroke-width="3" opacity=".75"/>' + objectMarkup + falseObjectMarkup + groundTruthMarkup + predictionMarkup + '</svg>';
+  }
+
+  function updateDiagnosis() {
+    const scene = byId('diagnosis-scene');
+    const thresholdInput = byId('diagnosis-iou');
+    if (!scene || !thresholdInput) return;
+    const item = teachingDiagnosisCases[diagnosisIndex];
+    const threshold = number(thresholdInput.value, 0.5);
+    const progress = byId('diagnosis-progress');
+    const thresholdValue = byId('diagnosis-iou-value');
+    const prompt = byId('diagnosis-prompt');
+    const feedback = byId('diagnosis-feedback');
+    const counts = byId('diagnosis-counts');
+    if (progress) progress.textContent = '练习 ' + (diagnosisIndex + 1) + ' / ' + teachingDiagnosisCases.length;
+    if (thresholdValue) thresholdValue.textContent = threshold.toFixed(2);
+    if (prompt) prompt.textContent = '观察图中的真实标注和预测结果，判断主要问题。当前匹配阈值为 IoU ≥ ' + threshold.toFixed(2) + '。';
+    scene.innerHTML = diagnosisSceneMarkup(item);
+    [...document.querySelectorAll('[data-diagnosis-choice]')].forEach(button => {
+      button.setAttribute('aria-checked', String(button.getAttribute('data-diagnosis-choice') === diagnosisAnswer));
+      button.classList?.toggle('is-selected', button.getAttribute('data-diagnosis-choice') === diagnosisAnswer);
+    });
+    if (!diagnosisAnswer) {
+      if (feedback) feedback.textContent = '选择一个答案，查看判断依据。';
+      if (counts) counts.innerHTML = '';
+      return;
+    }
+    const result = evaluateTeachingDiagnosis(item.id, threshold);
+    const correct = diagnosisAnswer === item.answer;
+    if (feedback) feedback.textContent = (correct ? '判断正确。' : '再看一次：正确答案是“' + item.answer + '”。') + item.explanation;
+    if (counts) counts.innerHTML = '<span>TP <b>' + result.tp + '</b></span><span>FP <b>' + result.fp + '</b></span><span>FN <b>' + result.fn + '</b></span><span>Precision <b>' + (result.precision * 100).toFixed(0) + '%</b></span><span>Recall <b>' + (result.recall * 100).toFixed(0) + '%</b></span>' + (result.classErrors ? '<span>类别错配 <b>' + result.classErrors + '</b></span>' : '');
+  }
+
+  function moveDiagnosis(direction) {
+    diagnosisIndex = Math.max(0, Math.min(teachingDiagnosisCases.length - 1, diagnosisIndex + direction));
+    diagnosisAnswer = '';
+    updateDiagnosis();
   }
 
   function updateConvolution() {
@@ -842,6 +1136,8 @@
     setActiveTab(activeTab);
     updateGradient();
     updateConvolution();
+    updateAugmentation();
+    updateDiagnosis();
     updateNms();
     updateMapWalkthrough();
     updateMetrics();
@@ -849,7 +1145,8 @@
   }
 
   window.VisionLabMath = {
-    gradientDescent, convolve, intersectionOverUnion, nonMaximumSuppression, evaluateDetectionMetrics,
+    gradientDescent, linearNeuronStep, linearNeuronTraining, transformAugmentationBox, evaluateTeachingDiagnosis,
+    convolve, intersectionOverUnion, nonMaximumSuppression, evaluateDetectionMetrics,
     normalizeYoloV5Evaluation, evaluateYoloV5Evaluation,
     getTeachingSampleStats: () => ({
       groundTruths: Object.values(metricGroundTruths).reduce((sum, count) => sum + count, 0),
@@ -864,6 +1161,10 @@
   document.addEventListener('click', event => {
     const tab = event.target.closest('[data-lab-tab]');
     if (tab) { setActiveTab(tab.dataset.labTab); return; }
+    const diagnosisChoice = event.target.closest('[data-diagnosis-choice]');
+    if (diagnosisChoice) { diagnosisAnswer = diagnosisChoice.getAttribute('data-diagnosis-choice'); updateDiagnosis(); return; }
+    const diagnosisNav = event.target.closest('[data-diagnosis-nav]');
+    if (diagnosisNav) { moveDiagnosis(diagnosisNav.getAttribute('data-diagnosis-nav') === 'next' ? 1 : -1); return; }
     const mapStep = event.target.closest('[data-map-step]');
     if (mapStep) {
       const selectedClass = mapWalkthroughClasses.find(item => item.key === byId('map-walk-class').value) || mapWalkthroughClasses[0];
@@ -905,6 +1206,8 @@
 
   document.addEventListener('input', event => {
     if (event.target.id === 'gradient-lr' || event.target.id === 'gradient-steps') updateGradient();
+    if (event.target.id === 'augmentation-mode' || event.target.id === 'augmentation-strength') updateAugmentation();
+    if (event.target.id === 'diagnosis-iou') updateDiagnosis();
     if (event.target.id === 'conv-input' || event.target.id === 'conv-kernel' || event.target.id === 'conv-stride') { convolutionFocus = { row: 1, column: 1 }; updateConvolution(); }
     if (event.target.id === 'nms-confidence' || event.target.id === 'nms-iou') updateNms();
     if (event.target.id === 'map-walk-class') { mapWalkthroughStep = 0; updateMapWalkthrough(); }

@@ -26,19 +26,15 @@
       s+=text(380,259,'y = ReLU(w₁x₁ + w₂x₂ + w₃x₃ + b)',16,colors.ink,650);
       return s;
     }},
-    tensor:{concept:'张量的四条轴',section:0,paragraph:1,title:'图像批次张量的 N、C、H、W 轴',description:'从八张 RGB 图像开始：N 表示批次中的图像数，C 表示颜色通道，H 和 W 分别表示像素行与列。右侧的形状 [8,3,224,224] 与四条轴一一对应。',caption:'读形状时逐轴命名：[8, 3, 224, 224] 表示 8 张 RGB 图像，每张高和宽均为 224 像素。',draw:()=>{
-      let s='';
-      s+=text(115,42,'一批图像',16,colors.muted,600)+text(380,42,'每张图像',16,colors.muted,600)+text(647,42,'张量形状',16,colors.muted,600);
-      for(let i=0;i<4;i++)s+=rect(46+i*13,77-i*5,86,86,i===0?colors.blueSoft:colors.paper,colors.blue,5,1.6);
-      s+=text(88,188,'N = 8',19,colors.blue,700)+text(88,212,'批次大小',13,colors.muted,500);
-      s+=arrow(151,122,205,122,colors.slate,2)+text(178,108,'取一张',12,colors.muted,500);
-      for(let i=0;i<3;i++)s+=rect(218+i*22,81+i*7,82,76,[colors.redSoft,colors.greenSoft,colors.blueSoft][i],[colors.red,colors.green,colors.blue][i],5,1.6)+text(259+i*22,125,['R','G','B'][i],19,[colors.red,colors.green,colors.blue][i],700);
-      s+=text(267,188,'C = 3',19,colors.purple,700)+text(267,212,'颜色通道',13,colors.muted,500);
-      s+=arrow(334,122,396,122,colors.slate,2);
-      for(let y=0;y<4;y++)for(let x=0;x<5;x++)s+=rect(414+x*18,80+y*18,17,17,(x+y)%2?colors.blueSoft:colors.purpleSoft,'#ffffff',1,0);
-      s+=text(454,188,'H = 224 行',17,colors.ink,650)+text(454,211,'W = 224 列',17,colors.ink,650);
-      s+=arrow(518,122,565,122,colors.slate,2)+rect(578,83,146,79,colors.purpleSoft,'none',7,0)+text(651,117,'[8, 3, 224, 224]',15,colors.purple,700)+text(651,143,'N × C × H × W',13,colors.muted,600);
-      s+=line(47,246,721,246,colors.line,1)+text(383,275,'轴名说明“每个数字属于哪一组”，不只是记号。',15,colors.muted,500);
+    tensor:{concept:'同一存储的两种读法',section:4,paragraph:0,title:'转置交换形状与步幅，底层存储保持不变',description:'上方是依次存储的 0 到 11；左侧三行四列矩阵 stride 为 4,1，右侧转置为四行三列后 stride 为 1,4。',caption:'移动一行或一列时跳过的元素数量由 stride 决定。转置视图共享这段存储；按默认格式，右侧视图不连续。',draw:()=>{
+      let s=text(380,27,'底层存储：0 → 11，两种视图共享',15,colors.muted,600);
+      for(let i=0;i<12;i++)s+=cell(86+i*49,40,47,30,i,colors.blueSoft,colors.blue);
+      s+=text(202,104,'a = x.reshape(3,4)',16,colors.purple,700)+text(565,104,'t = a.transpose(0,1)',16,colors.green,700);
+      for(let r=0;r<3;r++)for(let c=0;c<4;c++)s+=cell(108+c*43,118+r*37,42,36,r*4+c,colors.purpleSoft,colors.purple);
+      for(let r=0;r<4;r++)for(let c=0;c<3;c++)s+=cell(501+c*43,113+r*30,42,29,r+c*4,colors.greenSoft,colors.green);
+      s+=arrow(318,170,445,170,colors.slate,2)+text(382,153,'交换轴 0、1',13,colors.muted,600);
+      s+=text(197,256,'shape (3,4) · stride (4,1)',15,colors.purple,650)+text(566,256,'shape (4,3) · stride (1,4)',15,colors.green,650);
+      s+=text(380,285,'a[1,2] → offset 6；t[1,2] → offset 9',14,colors.muted,500);
       return s;
     }},
     gradient:{concept:'损失、梯度与更新方向',section:1,paragraph:1,title:'梯度下降沿负梯度更新参数',description:'U 形损失曲线上，当前位置的梯度指向损失增大的方向。梯度下降沿相反方向更新参数，学习率决定每次移动的距离。',caption:'局部梯度只描述当前位置的斜率；学习率过大可能跨过谷底，过小则会让优化变慢。',draw:()=>{

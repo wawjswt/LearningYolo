@@ -58,7 +58,8 @@
       const fallback=placements.filter(figure=>figure.section===i&&!placed.has(figure.key)).map(figure=>{placed.add(figure.key);return window.lessonFigures.render(l,figure.key)}).join('');
       const tensorExplorer=l.id==='tensor'&&i===8?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&i===4?tensorTransposeMarkup():'';
-      return '<section class="text-section" id="section-'+(i+1)+'"><span class="section-number">0'+(i+1)+'</span><h2>'+s.title+'</h2>'+paragraphs+fallback+transposeExplorer+tensorExplorer+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
+      const lessonPlayground=window.lessonPlaygrounds?.render(l.id,i)||'';
+      return '<section class="text-section" id="section-'+(i+1)+'"><span class="section-number">0'+(i+1)+'</span><h2>'+s.title+'</h2>'+paragraphs+fallback+transposeExplorer+tensorExplorer+lessonPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
     }).join('');
   }
   function tensorExplorerMarkup(){
@@ -276,6 +277,7 @@
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     const badge=document.querySelector('[data-nav="courses"] em');if(badge)badge.textContent=lessons.length;
     document.getElementById('content').innerHTML=content;
+    window.lessonPlaygrounds?.initialize();
     initializeTensorLearning();
     if(route==='lesson'&&parts[2])document.getElementById(parts[2])?.scrollIntoView({behavior:'smooth',block:'start'});
     if(route==='lab'){updateIoU();window.initializeInteractiveLab?.();}

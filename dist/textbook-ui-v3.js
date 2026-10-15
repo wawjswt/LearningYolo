@@ -74,45 +74,45 @@
   function tensorText(x,y,value,size,color,weight,anchor){return '<text x="'+x+'" y="'+y+'" font-size="'+size+'" fill="'+color+'" font-weight="'+weight+'" text-anchor="'+(anchor||'middle')+'">'+value+'</text>'}
   function tensorRect(x,y,w,h,fill,stroke,sw,rx){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+(rx||3)+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+sw+'"/>'}
   function tensorMiniTable(x,y,shape,indexes,strides,group,sheet,active){
-    const cellW=shape.length===3?14:17,cellH=shape.length===3?10:6.5,gridW=cellW*shape[shape.length-1],gridH=cellH*shape[shape.length-2],startX=x+(shape.length===3?18:36),startY=y+18;
+    const cellW=shape.length===3?14:17,cellH=shape.length===3?10:6.5,startX=x+(shape.length===3?18:36),startY=y+18;
     let out='';
     for(let row=0;row<shape[shape.length-2];row++)for(let col=0;col<shape[shape.length-1];col++){
       const selected=active&&row===indexes[shape.length-2]&&col===indexes[shape.length-1];
       out+=tensorRect(startX+col*cellW,startY+row*cellH,cellW,cellH,selected?'#e5a057':active&&row===indexes[shape.length-2]?'#e9e4f3':'#f3f4f1',selected?'#c87928':'#ffffff',.8,1);
     }
-    const value=shape.length===3?group:(group*shape[1]+sheet);
-    out+=tensorText(x+(shape.length===3?58:93),y+12,'表 '+value,shape.length===3?9:8,active?'#655598':'#75808a',650);
+    out+=tensorText(x+(shape.length===3?58:93),y+12,'表 '+(shape.length===3?group:sheet),shape.length===3?9:8,active?'#655598':'#75808a',650);
     return out;
   }
   function tensorExplorerSvg(shape,indexes,strides,offset){
-    const four=shape.length===4,groupCount=shape[0],groupW=four?190:126,groupGap=8,left=16,top=52,groupH=202;
-    let out='<svg viewBox="0 0 830 282" role="img" aria-labelledby="tensor-svg-title tensor-svg-desc"><title id="tensor-svg-title">交互式张量分组和索引图</title><desc id="tensor-svg-desc">当前索引 ['+indexes.join(', ')+']，通过分组图定位到右侧放大的表格，所选元素偏移为 '+offset+'。</desc>';
-    out+=tensorText(16,24,four?'外层轴 0 有 2 组；每组的轴 1 有 3 张表':'轴 0 有 3 张表',12,'#5e6876',650,'start');
-    out+=tensorText(480,24,'放大当前表：行轴与列轴',12,'#5e6876',650,'start');
+    const four=shape.length===4,groupCount=shape[0],groupW=four?254:169,groupGap=four?10:7,left=16,top=42,groupH=180;
+    let out='<svg viewBox="0 0 560 450" role="img" aria-labelledby="tensor-svg-title tensor-svg-desc"><title id="tensor-svg-title">交互式张量分组和索引图</title><desc id="tensor-svg-desc">上方显示 shape 的分组结构，下方显示当前索引 ['+indexes.join(', ')+'] 选中的表；橙色元素偏移为 '+offset+'。</desc>';
+    out+=tensorText(16,22,four?'分组结构：轴 0 有 2 个大组，每组轴 1 有 3 张表':'分组结构：轴 0 有 3 张表',12,'#5e6876',650,'start');
+    out+=tensorText(544,22,'紫色边框标出当前选择',9,'#87909a',500,'end');
     for(let g=0;g<groupCount;g++){
       const gx=left+g*(groupW+groupGap),activeGroup=g===indexes[0],fill=activeGroup?'#f0ecf7':'#faf9f5',stroke=activeGroup?'#8372b4':'#e2dfd6';
       out+=tensorRect(gx,top,groupW,groupH,fill,stroke,activeGroup?2:1,6);
       out+=tensorText(gx+11,top+17,four?'大组 '+g:'表 '+g,10,activeGroup?'#594a89':'#687481',700,'start');
       if(four){
         for(let m=0;m<shape[1];m++){
-          const selected=activeGroup&&m===indexes[1],my=top+25+m*56;
-          out+=tensorRect(gx+7,my,groupW-14,51,selected?'#fffefa':'#f8f7f2',selected?'#9a86c5':'#e9e6de',selected?1.5:.8,3);
-          out+=tensorMiniTable(gx+7,my+3,shape,indexes,strides,g,m,selected);
+          const selected=activeGroup&&m===indexes[1],my=top+25+m*49;
+          out+=tensorRect(gx+7,my,groupW-14,45,selected?'#fffefa':'#f8f7f2',selected?'#9a86c5':'#e9e6de',selected?1.5:.8,3);
+          out+=tensorMiniTable(gx+7,my+1,shape,indexes,strides,g,m,selected);
         }
       }else{
         out+=tensorMiniTable(gx,top+37,shape,indexes,strides,g,0,activeGroup);
-        out+=tensorText(gx+groupW/2,top+118,'4 行 × 5 列',9,'#7b8590',500);
+        out+=tensorText(gx+groupW/2,top+132,'4 行 × 5 列',9,'#7b8590',500);
       }
     }
-    const tableX=470,tableY=73,cellW=49,cellH=32,rowStart=tableY+35,colStart=tableX+37;
-    const selectedGroup=four?indexes[0]:indexes[0],selectedSheet=four?indexes[1]:0;
+    const tableX=16,tableY=236,cellW=88,cellH=25,rowStart=tableY+49,colStart=tableX+53;
+    const selectedGroup=indexes[0],selectedSheet=four?indexes[1]:0;
     const rowAxis=shape.length-2,colAxis=shape.length-1;
-    out+=tensorRect(tableX,tableY,335,181,'#fffefa','#e3dfd6',1,5);
-    out+=tensorText(tableX+167,tableY+19,(four?'大组 '+selectedGroup+' · 表 '+selectedSheet:'表 '+selectedGroup)+' · 行轴索引 '+indexes[rowAxis],10,'#5a4d83',650);
-    out+=tensorText(tableX+18,rowStart+cellH*2,'行',9,'#83909a',500);
-    for(let col=0;col<shape[colAxis];col++)out+=tensorText(colStart+col*cellW+cellW/2,rowStart-4,String(col),9,'#75818c',600);
+    out+=tensorRect(tableX,tableY,528,201,'#fffefa','#e3dfd6',1,5);
+    out+=tensorText(tableX+12,tableY+19,'放大当前表 · '+(four?'大组 '+selectedGroup+' / 表 '+selectedSheet:'表 '+selectedGroup),11,'#5a4d83',650,'start');
+    out+=tensorText(tableX+514,tableY+19,'行轴 '+indexes[rowAxis],9,'#74808b',550,'end');
+    out+=tensorText(tableX+27,rowStart+cellH*2,'行',9,'#83909a',500);
+    for(let col=0;col<shape[colAxis];col++)out+=tensorText(colStart+col*cellW+(cellW-2)/2,rowStart-5,String(col),9,'#75818c',600);
     for(let row=0;row<shape[rowAxis];row++){
-      out+=tensorText(tableX+18,rowStart+row*cellH+cellH/2+3,String(row),9,'#75818c',600);
+      out+=tensorText(tableX+27,rowStart+row*cellH+cellH/2+3,String(row),9,'#75818c',600);
       for(let col=0;col<shape[colAxis];col++){
         const indexesForCell=indexes.slice();indexesForCell[rowAxis]=row;indexesForCell[colAxis]=col;
         const value=indexesForCell.reduce((sum,index,axis)=>sum+index*strides[axis],0),selected=row===indexes[rowAxis]&&col===indexes[colAxis];
@@ -121,7 +121,7 @@
         out+=tensorText(colStart+col*cellW+(cellW-2)/2,rowStart+row*cellH+cellH/2+3,String(value),10,selected?'#4c3827':'#586675',selected?700:500);
       }
     }
-    out+=tensorText(tableX+167,tableY+170,'橙色格：索引 ['+indexes.join(', ')+'] → offset '+offset,9,'#6d5b91',650);
+    out+=tensorText(tableX+12,tableY+191,'橙色格：索引 ['+indexes.join(', ')+'] → offset '+offset,9,'#6d5b91',650,'start');
     out+='</svg>';
     return out;
   }

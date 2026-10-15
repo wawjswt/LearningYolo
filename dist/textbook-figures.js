@@ -37,6 +37,35 @@
       s+=text(380,285,'a[1,2] → offset 6；t[1,2] → offset 9',14,colors.muted,500);
       return s;
     }},
+    'tensor-shapes':{concept:'高阶张量的分组与索引',section:8,paragraph:0,title:'把高维 shape 逐层展开，再沿轴索引定位元素',description:'shape (2,3,4,5) 表示两组，每组有三张四行五列的表。选中索引 [1,2,3,4] 后，对连续布局 stride (60,20,5,1) 的元素偏移为 119。',caption:'每张小表可以暂时作为一组整体；索引从 0 开始逐轴选择。stride=(60,20,5,1) 和偏移 119 是默认连续布局的示例。',draw:()=>{
+      let s=text(380,27,'x.shape = (2, 3, 4, 5)',19,colors.purple,700);
+      s+=text(202,52,'外层两组；每组 3 张表',13,colors.muted,600)+text(565,52,'放大索引 [1,2] 选中的表',13,colors.muted,600);
+      for(let g=0;g<2;g++){
+        const gy=68+g*82,groupColor=g===1?colors.orange:colors.blue;
+        s+=rect(27,gy,354,72,g===1?colors.orangeSoft:colors.blueSoft,groupColor,8,g===1?2:1.2);
+        s+=text(55,gy+18,'组 '+g,12,groupColor,700,'start');
+        for(let m=0;m<3;m++){
+          const x=91+m*91,y=gy+13,selected=g===1&&m===2;
+          s+=rect(x,y,79,51,selected?colors.orangeSoft:colors.paper,selected?colors.orange:colors.line,5,selected?2.4:1);
+          s+=text(x+39.5,y+14,'表 '+m,10,selected?colors.orange:colors.muted,650);
+          for(let r=0;r<4;r++)for(let c=0;c<5;c++)s+=rect(x+19+c*8,y+20+r*6,8,6,selected&&r===3&&c===4?colors.orange:colors.blueSoft,'#ffffff',1,.7);
+        }
+      }
+      s+=arrow(368,190,423,158,colors.orange,2);
+      s+=rect(426,67,307,158,colors.paper,colors.line,8,1.2)+text(579,88,'组索引 1 · 表索引 2',13,colors.green,700);
+      for(let c=0;c<5;c++)s+=text(494+c*42,108,String(c),10,colors.muted,600);
+      for(let r=0;r<4;r++){
+        s+=text(466,129+r*24,String(r),10,colors.muted,600);
+        for(let c=0;c<5;c++){
+          const x=477+c*42,y=115+r*24,selected=r===3&&c===4;
+          s+=rect(x,y,40,22,selected?colors.orange:colors.blueSoft,selected?colors.orange:colors.paper,2,1);
+          s+=text(x+20,y+15,r+','+c,9,selected?colors.paper:colors.blue,650);
+        }
+      }
+      s+=text(380,254,'x[1,2,3,4] → 第 2 组 / 第 3 张表 / 第 4 行 / 第 5 列',14,colors.purple,650);
+      s+=text(380,285,'连续布局 stride = (60,20,5,1)　·　元素偏移 = 119',14,colors.ink,650);
+      return s;
+    }},
     gradient:{concept:'损失、梯度与更新方向',section:1,paragraph:1,title:'梯度下降沿负梯度更新参数',description:'U 形损失曲线上，当前位置的梯度指向损失增大的方向。梯度下降沿相反方向更新参数，学习率决定每次移动的距离。',caption:'局部梯度只描述当前位置的斜率；学习率过大可能跨过谷底，过小则会让优化变慢。',draw:()=>{
       let s=rect(30,25,700,238,colors.paper,colors.line,8,1);s+=line(88,220,682,220,colors.slate,1.5)+line(88,220,88,54,colors.slate,1.5)+text(686,226,'参数 w',13,colors.muted,500,'end')+text(76,52,'损失 L',13,colors.muted,500,'end');
       s+='<path d="M116 75 C195 105 246 198 371 205 C501 210 562 107 651 74" fill="none" stroke="'+colors.purple+'" stroke-width="4" stroke-linecap="round"/>';
@@ -199,11 +228,11 @@
     }}
   };
 
-  function render(lesson){
-    const spec=figures[lesson.visual];
+  function render(lesson,key=lesson.visual){
+    const spec=figures[key];
     if(!spec)return '';
-    const id='chapter-figure-'+String(lesson.id).replace(/[^a-z0-9_-]/gi,'-');
-    return '<figure class="chapter-concept-figure" data-visual="'+esc(lesson.visual)+'" tabindex="0"><div class="figure-heading"><span>本节图解 · '+esc(spec.concept)+'</span><span>对照正文观察</span></div><svg viewBox="0 0 760 310" role="img" aria-labelledby="'+id+'-title '+id+'-desc" focusable="false"><title id="'+id+'-title">'+esc(spec.title)+'</title><desc id="'+id+'-desc">'+esc(spec.description)+'</desc>'+spec.draw()+'</svg><figcaption><strong>'+esc(spec.concept)+'：</strong>'+esc(spec.caption)+'</figcaption></figure>';
+    const id='chapter-figure-'+String(lesson.id+'-'+key).replace(/[^a-z0-9_-]/gi,'-');
+    return '<figure class="chapter-concept-figure" data-visual="'+esc(key)+'" tabindex="0"><div class="figure-heading"><span>本节图解 · '+esc(spec.concept)+'</span><span>对照正文观察</span></div><svg viewBox="0 0 760 310" role="img" aria-labelledby="'+id+'-title '+id+'-desc" focusable="false"><title id="'+id+'-title">'+esc(spec.title)+'</title><desc id="'+id+'-desc">'+esc(spec.description)+'</desc>'+spec.draw()+'</svg><figcaption><strong>'+esc(spec.concept)+'：</strong>'+esc(spec.caption)+'</figcaption></figure>';
   }
-  window.lessonFigures={render:render,placement(lesson){const spec=figures[lesson.visual];return spec?{section:spec.section,paragraph:spec.paragraph}:null},keys(){return Object.keys(figures)}};
+  window.lessonFigures={render:render,placement(lesson){const keys=lesson.figureKeys||[lesson.visual];return keys.map(key=>{const spec=figures[key];return spec?{key,section:spec.section,paragraph:spec.paragraph}:null}).filter(Boolean)},keys(){return Object.keys(figures)}};
 })();

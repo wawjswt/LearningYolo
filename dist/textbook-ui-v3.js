@@ -46,15 +46,16 @@
     return '<section class="exercise-card '+type+'-exercise"><span class="exercise-label">'+label+'</span><p class="exercise-prompt">'+rich(exercise.q)+'</p><div class="exercise-options" role="group" aria-label="'+label+'">'+options+'</div><div class="quiz-result exercise-feedback" role="status" aria-live="polite"></div></section>';
   }
   function articleSections(l){
-    const placement=window.lessonFigures.placement(l);
-    let placed=false;
+    const placements=window.lessonFigures.placement(l);
+    const placed=new Set();
     return l.sections.map((s,i)=>{
       const paragraphs=s.paragraphs.map((p,j)=>{
         const markup='<p>'+rich(p)+'</p>';
-        if(!placed&&placement&&placement.section===i&&placement.paragraph===j){placed=true;return markup+window.lessonFigures.render(l)}
+        const here=placements.filter(figure=>figure.section===i&&figure.paragraph===j&&!placed.has(figure.key));
+        if(here.length){here.forEach(figure=>placed.add(figure.key));return markup+here.map(figure=>window.lessonFigures.render(l,figure.key)).join('')}
         return markup;
       }).join('');
-      const fallback=!placed&&placement&&placement.section===i?(placed=true,window.lessonFigures.render(l)):'';
+      const fallback=placements.filter(figure=>figure.section===i&&!placed.has(figure.key)).map(figure=>{placed.add(figure.key);return window.lessonFigures.render(l,figure.key)}).join('');
       return '<section class="text-section" id="section-'+(i+1)+'"><span class="section-number">0'+(i+1)+'</span><h2>'+s.title+'</h2>'+paragraphs+fallback+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
     }).join('');
   }
@@ -148,9 +149,9 @@
     const quiz=l.chapterExercises?.length?'<section class="chapter-quiz" id="chapter-quiz"><span class="chapter-kicker">CHAPTER REVIEW · 章末综合练习</span><h2>本章综合练习</h2><p>结合本章概念完成练习；每题作答后查看解析。</p>'+l.chapterExercises.map((exercise,i)=>exerciseCard(l,exercise,'chapter',i)).join('')+'</section>':'';
     const keypoints=l.keypoints?'<section class="keypoint-review"><span class="chapter-kicker">CHAPTER REVIEW</span><h2>本章要点</h2><ul>'+l.keypoints.map(x=>'<li>'+x+'</li>').join('')+'</ul></section>':'';
     const source=l.source?'<p class="source-note">延伸阅读：<a href="'+esc(l.source)+'" target="_blank" rel="noopener noreferrer">官方文档与参考资料 ↗</a>。概念解释为本课程整理；具体接口、参数和仓库实现请以对应版本文档为准。</p>':'';
-    const videoLink=l.videoUrl?'<a class="chapter-video-link" href="'+esc(l.videoUrl)+'" target="_blank" rel="noopener noreferrer">观看抖音原视频 ↗</a>':'';
+    const videoLinks=[...(l.videoUrl?[{url:l.videoUrl,label:'观看张量基础视频'}]:[]),...(l.relatedVideos||[])].map(video=>'<a class="chapter-video-link" href="'+esc(video.url)+'" target="_blank" rel="noopener noreferrer">'+esc(video.label||'观看抖音原视频')+' ↗</a>').join('');
     return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(index+1).padStart(2,'0')+' 章　/　'+lessons.length+' 章</span></div>'
-      +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span>'+videoLink+'</div></header>'
+      +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span>'+videoLinks+'</div></header>'
       +'<div class="chapter-layout"><aside class="chapter-toc"><strong>本章导航</strong><ol>'+l.sections.map((s,i)=>'<li><a href="#section-'+(i+1)+'">'+s.title+'</a></li>').join('')+'<li><a href="#chapter-review">本章要点</a></li><li><a href="#chapter-quiz">本章综合练习</a></li><li><a href="#chapter-notes">笔记与进度</a></li></ol></aside>'
       +'<div class="chapter-body">'+objectiveBox(l)+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
       +'<section class="chapter-notes" id="chapter-notes"><span class="chapter-kicker">MY STUDY NOTES</span><h2>写下你的思考</h2><p>用自己的话总结一个概念，或记下尚未解决的问题。笔记保存在当前浏览器。</p><textarea class="note-input" id="lesson-note" placeholder="例如：我现在可以用自己的话解释…… / 我还不确定的是……" aria-label="课程笔记">'+esc(state.notes[id]||'')+'</textarea><div class="lesson-actions"><button class="secondary" data-save-note="'+id+'">保存笔记</button><span id="note-status" class="saved" role="status"></span><button class="primary complete-button" data-complete="'+id+'">'+(state.done.includes(id)?'已完成 · 点击撤销':'标记本章已完成 ✓')+'</button></div></section>'

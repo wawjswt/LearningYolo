@@ -232,6 +232,210 @@
     root.querySelector('[data-task-hint]').textContent=spec.summary+' 选能满足决策需求的最简单粒度。';
   }
 
+  const augmentationModes={
+    flip:{name:'水平翻转',hint:'左右镜像后，中心横坐标变为 x′ = 1 − x；中心纵坐标和宽高保持不变。'},
+    zoom:{name:'中心裁剪 / 缩放',hint:'围绕图像中心缩放；放大时会裁切出界部分，缩小时目标框也会随图像缩小，再重新计算归一化中心与宽高。'},
+    color:{name:'颜色扰动',hint:'颜色或亮度变化修改像素值，不改变目标的位置和大小，因此 YOLO 框坐标保持不变。'}
+  };
+  const augmentationBox={cx:0.28,cy:0.52,w:0.20,h:0.32};
+  const clamp01=value=>Math.min(1,Math.max(0,value));
+  function augmentationTargetBox(mode,strength){
+    const box=augmentationBox;
+    if(mode==='flip')return {cx:1-box.cx,cy:box.cy,w:box.w,h:box.h};
+    if(mode!=='zoom')return {cx:box.cx,cy:box.cy,w:box.w,h:box.h};
+    return {cx:0.5+(box.cx-0.5)*strength,cy:0.5+(box.cy-0.5)*strength,w:box.w*strength,h:box.h*strength};
+  }
+  function transformedAugmentationBox(mode,strength){
+    const box=augmentationTargetBox(mode,strength);
+    const left=clamp01(box.cx-box.w/2),right=clamp01(box.cx+box.w/2);
+    const top=clamp01(box.cy-box.h/2),bottom=clamp01(box.cy+box.h/2);
+    return {cx:(left+right)/2,cy:(top+bottom)/2,w:right-left,h:bottom-top};
+  }
+  function augmentationFrame(x,title,target,box,colorShift,label){
+    const y=48,px=x+20,py=y+16,pw=286,ph=132;
+    let out='<g><text x="'+(x+12)+'" y="28" fill="#596672" font-size="13" font-weight="700">'+esc(title)+'</text>';
+    out+='<rect x="'+px+'" y="'+py+'" width="'+pw+'" height="'+ph+'" rx="4" fill="'+(colorShift?'#f2e7d7':'#e6efec')+'" stroke="#d9e2de"/>';
+    for(let i=1;i<4;i++){
+      const gx=px+pw*i/4,gy=py+ph*i/4;
+      out+='<line x1="'+gx+'" y1="'+py+'" x2="'+gx+'" y2="'+(py+ph)+'" stroke="#ffffff" stroke-opacity=".8"/><line x1="'+px+'" y1="'+gy+'" x2="'+(px+pw)+'" y2="'+gy+'" stroke="#ffffff" stroke-opacity=".8"/>';
+    }
+    const tx=px+(target.cx-target.w/2)*pw,ty=py+(target.cy-target.h/2)*ph,tw=target.w*pw,th=target.h*ph,tcx=tx+tw/2;
+    out+='<defs><clipPath id="augment-window-'+x+'"><rect x="'+px+'" y="'+py+'" width="'+pw+'" height="'+ph+'"/></clipPath></defs><g clip-path="url(#augment-window-'+x+')">';
+    out+='<rect x="'+tx+'" y="'+ty+'" width="'+tw+'" height="'+th+'" fill="#3e967c" fill-opacity=".16"/><circle cx="'+tcx+'" cy="'+(ty+th*.2)+'" r="'+Math.min(tw*.15,th*.13)+'" fill="'+(colorShift?'#9b7951':'#43866d')+'"/>';
+    out+='<path d="M'+tcx+' '+(ty+th*.36)+'V'+(ty+th*.65)+' M'+(tcx-tw*.26)+' '+(ty+th*.48)+'L'+tcx+' '+(ty+th*.39)+'L'+(tcx+tw*.26)+' '+(ty+th*.48)+' M'+(tcx-tw*.22)+' '+(ty+th*.9)+'L'+tcx+' '+(ty+th*.65)+'L'+(tcx+tw*.22)+' '+(ty+th*.9)+'" fill="none" stroke="'+(colorShift?'#9b7951':'#43866d')+'" stroke-width="'+Math.max(2,tw*.07)+'" stroke-linecap="round"/></g>';
+    const bx=px+(box.cx-box.w/2)*pw,by=py+(box.cy-box.h/2)*ph,bw=box.w*pw,bh=box.h*ph;
+    out+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="3" fill="#75649f" fill-opacity=".20" stroke="#75649f" stroke-width="2.5"/>';
+    out+='<circle cx="'+(bx+bw/2).toFixed(1)+'" cy="'+(by+bh/2).toFixed(1)+'" r="3" fill="#655593"/>';
+    out+='<text x="'+bx.toFixed(1)+'" y="'+Math.max(py+11,by-5).toFixed(1)+'" fill="#655593" font-size="10" font-weight="700">'+esc(label)+'</text>';
+    out+='<text x="'+px+'" y="'+(py+ph+16)+'" fill="#7b858d" font-size="9">左上 (0,0)</text><text x="'+(px+pw)+'" y="'+(py+ph+16)+'" text-anchor="end" fill="#7b858d" font-size="9">右下 (1,1)</text></g>';
+    return out;
+  }
+  function augmentationLessonSvg(mode,strength,shown,sync){
+    return '<div class="augmentation-frame-pair"><svg viewBox="0 0 350 228" role="img" aria-label="增强前，绿色目标与紫色标签框对齐">'
+      +augmentationFrame(8,'增强前 · YOLO 标签',augmentationBox,augmentationBox,false,'标签框')
+      +'</svg><svg viewBox="358 0 350 228" role="img" aria-label="增强后的绿色目标和紫色标签框，可对照检查标注是否跟随变换">'
+      +augmentationFrame(366,'增强后 · '+augmentationModes[mode].name,augmentationTargetBox(mode,strength),shown,mode==='color',sync?'同步标签框':'旧标签框')
+      +'</svg></div><div class="augmentation-visual-legend"><span><i></i>绿色区域 / 人形：图像中的目标</span><span><i></i>紫框：交给模型的标签</span></div>';
+  }
+  function augmentationMarkup(){
+    return '<section class="lesson-playground augmentation-lesson-playground" data-lesson-augmentation data-lesson-augment-mode="flip" data-lesson-augment-sync="true" aria-labelledby="lesson-augmentation-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · 图像与标签同步</span><h3 id="lesson-augmentation-title">图像变了，YOLO 标签怎样跟着变？</h3><p>框表示目标在图像中的位置。切换增强方式后，对照变换后的图像和归一化标签；关闭标签同步，可以观察监督错位。</p></div><button type="button" class="playground-reset" data-lesson-augment-reset>恢复默认</button></div>'
+      +'<div class="playground-tabs lesson-augmentation-modes" role="group" aria-label="选择图像增强方式">'+Object.entries(augmentationModes).map(([id,spec])=>'<button type="button" data-lesson-augment-mode="'+id+'" aria-pressed="'+String(id==='flip')+'">'+spec.name+'</button>').join('')+'</div>'
+      +'<div class="playground-chart augmentation-lesson-visual" data-lesson-augment-visual></div>'
+      +'<div class="augmentation-lesson-layout"><div class="augmentation-lesson-controls">'
+      +'<label class="playground-range"><span>缩放强度 <output data-lesson-augment-strength-value>1.20×</output></span><input type="range" min="0.80" max="2.20" step="0.05" value="1.20" data-lesson-augment-strength aria-label="中心裁剪缩放强度"></label>'
+      +'<button type="button" class="augmentation-sync-toggle" data-lesson-augment-sync aria-pressed="true">标签同步：开启</button>'
+      +'<p class="augmentation-coordinate-note" data-lesson-augment-hint role="status" aria-live="polite"></p></div>'
+      +'<div class="augmentation-label-readout" data-lesson-augment-labels aria-live="polite"></div></div>'
+      +'<div class="lesson-calculation" data-lesson-augment-math></div>'
+      +'<details class="lesson-deeper"><summary>继续理解：归一化、裁剪与数据泄漏</summary><div><p><strong>归一化要用当前画布的宽高。</strong>YOLO 一行依次是 class、cx/W、cy/H、w/W、h/H。这里的 0 是类别编号，后四个数才是坐标。例如在 640×480 图像上，中心 (0.28, 0.52) 对应 (179.2, 249.6) 像素，宽高 (0.20, 0.32) 对应 128×153.6 像素。</p><p><strong>裁剪后先裁边界，再重算中心。</strong>只把中心限制到 [0,1] 会留下错误宽高；完全出界、太小或比例极端的框还需要过滤。实际 YOLOv5 的 random_perspective 会调用 box_candidates 检查宽高、面积保留比例和长宽比。这里展示框的几何变化，没有模拟完整的样本过滤。</p><p><strong>先划分数据，再做训练增强。</strong>同一原图及其增强副本若分到训练和验证两边，会造成泄漏；视频帧也应按来源分组。验证通常保留确定性预处理，使用同一验证集比较增强前后的按类指标及失败图。</p></div></details>'
+      +'<p class="playground-footnote">坐标采用 YOLO 的归一化中心点格式：类别、中心 x、中心 y、宽、高。示例是教学示意；颜色变化不改框，几何变换必须同步更新框。</p></section>';
+  }
+  function updateAugmentationLesson(root){
+    const mode=root.dataset.lessonAugmentMode||'flip';
+    const sync=root.dataset.lessonAugmentSync!=='false';
+    const strengthInput=root.querySelector('[data-lesson-augment-strength]');
+    const strength=Number(strengthInput.value);
+    const transformed=transformedAugmentationBox(mode,strength);
+    const shown=sync||mode==='color'?transformed:augmentationBox;
+    const format=value=>Number(value).toFixed(4);
+    const originalLine='0 '+format(augmentationBox.cx)+' '+format(augmentationBox.cy)+' '+format(augmentationBox.w)+' '+format(augmentationBox.h);
+    const transformedLine='0 '+format(transformed.cx)+' '+format(transformed.cy)+' '+format(transformed.w)+' '+format(transformed.h);
+    const strengthValue=root.querySelector('[data-lesson-augment-strength-value]');
+    strengthValue.textContent=strength.toFixed(2)+'×';
+    strengthInput.disabled=mode!=='zoom';
+    const syncButton=root.querySelector('[data-lesson-augment-sync]');
+    syncButton.disabled=mode==='color';
+    syncButton.setAttribute('aria-pressed',String(sync||mode==='color'));
+    syncButton.textContent=mode==='color'?'几何标签：无需修改':'标签同步：'+(sync?'开启':'关闭');
+    root.querySelectorAll('[data-lesson-augment-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.lessonAugmentMode===mode)));
+    const aligned=Object.keys(augmentationBox).every(key=>Math.abs(shown[key]-transformed[key])<1e-9);
+    root.querySelector('[data-lesson-augment-visual]').innerHTML=augmentationLessonSvg(mode,strength,shown,sync||mode==='color');
+    root.querySelector('[data-lesson-augment-labels]').innerHTML='<div><span>增强前 · label</span><code>'+originalLine+'</code></div><div><span>实际送入训练的增强后标签</span><code>'+(sync||mode==='color'?transformedLine:originalLine)+'</code></div>'+(!aligned?'<div><span>正确同步时应为</span><code>'+transformedLine+'</code></div>':'')+'<strong class="'+(aligned?'is-synced':'is-unsynced')+'">'+(aligned?'标签与图像一致':'标签仍指向原位置 · 监督错位')+'</strong>';
+    const raw=augmentationTargetBox(mode,strength);
+    const corners=box=>[box.cx-box.w/2,box.cy-box.h/2,box.cx+box.w/2,box.cy+box.h/2].map(format).join(', ');
+    const operation=mode==='flip'?'x′ = 1 − x；y、w、h 不变':mode==='zoom'?'x′ = 0.5 + (x − 0.5) × '+strength.toFixed(2)+'；宽高同倍缩放':'颜色 / 亮度变化；四个几何坐标不变';
+    const retained=transformed.w*transformed.h/(raw.w*raw.h)*100;
+    root.querySelector('[data-lesson-augment-math]').innerHTML='<h4>跟着当前参数算一遍</h4><ol><li><strong>中心格式 → 四个边界</strong><code>left = cx − w/2；right = cx + w/2</code><span>原始 (left, top, right, bottom) = ('+corners(augmentationBox)+')</span></li><li><strong>图像与四角应用同一变换</strong><code>'+operation+'</code><span>变换后、裁边前 = ('+corners(raw)+')</span></li><li><strong>裁边后 → 重新计算中心与宽高</strong><code>cx = (left + right)/2；w = right − left</code><span>合法边界 = ('+corners(transformed)+')；框面积保留 '+retained.toFixed(1)+'%（不是目标像素可见率）。</span></li></ol>';
+    let hint=augmentationModes[mode].hint;
+    if(mode==='zoom')hint+=' 当前缩放 '+strength.toFixed(2)+'×。试着调到 1.60× 以上，观察左边界裁切后，中心和宽度怎样一起改变。';
+    if(!aligned)hint='标签同步已关闭：绿色目标发生移动或缩放，紫色标签框仍停在旧位置。训练会收到错误的位置监督。';
+    else if(!sync&&mode!=='color')hint+=' 当前参数恰好没有改变框的位置与大小，所以关闭同步后也仍然对齐。';
+    root.querySelector('[data-lesson-augment-hint]').textContent=hint;
+  }
+
+  const anchorScales=[
+    {name:'P3',stride:8,cells:16,anchors:[[16,16],[24,32],[48,32]]},
+    {name:'P4',stride:16,cells:8,anchors:[[40,40],[64,48],[96,64]]},
+    {name:'P5',stride:32,cells:4,anchors:[[96,96],[128,160],[192,128]]}
+  ];
+  function anchorMarkup(){
+    return '<section class="lesson-playground anchor-playground" data-anchor-playground aria-labelledby="anchor-playground-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · Anchor 与多尺度网格</span><h3 id="anchor-playground-title">同一个目标，在不同检测尺度上有多大？</h3><p>调整目标框宽高，比较同一块 128×128 图像区域在 P3、P4、P5 特征网格中的覆盖范围。</p></div><button type="button" class="playground-reset" data-anchor-reset>恢复默认</button></div>'
+      +'<div class="anchor-controls"><label class="playground-range"><span>目标宽度 <output data-anchor-width-value>64 px</output></span><input type="range" min="16" max="112" step="8" value="64" data-anchor-width aria-label="目标框宽度，像素"></label><label class="playground-range"><span>目标高度 <output data-anchor-height-value>48 px</output></span><input type="range" min="16" max="112" step="8" value="48" data-anchor-height aria-label="目标框高度，像素"></label></div>'
+      +'<div class="playground-chart anchor-chart" data-anchor-chart tabindex="0" role="region" aria-label="多尺度网格对照，窄屏可左右滚动"></div><p class="lesson-visual-key">左右滑动比较三个尺度。紫框是同一个目标，绿色格子是中心落点所在的格子。三个面板显示同一块图像区域，所以目标占画面的比例相同，覆盖的网格数量不同。</p><div class="anchor-reference-readouts" data-anchor-readouts></div>'
+      +'<div class="lesson-calculation"><h4>哪些 Anchor 会通过宽高匹配？</h4><p>把目标和 Anchor 放在同一单位下，计算宽高的最大倍率。小于阈值的候选都保留；这里先看尺寸筛选，尚未展开邻格分配。</p><code>R = max(w/a_w, a_w/w, h/a_h, a_h/h)；通过条件：R &lt; anchor_t</code><label class="playground-range anchor-threshold"><span>匹配阈值 anchor_t <output data-anchor-threshold-value>4.0</output></span><input type="range" min="1" max="5" step="0.5" value="4" data-anchor-threshold aria-label="Anchor 宽高倍率匹配阈值"></label><div class="lesson-table-scroll" data-anchor-matches></div></div>'
+      +'<p class="playground-insight" data-anchor-hint role="status" aria-live="polite"></p>'
+      +'<details class="lesson-deeper"><summary>继续理解：网格、步幅和正样本不是一回事</summary><div><p><strong>网格位置负责“在哪里”，Anchor 提供宽高参考。</strong>例如 64×48 像素目标在 stride=8 的特征图上是 8×6 个网格单位，在 stride=32 上是 2×1.5。小目标覆盖的位置较少，空间细节更容易损失，但不能仅凭一个尺寸就断言它只归某一层。</p><p><strong>先过尺寸筛选，再扩展邻格。</strong>本项目 build_targets 会在各层逐个比较宽高倍率，再根据目标中心的小数部分和边界条件加入横向、纵向邻格。同一目标可能产生多个 Anchor / 网格正样本；这里的候选数量不是最终正样本数量。</p><p><strong>训练匹配阈值与推理 NMS 阈值作用不同。</strong>anchor_t 控制训练时哪些参考框参与监督；NMS IoU 阈值用于推理后删除重复预测。增加匹配阈值会接纳更多形状差异较大的候选，效果需要在固定验证集上判断。</p><p>对应源码：<a href="https://github.com/ultralytics/yolov5/blob/master/utils/loss.py" target="_blank" rel="noopener noreferrer">utils/loss.py · build_targets ↗</a>。本页按项目中这类 YOLOv5 匹配实现讲解，其他检测器的分配方式可能不同。</p></div></details>'
+      +'<p class="playground-footnote">图中 Anchor 尺寸是教学用示意值，不对应特定权重或配置。实际 YOLOv5 正样本分配可涉及多个尺度、邻近网格和版本相关匹配阈值；请以当前仓库配置和训练日志为准。</p></section>';
+  }
+  function anchorDiagram(width,height){
+    const W=816,H=274,panelW=260,gridSize=164,windowPx=128;
+    let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="同一目标在 P3、P4、P5 三种特征网格上的相对大小">';
+    anchorScales.forEach((scale,index)=>{
+      const x=8+index*270,gridX=x+(panelW-gridSize)/2,gridY=53,cell=gridSize/scale.cells;
+      out+='<rect x="'+x+'" y="8" width="'+panelW+'" height="252" rx="5" fill="#fffefa" stroke="#e9e6df"/>';
+      out+=svgText(x+panelW/2,31,scale.name+' · stride '+scale.stride,13,'middle','#584987');
+      for(let row=0;row<scale.cells;row++)for(let col=0;col<scale.cells;col++){
+        out+='<rect x="'+(gridX+col*cell).toFixed(1)+'" y="'+(gridY+row*cell).toFixed(1)+'" width="'+cell.toFixed(1)+'" height="'+cell.toFixed(1)+'" fill="none" stroke="#dfe4e2" stroke-width=".7"/>';
+      }
+      const centerCol=Math.floor(scale.cells*.53),centerRow=Math.floor(scale.cells*.54);
+      out+='<rect x="'+(gridX+centerCol*cell).toFixed(1)+'" y="'+(gridY+centerRow*cell).toFixed(1)+'" width="'+cell.toFixed(1)+'" height="'+cell.toFixed(1)+'" fill="#dcebe4" fill-opacity=".65" stroke="#77a18c" stroke-width="1.2"/>';
+      const bw=width/windowPx*gridSize,bh=height/windowPx*gridSize,bx=gridX+gridSize*.53-bw/2,by=gridY+gridSize*.54-bh/2;
+      out+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2" fill="#75649f" fill-opacity=".15" stroke="#75649f" stroke-width="2"/>';
+      out+='<circle cx="'+(gridX+gridSize*.53).toFixed(1)+'" cy="'+(gridY+gridSize*.54).toFixed(1)+'" r="3.2" fill="#b17c31"/>';
+      out+=svgText(x+panelW/2,236,formatCells(width,scale.stride)+' × '+formatCells(height,scale.stride)+' 个网格单元',11,'middle','#45535f');
+      out+=svgText(x+panelW/2,253,'参考框示意：'+scale.anchors.map(pair=>pair[0]+'×'+pair[1]).join('  '),9,'middle','#7b858d');
+    });
+    return out+'</svg>';
+  }
+  function formatCells(pixels,stride){const value=pixels/stride;return Number.isInteger(value)?String(value):value.toFixed(1)}
+  function anchorFit(anchor,width,height){return Math.max(width/anchor[0],anchor[0]/width,height/anchor[1],anchor[1]/height)}
+  function updateAnchors(root){
+    const width=Number(root.querySelector('[data-anchor-width]').value),height=Number(root.querySelector('[data-anchor-height]').value);
+    const threshold=Number(root.querySelector('[data-anchor-threshold]').value);
+    root.querySelector('[data-anchor-threshold-value]').textContent=threshold.toFixed(1);
+    root.querySelector('[data-anchor-width-value]').textContent=width+' px';
+    root.querySelector('[data-anchor-height-value]').textContent=height+' px';
+    root.querySelector('[data-anchor-chart]').innerHTML=anchorDiagram(width,height);
+    root.querySelector('[data-anchor-readouts]').innerHTML=anchorScales.map(scale=>{
+      const nearest=scale.anchors.reduce((best,current)=>anchorFit(current,width,height)<anchorFit(best,width,height)?current:best,scale.anchors[0]);
+      return '<div><span>'+scale.name+' · 最大倍率最小的示意先验</span><strong>'+nearest[0]+' × '+nearest[1]+' px</strong><small>R = '+anchorFit(nearest,width,height).toFixed(2)+'</small></div>';
+    }).join('');
+    let accepted=0;
+    root.querySelector('[data-anchor-matches]').innerHTML='<table class="lesson-knowledge-table"><caption>同一目标与 9 个教学 Anchor 的尺寸比较</caption><thead><tr><th scope="col">尺度</th><th scope="col">Anchor 宽×高</th><th scope="col">最大倍率 R</th><th scope="col">R &lt; '+threshold.toFixed(1)+'</th></tr></thead><tbody>'+anchorScales.map(scale=>scale.anchors.map(anchor=>{
+      const ratio=anchorFit(anchor,width,height),matches=ratio<threshold;if(matches)accepted++;
+      return '<tr><th scope="row">'+scale.name+'</th><td>'+anchor[0]+' × '+anchor[1]+' px</td><td>'+ratio.toFixed(2)+'</td><td><span class="lesson-match-state '+(matches?'is-match':'is-rejected')+'">'+(matches?'通过':'不通过')+'</span></td></tr>';
+    }).join('')).join('')+'</tbody></table>';
+    root.querySelector('[data-anchor-hint]').textContent='目标 '+width+' × '+height+' px：当前 '+accepted+' / 9 个示意 Anchor 通过尺寸筛选。比较使用严格小于号，R 等于阈值时不通过。步幅越大，同一目标覆盖的网格单元越少；最终正样本还要经过中心位置和邻格分配。';
+  }
+
+  const yoloLossScenarios={
+    localization:{name:'定位偏差',base:{box:0.86,obj:0.18,cls:0.08},hint:'目标类别与存在性已识别，但预测框的位置或大小不准。先检查 box 相关监督和框标签。'},
+    objectness:{name:'背景误检',base:{box:0,obj:0.82,cls:0},hint:'这里单看一个未匹配目标的背景候选：它收到 objectness 监督，不计算正样本的 box / classification 损失。真实一批图像仍可能有其他目标贡献后两项。'},
+    classification:{name:'类别混淆',base:{box:0.12,obj:0.20,cls:0.78},hint:'框位置大致正确，但类别预测错误。检查类别映射、标签顺序和分类监督。'},
+    missed:{name:'漏检目标',base:{box:0.10,obj:0.72,cls:0.14},hint:'本示例假设目标位置已参与训练匹配、但 objectness 预测偏低。真实漏检也可能来自标签、分辨率或正样本分配问题。'}
+  };
+  const yoloLossNames={box:'box loss',obj:'objectness loss',cls:'classification loss'};
+  const yoloLossColors={box:'#75649f',obj:'#4c88a6',cls:'#3e967c'};
+  function yoloLossMarkup(){
+    return '<section class="lesson-playground yolo-loss-playground" data-yolo-loss-playground data-yolo-loss-mode="localization" aria-labelledby="yolo-loss-playground-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · 检测损失拆解</span><h3 id="yolo-loss-playground-title">不同错误，会把哪一项损失推高？</h3><p>切换一个教学样例，观察预测框和三类监督信号的对应关系。</p></div><button type="button" class="playground-reset" data-yolo-loss-reset>恢复默认</button></div>'
+      +'<div class="playground-tabs yolo-loss-modes" role="group" aria-label="选择检测错误类型">'+Object.entries(yoloLossScenarios).map(([id,spec])=>'<button type="button" data-yolo-loss-mode="'+id+'" aria-pressed="'+String(id==='localization')+'">'+spec.name+'</button>').join('')+'</div>'
+      +'<label class="lesson-single-class"><input type="checkbox" data-yolo-loss-single>切换为单类别任务（nc=1）：观察分类损失为何为 0</label>'
+      +'<div class="yolo-loss-layout"><div class="playground-chart yolo-loss-scene" data-yolo-loss-scene></div><div class="yolo-loss-controls">'
+      +'<div class="yolo-loss-gains"><label class="playground-range"><span>box 权重 <output data-yolo-loss-gain-value="box">1.00×</output></span><input type="range" min="0.5" max="2" step="0.1" value="1" data-yolo-loss-gain="box" aria-label="box loss 权重"></label>'
+      +'<label class="playground-range"><span>objectness 权重 <output data-yolo-loss-gain-value="obj">1.00×</output></span><input type="range" min="0.5" max="2" step="0.1" value="1" data-yolo-loss-gain="obj" aria-label="objectness loss 权重"></label>'
+      +'<label class="playground-range"><span>classification 权重 <output data-yolo-loss-gain-value="cls">1.00×</output></span><input type="range" min="0.5" max="2" step="0.1" value="1" data-yolo-loss-gain="cls" aria-label="classification loss 权重"></label></div>'
+      +'<div class="yolo-loss-readouts" data-yolo-loss-readouts></div><div class="yolo-loss-total" data-yolo-loss-total></div></div></div>'
+      +'<p class="playground-insight" data-yolo-loss-hint role="status" aria-live="polite"></p>'
+      +'<div class="lesson-supervision-grid"><article><h4>box：框贴得准不准</h4><p>只在匹配到目标的位置计算。本项目使用 mean(1−CIoU)，同时考虑重叠、中心距离和宽高比。</p></article><article><h4>objectness：候选应得到多少目标性分数</h4><p>覆盖各层候选位置。未匹配位置的目标值从 0 开始；已匹配位置会填入截断到非负值、停止梯度后的 CIoU 质量值，本项目 gr=1。</p></article><article><h4>classification：属于哪一类</h4><p>只对匹配目标且 nc&gt;1 的位置计算 BCEWithLogitsLoss，可结合标签平滑等配置；这里不能直接套用“类别总概率必须为 1”的 softmax 理解。</p></article></div>'
+      +'<details class="lesson-deeper"><summary>继续理解：训练损失、日志与推理分数怎样区分</summary><div><p><strong>日志里的三项通常已经乘过 gain。</strong>本项目 ComputeLoss 先对各项乘 hyp[box/obj/cls]，返回分项供日志记录；用于反向传播的和还乘 batch size。train.py 也按类别数、检测层数和输入尺寸调整相关系数。比较实验前，应核对这些约定；不同损失数值的大小不能直接代表问题的重要程度。</p><p><strong>loss 不等于推理 confidence。</strong>常见 YOLOv5 后处理把 objectness 分数与类别分数相乘。例如 0.80×0.60=0.48，若置信度阈值是 0.50，该候选会被过滤。降低阈值可能找回候选，也可能增加误检；它不会回头改变已经训练好的权重。NMS 随后处理重复框。</p><p><strong>cls=0 不等于分类已经完美。</strong>nc=1 时源码跳过分类损失；单类模型仍需学习目标性和定位。漏检要同时检查分辨率、标签、正样本分配、分数过滤及 NMS；loss 下降但验证指标变差时，还要检查过拟合与数据分布。</p><p>建议排查顺序：先画标签与预测 → 核对类别和坐标 → 查看匹配与输入尺寸 → 对照按类 / 按尺寸验证指标 → 最后有依据地调整损失权重。<a href="https://github.com/ultralytics/yolov5/blob/master/utils/loss.py" target="_blank" rel="noopener noreferrer">阅读 ComputeLoss 源码 ↗</a></p></div></details>'
+      +'<p class="playground-footnote">柱形与数值是可重复的教学样例，不是 swim_v9 的训练日志。简化关系为 L = λbox·Lbox + λobj·Lobj + λcls·Lcls；实际 YOLOv5 还会按尺度、样本分配和版本配置处理各项。调高权重只改变该项对目标函数的贡献，不保证验证指标变好。</p></section>';
+  }
+  function yoloLossSceneSvg(mode){
+    let out='<svg viewBox="0 0 520 245" role="img" aria-label="真实框与预测框对照，展示'+esc(yoloLossScenarios[mode].name)+'示意"><rect width="520" height="245" fill="#fffefa"/><text x="24" y="28" fill="#697581" font-size="11">框与监督信号示意</text><rect x="52" y="52" width="416" height="154" rx="4" fill="#f1f4f0" stroke="#e3e8e3"/>';
+    for(let i=1;i<4;i++)out+='<line x1="'+(52+i*104)+'" y1="52" x2="'+(52+i*104)+'" y2="206" stroke="#fffefa" stroke-width="2"/><line x1="52" y1="'+(52+i*38.5)+'" x2="468" y2="'+(52+i*38.5)+'" stroke="#fffefa" stroke-width="2"/>';
+    if(mode!=='objectness')out+='<rect x="176" y="91" width="92" height="74" rx="3" fill="#3e967c" fill-opacity=".10" stroke="#3e967c" stroke-width="2.5" stroke-dasharray="5 3"/><text x="177" y="86" fill="#3e806f" font-size="10" font-weight="700">真实框 · GT</text>';
+    if(mode==='localization'){
+      out+='<rect x="206" y="105" width="92" height="74" rx="3" fill="#75649f" fill-opacity=".16" stroke="#75649f" stroke-width="2.5"/><text x="207" y="195" fill="#655593" font-size="10" font-weight="700">预测框 · 偏移</text><path d="M270 128L286 119" stroke="#b17c31" stroke-width="2"/><path d="M282 118L287 118L285 123" fill="none" stroke="#b17c31" stroke-width="2"/>';
+    }else if(mode==='objectness'){
+      out+='<rect x="206" y="94" width="92" height="74" rx="3" fill="#4c88a6" fill-opacity=".13" stroke="#4c88a6" stroke-width="2.5"/><text x="207" y="185" fill="#3c748e" font-size="10" font-weight="700">背景候选 · 高分</text>';
+    }else if(mode==='classification'){
+      out+='<rect x="176" y="91" width="92" height="74" rx="3" fill="#75649f" fill-opacity=".08" stroke="#75649f" stroke-width="2.5"/><rect x="177" y="73" width="107" height="16" rx="3" fill="#75649f"/><text x="183" y="84" fill="#fff" font-size="9" font-weight="700">预测：车辆 0.88</text><text x="176" y="195" fill="#3e806f" font-size="10">真实类别：行人</text>';
+    }else{
+      out+='<text x="270" y="130" text-anchor="middle" fill="#8a6aa1" font-size="18" font-weight="700">未产生有效预测框</text><text x="270" y="151" text-anchor="middle" fill="#73808b" font-size="10">目标存在，但候选分数未通过阈值</text>';
+    }
+    return out+'</svg>';
+  }
+  function updateYoloLoss(root){
+    const mode=root.dataset.yoloLossMode||'localization',spec=yoloLossScenarios[mode];
+    const single=root.querySelector('[data-yolo-loss-single]').checked;
+    const weights={box:Number(root.querySelector('[data-yolo-loss-gain="box"]').value),obj:Number(root.querySelector('[data-yolo-loss-gain="obj"]').value),cls:Number(root.querySelector('[data-yolo-loss-gain="cls"]').value)};
+    const base={...spec.base,cls:single?0:spec.base.cls};
+    root.querySelector('[data-yolo-loss-gain="cls"]').disabled=single;
+    root.querySelectorAll('button[data-yolo-loss-mode]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.yoloLossMode===mode));button.disabled=single&&button.dataset.yoloLossMode==='classification'});
+    root.querySelector('[data-yolo-loss-scene]').innerHTML=yoloLossSceneSvg(mode);
+    let total=0;
+    root.querySelector('[data-yolo-loss-readouts]').innerHTML=Object.keys(yoloLossNames).map(key=>{
+      const value=base[key],weighted=value*weights[key];total+=weighted;
+      root.querySelector('[data-yolo-loss-gain-value="'+key+'"]').textContent=weights[key].toFixed(2)+'×';
+      return '<div class="yolo-loss-component" style="--loss-color:'+yoloLossColors[key]+'"><span>'+yoloLossNames[key]+'</span><strong>'+weighted.toFixed(2)+'</strong><small>样例 '+value.toFixed(2)+' × 权重 '+weights[key].toFixed(2)+'</small><div class="yolo-loss-track"><i style="width:'+Math.min(100,weighted/1.6*100).toFixed(1)+'%"></i></div></div>';
+    }).join('');
+    root.querySelector('[data-yolo-loss-total]').innerHTML='<span>示意总损失</span><strong>'+total.toFixed(2)+'</strong><code>L = '+weights.box.toFixed(2)+'×'+base.box.toFixed(2)+'（box） + '+weights.obj.toFixed(2)+'×'+base.obj.toFixed(2)+'（obj） + '+weights.cls.toFixed(2)+'×'+base.cls.toFixed(2)+'（cls）</code>';
+    root.querySelector('[data-yolo-loss-hint]').textContent=spec.hint+(single?' 当前 nc=1：分类项被跳过，所以 cls=0；这不能说明检测已经完美。':'')+' 上方使用教学值，不是直接由图中的框计算出的实际训练损失。';
+  }
+
   function render(lessonId,sectionIndex){
     if(lessonId==='network'&&sectionIndex===1)return activationMarkup();
     if(lessonId==='losses'&&sectionIndex===1)return lossMarkup();
@@ -239,6 +443,9 @@
     if(lessonId==='pooling'&&sectionIndex===0)return poolingMarkup();
     if(lessonId==='training'&&sectionIndex===3)return trainingMarkup();
     if(lessonId==='tasks'&&sectionIndex===1)return tasksMarkup();
+    if(lessonId==='augmentation'&&sectionIndex===0)return augmentationMarkup();
+    if(lessonId==='anchors'&&sectionIndex===1)return anchorMarkup();
+    if(lessonId==='yolo-loss'&&sectionIndex===3)return yoloLossMarkup();
     return '';
   }
   function initialize(){
@@ -248,6 +455,9 @@
     document.querySelectorAll('[data-pooling-playground]').forEach(updatePooling);
     document.querySelectorAll('[data-training-playground]').forEach(updateTraining);
     document.querySelectorAll('[data-tasks-playground]').forEach(updateTasks);
+    document.querySelectorAll('[data-lesson-augmentation]').forEach(updateAugmentationLesson);
+    document.querySelectorAll('[data-anchor-playground]').forEach(updateAnchors);
+    document.querySelectorAll('[data-yolo-loss-playground]').forEach(updateYoloLoss);
   }
   window.lessonPlaygrounds={render,initialize};
 
@@ -258,6 +468,10 @@
     const optimizer=target.closest('[data-optimizer-rate],[data-optimizer-step]');if(optimizer)updateOptimizer(optimizer.closest('[data-optimizer-playground]'));
     const poolControl=target.closest('[data-pool-row],[data-pool-col]');if(poolControl){updatePooling(poolControl.closest('[data-pooling-playground]'));return}
     const trainingControl=target.closest('[data-training-epoch]');if(trainingControl){updateTraining(trainingControl.closest('[data-training-playground]'));return}
+    const augmentationControl=target.closest('[data-lesson-augment-strength]');if(augmentationControl){updateAugmentationLesson(augmentationControl.closest('[data-lesson-augmentation]'));return}
+    const anchorControl=target.closest('[data-anchor-width],[data-anchor-height],[data-anchor-threshold]');if(anchorControl){updateAnchors(anchorControl.closest('[data-anchor-playground]'));return}
+    const singleClass=target.closest('[data-yolo-loss-single]');if(singleClass){const root=singleClass.closest('[data-yolo-loss-playground]');if(singleClass.checked&&root.dataset.yoloLossMode==='classification')root.dataset.yoloLossMode='localization';updateYoloLoss(root);return}
+    const yoloLossControl=target.closest('[data-yolo-loss-gain]');if(yoloLossControl){updateYoloLoss(yoloLossControl.closest('[data-yolo-loss-playground]'));return}
   });
   document.addEventListener('click',event=>{
     const activationChoice=event.target.closest('[data-activation-choose]');
@@ -283,6 +497,18 @@
     const taskChoice=event.target.closest('[data-task-choice]');
     if(taskChoice){const root=taskChoice.closest('[data-tasks-playground]');root.dataset.taskMode=taskChoice.dataset.taskChoice;updateTasks(root);return}
     const taskReset=event.target.closest('[data-task-reset]');
-    if(taskReset){const root=taskReset.closest('[data-tasks-playground]');root.dataset.taskMode='classification';updateTasks(root)}
+    if(taskReset){const root=taskReset.closest('[data-tasks-playground]');root.dataset.taskMode='classification';updateTasks(root);return}
+    const augmentationMode=event.target.closest('button[data-lesson-augment-mode]');
+    if(augmentationMode){const root=augmentationMode.closest('[data-lesson-augmentation]');root.dataset.lessonAugmentMode=augmentationMode.dataset.lessonAugmentMode;updateAugmentationLesson(root);return}
+    const augmentationSync=event.target.closest('button[data-lesson-augment-sync]');
+    if(augmentationSync){const root=augmentationSync.closest('[data-lesson-augmentation]');root.dataset.lessonAugmentSync=root.dataset.lessonAugmentSync==='false'?'true':'false';updateAugmentationLesson(root);return}
+    const augmentationReset=event.target.closest('[data-lesson-augment-reset]');
+    if(augmentationReset){const root=augmentationReset.closest('[data-lesson-augmentation]');root.dataset.lessonAugmentMode='flip';root.dataset.lessonAugmentSync='true';root.querySelector('[data-lesson-augment-strength]').value='1.20';updateAugmentationLesson(root);return}
+    const anchorReset=event.target.closest('[data-anchor-reset]');
+    if(anchorReset){const root=anchorReset.closest('[data-anchor-playground]');root.querySelector('[data-anchor-width]').value='64';root.querySelector('[data-anchor-height]').value='48';root.querySelector('[data-anchor-threshold]').value='4';updateAnchors(root);return}
+    const yoloLossMode=event.target.closest('button[data-yolo-loss-mode]');
+    if(yoloLossMode){const root=yoloLossMode.closest('[data-yolo-loss-playground]');root.dataset.yoloLossMode=yoloLossMode.dataset.yoloLossMode;updateYoloLoss(root);return}
+    const yoloLossReset=event.target.closest('[data-yolo-loss-reset]');
+    if(yoloLossReset){const root=yoloLossReset.closest('[data-yolo-loss-playground]');root.dataset.yoloLossMode='localization';root.querySelector('[data-yolo-loss-single]').checked=false;root.querySelectorAll('[data-yolo-loss-gain]').forEach(input=>{input.value='1'});updateYoloLoss(root)}
   });
 })();

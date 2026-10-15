@@ -77,6 +77,38 @@
     root.querySelector('[data-loss-hint]').textContent=Math.abs(e)>delta?'当前 |e| 已超过 δ：MSE 继续按平方增长，Huber 转为线性增长，MAE 始终线性。':Math.abs(e)<1?'当前误差较小：MSE 与 Huber 都是平滑的平方形状；MAE 在 0 附近有尖点。':'Huber 还处于平方区；继续增大误差直到超过 δ，它才会切换为线性惩罚。';
   }
 
+  const multiclassLabels=['猫','狗','兔子'];
+  function multiclassMarkup(){
+    return '<section class="lesson-playground multiclass-playground" data-multiclass-playground data-target="2" aria-labelledby="multiclass-playground-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">交互图解 · Softmax 与交叉熵</span><h3 id="multiclass-playground-title">分数怎样变成概率？错得越离谱，损失会怎样？</h3><p>拖动三个类别的 logit，或切换真实类别。观察概率总和、最高分预测和交叉熵同步变化。</p></div><button type="button" class="playground-reset" data-multiclass-reset>恢复默认</button></div>'
+      +'<div class="multiclass-flow" aria-label="从 logits 到预测概率和损失的步骤"><span>类别 logits</span><i>→</i><span>Softmax 归一化</span><i>→</i><span>类别概率</span><i>→</i><span>与真实类别计算交叉熵</span></div>'
+      +'<div class="multiclass-layout"><div class="multiclass-prediction">'
+      +'<div class="multiclass-logits">'+multiclassLabels.map((label,i)=>'<label class="playground-range"><span>'+label+' 的 logit z<sub>'+i+'</sub><output data-multiclass-logit-value="'+i+'">0.00</output></span><input type="range" min="-4" max="4" step="0.1" value="'+[2,1,0.1][i]+'" data-multiclass-logit="'+i+'" aria-label="'+label+' 原始分数"></label>').join('')+'</div>'
+      +'<div class="multiclass-probability-plot" data-multiclass-chart role="img" aria-label="Softmax 类别概率图"></div>'
+      +'<p class="multiclass-sum">概率总和 <strong data-multiclass-sum>100.0%</strong> <span>Softmax 把互斥类别归一化到同一分布</span></p></div>'
+      +'<aside class="multiclass-target-panel"><span class="multiclass-panel-kicker">训练目标</span><p>这张图片的真实类别是：</p><div class="multiclass-targets" role="group" aria-label="选择真实类别">'+multiclassLabels.map((label,i)=>'<button type="button" data-multiclass-target="'+i+'" aria-pressed="'+String(i===2)+'">'+label+'</button>').join('')+'</div>'
+      +'<div class="multiclass-vector"><span>独热标签 y</span><strong data-multiclass-onehot>[0, 0, 1]</strong></div>'
+      +'<div class="multiclass-loss-result"><span>真实类预测概率 p<sub>y</sub></span><strong data-multiclass-true-prob>9.9%</strong></div>'
+      +'<div class="multiclass-loss-result"><span>单样本交叉熵 −log(p<sub>y</sub>)</span><strong data-multiclass-ce>2.32</strong></div>'
+      +'<p class="multiclass-top-prediction" data-multiclass-top>最高概率：猫</p></aside></div>'
+      +'<p class="playground-insight" data-multiclass-hint role="status" aria-live="polite"></p>'
+      +'<p class="playground-footnote">示意：类别 logits 为 [z猫,z狗,z兔子]，训练标签表示这三个互斥答案中哪一个是真的。改变非目标类分数也会改变 Softmax 和反向梯度；交叉熵公式中其他 one-hot 项为 0，不代表它们不参与学习。</p></section>';
+  }
+  function updateMulticlass(root){
+    const inputs=[...root.querySelectorAll('[data-multiclass-logit]')],logits=inputs.map(input=>Number(input.value)),maxLogit=Math.max(...logits);
+    const exponentials=logits.map(value=>Math.exp(value-maxLogit)),denominator=exponentials.reduce((sum,value)=>sum+value,0),probabilities=exponentials.map(value=>value/denominator);
+    const target=Number(root.dataset.target||2),predicted=probabilities.indexOf(Math.max(...probabilities)),trueProbability=probabilities[target],crossEntropy=-Math.log(Math.max(trueProbability,Number.MIN_VALUE));
+    inputs.forEach((input,i)=>{root.querySelector('[data-multiclass-logit-value="'+i+'"]').textContent=fmt(logits[i])});
+    root.querySelector('[data-multiclass-chart]').innerHTML=probabilities.map((probability,i)=>'<div class="multiclass-probability-row"><div class="multiclass-row-label"><strong>'+multiclassLabels[i]+'</strong><span>'+(i===target?'真实类别':i===predicted?'最高分':'')+'</span><b>'+fmt(probability*100,1)+'%</b></div><div class="multiclass-bar-track"><i class="'+(i===target?'is-target':'')+'" style="width:'+(probability*100).toFixed(2)+'%"></i></div></div>').join('');
+    root.querySelector('[data-multiclass-sum]').textContent=fmt(probabilities.reduce((sum,value)=>sum+value,0)*100,1)+'%';
+    root.querySelector('[data-multiclass-onehot]').textContent='['+multiclassLabels.map((_,i)=>i===target?'1':'0').join(', ')+']';
+    root.querySelector('[data-multiclass-true-prob]').textContent=fmt(trueProbability*100,1)+'%';
+    root.querySelector('[data-multiclass-ce]').textContent=fmt(crossEntropy,3);
+    root.querySelector('[data-multiclass-top]').textContent='最高概率：'+multiclassLabels[predicted]+'（'+fmt(probabilities[predicted]*100,1)+'%）';
+    root.querySelectorAll('[data-multiclass-target]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.multiclassTarget)===target)));
+    root.querySelector('[data-multiclass-hint]').textContent=predicted===target?'当前最高概率命中真实类。真实类概率越高，交叉熵越小；其他类别分数仍会通过 Softmax 影响梯度。':'当前模型把 '+multiclassLabels[predicted]+' 排在最高，却应预测 '+multiclassLabels[target]+'。真实类概率只有 '+fmt(trueProbability*100,1)+'%，因此交叉熵惩罚较大。';
+  }
+
   const optimizerSpecs={
     sgd:{name:'SGD',color:'#8b70bd',hint:'SGD 对每个方向使用同一个学习率。这里 y 方向曲率更大、坡更陡，x 方向会相对缓慢地靠近谷底。'},
     momentum:{name:'动量 SGD',color:'#4c88a6',hint:'动量累计近期梯度方向；在较平缓的 x 方向上可能加快前进，也会让陡峭方向出现惯性和来回摆动。'},
@@ -439,6 +471,7 @@
   function render(lessonId,sectionIndex){
     if(lessonId==='network'&&sectionIndex===1)return activationMarkup();
     if(lessonId==='losses'&&sectionIndex===1)return lossMarkup();
+    if(lessonId==='losses'&&sectionIndex===3)return multiclassMarkup();
     if(lessonId==='optimizer'&&sectionIndex===0)return optimizerMarkup();
     if(lessonId==='pooling'&&sectionIndex===0)return poolingMarkup();
     if(lessonId==='training'&&sectionIndex===3)return trainingMarkup();
@@ -451,6 +484,7 @@
   function initialize(){
     document.querySelectorAll('[data-activation-playground]').forEach(updateActivation);
     document.querySelectorAll('[data-loss-playground]').forEach(updateLoss);
+    document.querySelectorAll('[data-multiclass-playground]').forEach(updateMulticlass);
     document.querySelectorAll('[data-optimizer-playground]').forEach(updateOptimizer);
     document.querySelectorAll('[data-pooling-playground]').forEach(updatePooling);
     document.querySelectorAll('[data-training-playground]').forEach(updateTraining);
@@ -465,6 +499,7 @@
     const target=event.target;
     const activation=target.closest('[data-activation-x]');if(activation){updateActivation(activation.closest('[data-activation-playground]'));return}
     const loss=target.closest('[data-loss-error],[data-loss-delta]');if(loss){updateLoss(loss.closest('[data-loss-playground]'));return}
+    const multiclassLogit=target.closest('[data-multiclass-logit]');if(multiclassLogit){updateMulticlass(multiclassLogit.closest('[data-multiclass-playground]'));return}
     const optimizer=target.closest('[data-optimizer-rate],[data-optimizer-step]');if(optimizer)updateOptimizer(optimizer.closest('[data-optimizer-playground]'));
     const poolControl=target.closest('[data-pool-row],[data-pool-col]');if(poolControl){updatePooling(poolControl.closest('[data-pooling-playground]'));return}
     const trainingControl=target.closest('[data-training-epoch]');if(trainingControl){updateTraining(trainingControl.closest('[data-training-playground]'));return}
@@ -480,6 +515,10 @@
     if(activationReset){const root=activationReset.closest('[data-activation-playground]');root.dataset.function='relu';root.querySelector('[data-activation-x]').value='1.5';updateActivation(root);return}
     const lossReset=event.target.closest('[data-loss-reset]');
     if(lossReset){const root=lossReset.closest('[data-loss-playground]');root.querySelector('[data-loss-error]').value='2';root.querySelector('[data-loss-delta]').value='1';updateLoss(root);return}
+    const multiclassTarget=event.target.closest('[data-multiclass-target]');
+    if(multiclassTarget){const root=multiclassTarget.closest('[data-multiclass-playground]');root.dataset.target=multiclassTarget.dataset.multiclassTarget;updateMulticlass(root);return}
+    const multiclassReset=event.target.closest('[data-multiclass-reset]');
+    if(multiclassReset){const root=multiclassReset.closest('[data-multiclass-playground]');root.dataset.target='2';root.querySelectorAll('[data-multiclass-logit]').forEach((input,i)=>input.value=[2,1,0.1][i]);updateMulticlass(root);return}
     const optimizerChoice=event.target.closest('[data-optimizer-choose]');
     if(optimizerChoice){const root=optimizerChoice.closest('[data-optimizer-playground]');root.dataset.optimizer=optimizerChoice.dataset.optimizerChoose;updateOptimizer(root);return}
     const optimizerReset=event.target.closest('[data-optimizer-reset]');

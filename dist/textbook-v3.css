@@ -506,6 +506,38 @@ footer{border-color:#e5e2d9}
 .loss-readout>span{color:var(--loss-color);font-size:11px;font-weight:750}
 .loss-readout strong{color:#384552;font-size:17px;font-variant-numeric:tabular-nums}
 .loss-readout small{grid-column:1/-1}
+.multiclass-flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:11px 0 13px;padding:10px 12px;border:1px solid #e9e6df;border-radius:5px;background:#fffefa;color:#5b6874;font-size:10px}
+.multiclass-flow span{padding:5px 8px;border-radius:3px;background:#f2f0f6;color:#574b78;font-weight:650}
+.multiclass-flow i{color:#9b9385;font-style:normal}
+.multiclass-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(220px,.65fr);gap:12px;align-items:stretch}
+.multiclass-prediction,.multiclass-target-panel{min-width:0;padding:13px;border:1px solid #e9e6df;border-radius:5px;background:#fffefa}
+.multiclass-logits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-bottom:12px}
+.multiclass-logits .playground-range{gap:6px}
+.multiclass-logits .playground-range>span{font-size:10px}
+.multiclass-logits .playground-range input{accent-color:#75649f}
+.multiclass-probability-plot{display:grid;gap:11px;padding:12px 11px 9px;border:1px solid #efede8;border-radius:4px;background:#faf9f5}
+.multiclass-probability-row{display:grid;gap:5px}
+.multiclass-row-label{display:flex;gap:8px;align-items:center;min-width:0;color:#66727c;font-size:10px}
+.multiclass-row-label strong{min-width:30px;color:#414e5a;font-size:11px}
+.multiclass-row-label span{flex:1;color:#8870a1;font-size:9px}
+.multiclass-row-label b{color:#3f4b57;font-size:11px;font-variant-numeric:tabular-nums}
+.multiclass-bar-track{height:11px;overflow:hidden;border-radius:8px;background:#eae8e1}
+.multiclass-bar-track i{display:block;min-width:2px;height:100%;border-radius:8px;background:#8b78b4;transition:width .2s ease}
+.multiclass-bar-track i.is-target{background:#3e967c}
+.multiclass-sum{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:baseline;margin:9px 1px 0;color:#596671;font-size:10px}
+.multiclass-sum strong{color:#3e806f;font-size:13px;font-variant-numeric:tabular-nums}
+.multiclass-sum span{color:#858d92;font-size:9px}
+.multiclass-panel-kicker{color:#75649f;font-size:9px;font-weight:750;letter-spacing:.08em}
+.multiclass-target-panel>p{margin:6px 0;color:#596671;font-size:11px;line-height:1.7}
+.multiclass-targets{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 13px}
+.multiclass-targets button{min-height:31px;padding:6px 10px;border:1px solid #e4e0d7;border-radius:4px;background:#fffefa;color:#65717c;font:inherit;font-size:10px;cursor:pointer}
+.multiclass-targets button[aria-pressed="true"]{border-color:#91b8a5;background:#edf5f0;color:#367b64;box-shadow:inset 0 0 0 1px #d0e4d8}
+.multiclass-vector,.multiclass-loss-result{display:grid;grid-template-columns:1fr auto;gap:5px;align-items:center;margin-top:7px;padding:9px 10px;border:1px solid #efede8;border-radius:4px;background:#faf9f5}
+.multiclass-vector span,.multiclass-loss-result span{color:#6e7982;font-size:9px;line-height:1.55}
+.multiclass-vector strong,.multiclass-loss-result strong{color:#423a60;font-size:12px;font-variant-numeric:tabular-nums}
+.multiclass-loss-result:last-of-type strong{color:#b36c45;font-size:16px}
+.multiclass-top-prediction{margin-top:10px!important;color:#586575!important;font-size:10px!important;font-weight:700}
+.multiclass-playground .playground-insight{margin-top:12px}
 .optimizer-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(210px,.6fr);gap:13px;align-items:stretch}
 .optimizer-chart{align-self:start}
 .optimizer-controls{display:grid;align-content:start;gap:12px;padding:13px;border:1px solid #e9e6df;border-radius:5px;background:#fffefa}
@@ -521,8 +553,8 @@ footer{border-color:#e5e2d9}
 .optimizer-row b{color:#3f4b57;font-size:11px;font-variant-numeric:tabular-nums}
 .optimizer-row small{grid-column:2;color:#899198;font-size:8px;text-align:right}
 .lesson-playground button:focus-visible,.lesson-playground input:focus-visible{outline:2px solid #7867aa;outline-offset:2px}
-@media(max-width:700px){.optimizer-layout{grid-template-columns:1fr}.optimizer-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.optimizer-current,.optimizer-score-table{align-self:stretch}}
-@media(max-width:520px){.lesson-playground{margin:20px -9px 25px;padding:13px 10px}.playground-heading{gap:9px}.playground-heading h3{font-size:16px}.playground-heading p{font-size:11px}.playground-reset{padding:6px 7px;font-size:9px}.playground-tabs{gap:5px}.playground-tabs button{padding:6px 7px;font-size:9px}.playground-chart{overflow-x:auto}.playground-chart svg{min-width:560px}.playground-controls{grid-template-columns:1fr;gap:11px}.playground-readouts{gap:5px}.playground-readouts>div{padding:7px}.playground-readouts strong{font-size:11px}.loss-controls{grid-template-columns:1fr}.loss-readout{padding:8px}.loss-readout strong{font-size:14px}.optimizer-controls{grid-template-columns:1fr}.optimizer-methods button{padding:6px 8px;font-size:10px}}
+@media(max-width:700px){.optimizer-layout,.multiclass-layout{grid-template-columns:1fr}.optimizer-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.optimizer-current,.optimizer-score-table{align-self:stretch}}
+@media(max-width:520px){.lesson-playground{margin:20px -9px 25px;padding:13px 10px}.playground-heading{gap:9px}.playground-heading h3{font-size:16px}.playground-heading p{font-size:11px}.playground-reset{padding:6px 7px;font-size:9px}.playground-tabs{gap:5px}.playground-tabs button{padding:6px 7px;font-size:9px}.playground-chart{overflow-x:auto}.playground-chart svg{min-width:560px}.playground-controls{grid-template-columns:1fr;gap:11px}.playground-readouts{gap:5px}.playground-readouts>div{padding:7px}.playground-readouts strong{font-size:11px}.loss-controls{grid-template-columns:1fr}.loss-readout{padding:8px}.loss-readout strong{font-size:14px}.multiclass-flow{gap:5px;padding:9px;font-size:9px}.multiclass-flow span{padding:5px 6px}.multiclass-logits{grid-template-columns:1fr;gap:9px}.multiclass-prediction,.multiclass-target-panel{padding:10px}.multiclass-probability-plot{padding:9px}.optimizer-controls{grid-template-columns:1fr}.optimizer-methods button{padding:6px 8px;font-size:10px}}
 @media(prefers-reduced-motion:reduce){.lesson-playground *{scroll-behavior:auto!important}}
 
 /* Interactive chapter visualizations for pooling, training curves, and task selection. */

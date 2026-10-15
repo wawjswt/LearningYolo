@@ -183,6 +183,7 @@
     +'<section class="overview-strip"><div><span>课程章节</span><strong>'+lessons.length+'<small>章</small></strong></div><div><span>学习阶段</span><strong>03<small>阶</small></strong></div><div><span>我的进度</span><strong>'+p.pct+'<small>%</small></strong></div><div class="progress-wide"><div class="progress-label"><span>已完成 '+p.done+' / '+lessons.length+' 章</span><span>'+p.pct+'%</span></div><div class="progress-bar"><i style="width:'+p.pct+'%"></i></div></div></section>'
     +'<section class="next-reading"><div class="section-heading"><div><span class="chapter-kicker">PICK UP WHERE YOU LEFT OFF</span><h2>接下来读这一章</h2></div><a href="#path">完整学习路线 ↗</a></div><a class="next-reading-card" href="#lesson/'+next.id+'"><span class="next-number">'+String(lessons.indexOf(next)+1).padStart(2,'0')+'</span><span class="next-copy"><small>'+groups[next.group].name+' · '+next.level+' · 约 '+next.time+' 分钟</small><strong>'+next.title+'</strong><span>'+next.desc+'</span></span><span class="next-arrow">继续阅读　→</span></a></section>'
     +'<section class="stage-preview"><div class="section-heading"><div><span class="chapter-kicker">THREE STAGES · '+lessons.length+' CHAPTERS</span><h2>沿着概念，一步步深入</h2></div><a href="#courses">浏览全部章节 ↗</a></div><div class="stage-grid">'+Object.entries(groups).map(([key,g],i)=>{const list=lessons.filter(l=>l.group===key),finished=list.filter(l=>state.done.includes(l.id)).length;return '<a class="stage-card '+key+'" href="#courses/'+key+'"><span class="stage-index">0'+(i+1)+'</span><span class="stage-meta">'+g.label+'</span><h3>'+g.name+'</h3><p>'+g.desc+'</p><span class="stage-bottom">'+list.length+' 章 · '+finished+' 章已完成 <b>→</b></span></a>'}).join('')+'</div></section>'
+    +'<a class="pipeline-home-promo" href="#lab"><span class="pipeline-home-icon" aria-hidden="true">↗</span><span><small>INTERACTIVE CASE · 7 STEPS</small><strong>从一张图，走完一次目标检测</strong><em>跟着真实框、候选框和评估指标，逐步看懂完整流程。</em></span><b>开始完整案例 →</b></a>'
     +'<section class="reading-note"><span>✳</span><p><strong>建议这样学习</strong><br>先读每章目标与图解，再按小节顺序学习；遇到公式时，联系旁边的直觉说明。代码可以复制到本地尝试，自测和笔记帮助你确认真正掌握的部分。</p></section>';
   }
   function courseList(items){
@@ -275,7 +276,7 @@
     const content=route==='home'?home():route==='courses'?courses():route==='path'?path():route==='lesson'?lesson(id):route==='lab'?(window.renderInteractiveLab?window.renderInteractiveLab():lab()):route==='notes'?notes():route==='resources'?resources():home();
     document.getElementById('crumb').textContent=crumb;
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
-    const badge=document.querySelector('[data-nav="courses"] em');if(badge)badge.textContent=lessons.length;
+    document.querySelectorAll('[data-course-count]').forEach(badge=>{badge.textContent=String(lessons.length);badge.setAttribute('aria-label',lessons.length+' 节课程')});
     document.getElementById('content').innerHTML=content;
     window.lessonPlaygrounds?.initialize();
     initializeTensorLearning();

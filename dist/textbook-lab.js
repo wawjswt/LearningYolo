@@ -68,8 +68,8 @@
     return predictions.sort((a, b) => b.score - a.score);
   }
   const metricPredictions = createTeachingPredictions();
-  const tabIds = ['iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'];
-  let activeTab = 'metrics';
+  const tabIds = ['pipeline', 'iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'];
+  let activeTab = 'pipeline';
   let convolutionFocus = { row: 1, column: 1 };
   let mapWalkthroughStep = 0;
   let diagnosisIndex = 0;
@@ -685,11 +685,12 @@
     const gridStart = oldMarkup.indexOf('<div class="lab-grid">');
     const iouMarkup = gridStart >= 0 ? oldMarkup.slice(gridStart) : '<p class="lab-callout">IoU 实验暂时无法加载，请刷新页面重试。</p>';
     const tabs = [
-      ['iou', 'IoU 框重叠'], ['gradient', '反向传播'], ['convolution', '卷积特征'], ['augmentation', '数据增强'], ['diagnosis', '错误诊断'], ['nms', 'YOLO 后处理'], ['metrics', 'PR · F1 · mAP'],
+      ['pipeline', '完整检测流程'], ['iou', 'IoU 框重叠'], ['gradient', '反向传播'], ['convolution', '卷积特征'], ['augmentation', '数据增强'], ['diagnosis', '错误诊断'], ['nms', 'YOLO 后处理'], ['metrics', 'PR · F1 · mAP'],
     ];
     return '<section class="page-intro"><p class="eyebrow">LEARN BY INTERACTION</p><h1>让概念动起来。</h1><p>拖动参数、切换算子、观察结果变化。每个实验都把图像、计算步骤和教材章节连在一起。</p></section>'
       + '<p class="lab-notice"><strong>建议：</strong>先预测参数变化会带来什么结果，再操作控件验证自己的判断。</p>'
       + '<div class="lab-tabs" role="tablist" aria-label="选择学习实验">' + tabs.map(([id, label], index) => '<button type="button" role="tab" id="lab-tab-' + id + '" aria-controls="lab-panel-' + id + '" aria-selected="' + String(activeTab === id) + '" tabindex="' + (activeTab === id ? '0' : '-1') + '" data-lab-tab="' + id + '">' + label + '<span>0' + (index + 1) + '</span></button>').join('') + '</div>'
+      + (window.detectionPipeline ? window.detectionPipeline.render() : '')
       + '<section class="experiment-panel" role="tabpanel" id="lab-panel-iou" aria-labelledby="lab-tab-iou" data-lab-panel="iou"' + (activeTab === 'iou' ? '' : ' hidden') + '>' + iouMarkup + '<a class="lab-lesson-link" href="#lesson/iou">接着学习：交并比与检测评价 →</a></section>'
       + gradientPanel() + convolutionPanel() + augmentationPanel() + diagnosisPanel() + nmsPanel() + metricsPanel();
   }
@@ -1134,6 +1135,7 @@
 
   function initializeInteractiveLab() {
     setActiveTab(activeTab);
+    window.detectionPipeline?.initialize();
     updateGradient();
     updateConvolution();
     updateAugmentation();

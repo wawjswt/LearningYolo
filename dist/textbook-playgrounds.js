@@ -131,16 +131,123 @@
     root.querySelector('[data-optimizer-hint]').textContent=methodHint+rateHint;
   }
 
+  const poolValues=[[1,3,2,0],[4,6,1,2],[1,2,5,3],[0,1,7,8]];
+  function poolingMarkup(){
+    return '<section class="lesson-playground pooling-playground" data-pooling-playground data-pool-method="max" data-pool-stride="2" aria-labelledby="pooling-playground-title"><div class="playground-heading"><div><span class="playground-kicker">互动图解 · 池化窗口</span><h3 id="pooling-playground-title">一个局部窗口，怎样变成一个输出值？</h3><p>切换最大池化与平均池化，再改变步幅、移动输出位置；图中的窗口和对应结果会同步更新。</p></div><button type="button" class="playground-reset" data-pool-reset>恢复默认</button></div><div class="pooling-methods" role="group" aria-label="选择池化计算方式"><button type="button" data-pool-method-choice="max" aria-pressed="true">最大池化</button><button type="button" data-pool-method-choice="avg" aria-pressed="false">平均池化</button></div><div class="playground-chart pooling-chart" data-pool-chart></div><div class="pooling-controls"><div class="pooling-stride-switch"><span>窗口步幅 stride</span><div role="group" aria-label="选择池化步幅"><button type="button" data-pool-stride-choice="1" aria-pressed="false">1 · 重叠滑动</button><button type="button" data-pool-stride-choice="2" aria-pressed="true">2 · 不重叠</button></div></div><label class="playground-range"><span>输出行 <output data-pool-row-value>0</output></span><input type="range" min="0" max="1" step="1" value="0" data-pool-row aria-label="选择输出矩阵中的行"></label><label class="playground-range"><span>输出列 <output data-pool-col-value>0</output></span><input type="range" min="0" max="1" step="1" value="0" data-pool-col aria-label="选择输出矩阵中的列"></label></div><div class="pooling-readouts" data-pool-readouts></div><p class="playground-insight" data-pool-hint role="status" aria-live="polite"></p><p class="playground-footnote">教学例子使用固定的 4×4 特征图和 2×2 无填充窗口。步幅改变窗口移动距离；池化不会学习新权重，但输出更小也意味着空间位置细节更少。真实网络还要核对 padding、奇数尺寸和具体框架的输出规则。</p></section>';
+  }
+  function poolingResult(method,row,col,stride){
+    const values=[];
+    for(let r=0;r<2;r++)for(let c=0;c<2;c++)values.push(poolValues[row*stride+r][col*stride+c]);
+    return method==='max'?Math.max(...values):values.reduce((sum,value)=>sum+value,0)/values.length;
+  }
+  function poolingSvg(method,stride,row,col){
+    const outputSize=Math.floor((4-2)/stride)+1,windowRow=row*stride,windowCol=col*stride,W=760,H=302;
+    const inputX=48,inputY=87,cell=46,outX=513,outY=100,outCell=52;
+    let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="池化交互图：左侧 4 乘 4 输入特征图中高亮一个 2 乘 2 窗口，右侧显示对应输出矩阵"><rect width="760" height="302" fill="#fffefa"/>';
+    out+=svgText(inputX,35,'输入特征图 · 4 × 4',14,'start','#4e5e69')+svgText(outX,35,'输出特征图 · '+outputSize+' × '+outputSize,14,'start','#4e5e69');
+    out+=svgText(inputX,57,'橙色：窗口内最大值；紫色：当前参与计算的窗口',10,'start','#79838a');
+    for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+      const inWindow=r>=windowRow&&r<windowRow+2&&c>=windowCol&&c<windowCol+2;
+      const winner=inWindow&&poolValues[r][c]===Math.max(poolValues[windowRow][windowCol],poolValues[windowRow][windowCol+1],poolValues[windowRow+1][windowCol],poolValues[windowRow+1][windowCol+1]);
+      const x=inputX+c*cell,y=inputY+r*cell,fill=winner?'#f4d9b7':inWindow?'#ebe6f4':'#f2f3f0',stroke=winner?'#c87928':inWindow?'#8879b3':'#fffefa';
+      out+='<rect x="'+x+'" y="'+y+'" width="'+(cell-3)+'" height="'+(cell-3)+'" rx="4" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+(inWindow?2:1)+'"/>'+svgText(x+(cell-3)/2,y+29,String(poolValues[r][c]),15,'middle',winner?'#8f511d':'#47545e');
+    }
+    out+='<path d="M252 172H439M429 161L440 172L429 183" fill="none" stroke="#8d8a9b" stroke-width="2"/><rect x="300" y="136" width="94" height="25" rx="12" fill="#f0edf6"/>'+svgText(347,153,method==='max'?'取最大值':'取窗口均值',10,'middle','#62538b');
+    for(let r=0;r<outputSize;r++)for(let c=0;c<outputSize;c++){
+      const value=poolingResult(method,r,c,stride),selected=r===row&&c===col,x=outX+c*outCell,y=outY+r*outCell;
+      out+='<rect x="'+x+'" y="'+y+'" width="'+(outCell-4)+'" height="'+(outCell-4)+'" rx="4" fill="'+(selected?'#e9e3f3':'#f2f3f0')+'" stroke="'+(selected?'#8879b3':'#fffefa')+'" stroke-width="'+(selected?2:1)+'"/>'+svgText(x+(outCell-4)/2,y+32,fmt(value),14,'middle',selected?'#574786':'#47545e');
+    }
+    out+=svgText(510,270,'高亮输出 ['+row+', '+col+'] ← 输入窗口左上角 ['+windowRow+', '+windowCol+']',10,'start','#747e87');
+    return out+'</svg>';
+  }
+  function updatePooling(root){
+    const method=root.dataset.poolMethod||'max',stride=Number(root.dataset.poolStride)||2,outputSize=Math.floor((4-2)/stride)+1;
+    const rowInput=root.querySelector('[data-pool-row]'),colInput=root.querySelector('[data-pool-col]');
+    rowInput.max=String(outputSize-1);colInput.max=String(outputSize-1);
+    const row=Math.min(outputSize-1,Number(rowInput.value)||0),col=Math.min(outputSize-1,Number(colInput.value)||0);
+    rowInput.value=String(row);colInput.value=String(col);
+    root.querySelector('[data-pool-row-value]').textContent=String(row);root.querySelector('[data-pool-col-value]').textContent=String(col);
+    root.querySelector('[data-pool-chart]').innerHTML=poolingSvg(method,stride,row,col);
+    root.querySelectorAll('[data-pool-method-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.poolMethodChoice===method)));
+    root.querySelectorAll('[data-pool-stride-choice]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.poolStrideChoice)===stride)));
+    const windowRow=row*stride,windowCol=col*stride,values=[poolValues[windowRow][windowCol],poolValues[windowRow][windowCol+1],poolValues[windowRow+1][windowCol],poolValues[windowRow+1][windowCol+1]],value=poolingResult(method,row,col,stride);
+    root.querySelector('[data-pool-readouts]').innerHTML='<div><span>当前窗口的 4 个值</span><strong>['+values.join(', ')+']</strong></div><div><span>'+ (method==='max'?'池化输出 · 最大值':'池化输出 · 平均值')+'</span><strong>'+fmt(value)+'</strong></div><div><span>输出形状</span><strong>['+outputSize+', '+outputSize+']</strong></div>';
+    root.querySelector('[data-pool-hint]').textContent=method==='max'?'窗口里最强的激活被保留下来；切换窗口可看到峰值怎样移动到输出图。':'窗口里的数值被平均，强峰会被邻近低值拉低；这保留整体强度，但弱化局部尖峰。';
+  }
+
+  const trainingCurve={train:[1.92,1.58,1.32,1.13,0.98,0.86,0.77,0.69,0.62,0.56,0.51,0.47,0.44,0.41,0.39,0.37,0.355,0.34,0.328,0.316,0.306,0.297,0.288,0.28,0.272,0.265,0.258,0.252,0.246,0.24],validation:[1.70,1.42,1.20,1.02,0.90,0.80,0.73,0.67,0.62,0.58,0.55,0.53,0.52,0.525,0.54,0.57,0.61,0.66,0.72,0.79,0.87,0.96,1.06,1.17,1.29,1.42,1.56,1.71,1.87,2.04]};
+  const bestTrainingEpoch=trainingCurve.validation.indexOf(Math.min(...trainingCurve.validation))+1;
+  function trainingMarkup(){
+    return '<section class="lesson-playground training-playground" data-training-playground aria-labelledby="training-playground-title"><div class="playground-heading"><div><span class="playground-kicker">互动图解 · 训练与验证</span><h3 id="training-playground-title">训练得越来越好，为什么验证结果反而变差？</h3><p>拖动轮次指针，看两条误差曲线怎样分开。试着比较当前轮与最佳验证轮。</p></div><button type="button" class="playground-reset" data-training-reset>回到第 20 轮</button></div><div class="playground-chart training-chart" data-training-chart></div><div class="training-controls"><label class="playground-range"><span>查看训练轮次 <output data-training-epoch-value>20</output></span><input type="range" min="1" max="30" step="1" value="20" data-training-epoch aria-label="选择要观察的训练轮次"></label><button type="button" class="secondary" data-training-best>跳到最佳验证轮次</button></div><div class="training-readouts" data-training-readouts></div><p class="playground-insight" data-training-hint role="status" aria-live="polite"></p><p class="playground-footnote">教学示意曲线，不是某次真实训练记录。示例用验证损失最低点说明检查点选择；检测任务通常还会按验证 fitness、mAP 等配置指定的指标选权重。看到验证曲线波动时，应结合数据划分、其他指标与失败样例判断。</p></section>';
+  }
+  function trainingSvg(epoch){
+    const W=760,H=350,L=66,R=25,T=25,B=281,xmin=1,xmax=30,ymin=0,ymax=2.1,pw=W-L-R,ph=B-T;
+    const X=value=>L+(value-xmin)/(xmax-xmin)*pw,Y=value=>B-(value-ymin)/(ymax-ymin)*ph;
+    let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="訓練示意曲線：训练损失逐轮下降，验证损失先下降后上升；竖线标出当前轮，绿色虚线标出最佳验证轮次"><rect width="760" height="350" fill="#fffefa"/>';
+    for(let value=0;value<=2.001;value+=0.5)out+='<line x1="'+L+'" y1="'+Y(value)+'" x2="'+(W-R)+'" y2="'+Y(value)+'" stroke="#eeece6"/>'+svgText(L-10,Y(value)+4,value.toFixed(1),10,'end','#7c858c');
+    for(let value=1;value<=30;value+=5)out+='<line x1="'+X(value)+'" y1="'+T+'" x2="'+X(value)+'" y2="'+B+'" stroke="#f2f0eb"/>'+svgText(X(value),B+18,String(value),9,'middle','#7c858c');
+    out+=svgText(17,T+3,'损失',10,'start','#717c84')+svgText(W-R,B+36,'epoch',10,'end','#717c84');
+    const points=(values)=>values.map((value,index)=>X(index+1).toFixed(1)+','+Y(value).toFixed(1)).join(' ');
+    out+='<polyline points="'+points(trainingCurve.train)+'" fill="none" stroke="#668db4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="'+points(trainingCurve.validation)+'" fill="none" stroke="#d4895c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+    const bestX=X(bestTrainingEpoch),currentX=X(epoch),trainY=Y(trainingCurve.train[epoch-1]),valY=Y(trainingCurve.validation[epoch-1]);
+    out+='<line x1="'+bestX+'" y1="'+T+'" x2="'+bestX+'" y2="'+B+'" stroke="#5d987f" stroke-width="1.6" stroke-dasharray="5 5"/>'+svgText(bestX+5,T+12,'最佳轮 '+bestTrainingEpoch,9,'start','#4e876f');
+    out+='<line x1="'+currentX+'" y1="'+T+'" x2="'+currentX+'" y2="'+B+'" stroke="#75649f" stroke-width="1.6" stroke-dasharray="3 4"/><circle cx="'+currentX+'" cy="'+trainY+'" r="5.5" fill="#668db4" stroke="#fffefa" stroke-width="2"/><circle cx="'+currentX+'" cy="'+valY+'" r="5.5" fill="#d4895c" stroke="#fffefa" stroke-width="2"/>';
+    const legendY=H-17;out+='<line x1="244" y1="'+legendY+'" x2="261" y2="'+legendY+'" stroke="#668db4" stroke-width="3"/>'+svgText(267,legendY+4,'训练损失',10,'start','#5a6874')+'<line x1="357" y1="'+legendY+'" x2="374" y2="'+legendY+'" stroke="#d4895c" stroke-width="3"/>'+svgText(380,legendY+4,'验证损失',10,'start','#5a6874')+'<line x1="474" y1="'+legendY+'" x2="491" y2="'+legendY+'" stroke="#5d987f" stroke-width="2" stroke-dasharray="4 4"/>'+svgText(497,legendY+4,'最佳验证轮次',10,'start','#5a6874');
+    return out+'</svg>';
+  }
+  function updateTraining(root){
+    const input=root.querySelector('[data-training-epoch]'),epoch=Math.min(trainingCurve.train.length,Math.max(1,Number(input.value)||1));input.value=String(epoch);
+    const train=trainingCurve.train[epoch-1],validation=trainingCurve.validation[epoch-1],best=trainingCurve.validation[bestTrainingEpoch-1];
+    root.querySelector('[data-training-epoch-value]').textContent=String(epoch);
+    root.querySelector('[data-training-chart]').innerHTML=trainingSvg(epoch);
+    root.querySelector('[data-training-readouts]').innerHTML='<div><span>第 '+epoch+' 轮 · 训练损失</span><strong>'+fmt(train,3)+'</strong></div><div><span>第 '+epoch+' 轮 · 验证损失</span><strong>'+fmt(validation,3)+'</strong></div><div><span>最佳验证轮次</span><strong>第 '+bestTrainingEpoch+' 轮 · '+fmt(best,3)+'</strong></div>';
+    const hint=epoch<bestTrainingEpoch?'这时验证损失仍在下降。可以继续训练，并持续用验证集比较检查点。':epoch===bestTrainingEpoch?'本例到达验证损失最低点。若以验证损失选模型，这一轮的权重会成为当前最佳检查点。':'验证损失已经高于第 '+bestTrainingEpoch+' 轮；这是泛化变差的信号。比较并保留最佳检查点，再检查数据划分与其他验证指标。';
+    root.querySelector('[data-training-hint]').textContent=hint;
+  }
+
+  const taskSpecs={
+    classification:{name:'图像分类',question:'整张图里有什么？',label:'每张图一个或多个类别',output:'图像级类别分数',metric:'准确率 / Top-k',cost:'标注通常较轻',summary:'适合判断是否出现某类物体。若一张图可同时属于多个类别，要采用多标签定义。'},
+    detection:{name:'目标检测',question:'每个物体在哪里？',label:'每个实例一个类别和边界框',output:'框坐标 + 类别 + 分数',metric:'按类 AP / mAP',cost:'需逐个框出物体',summary:'适合计数、定位和逐目标告警；框包含部分背景，轮廓并不精确。'},
+    segmentation:{name:'语义分割',question:'哪些像素属于哪一类？',label:'像素级类别掩码',output:'逐像素类别图',metric:'IoU / mIoU',cost:'像素标注较细',summary:'适合面积、边界或区域分析。同类多个实例不会自动获得不同身份；区分实例要用实例分割。'}
+  };
+  function tasksMarkup(){
+    return '<section class="lesson-playground tasks-playground" data-tasks-playground data-task-mode="classification" aria-labelledby="tasks-playground-title"><div class="playground-heading"><div><span class="playground-kicker">互动图解 · 视觉任务选型</span><h3 id="tasks-playground-title">同一张图，三种任务会给出什么不同答案？</h3><p>切换任务，观察输入图上的标注和模型输出如何变化。先从“系统要回答什么”开始选。</p></div><button type="button" class="playground-reset" data-task-reset>恢复分类视图</button></div><div class="task-mode-switch" role="group" aria-label="选择视觉任务">'+Object.entries(taskSpecs).map(([id,spec])=>'<button type="button" data-task-choice="'+id+'" aria-pressed="'+String(id==='classification')+'">'+spec.name+'</button>').join('')+'</div><div class="playground-chart tasks-chart" data-task-scene></div><div class="task-readouts" data-task-readouts></div><p class="playground-insight" data-task-hint role="status" aria-live="polite"></p><p class="playground-footnote">示意图中的输出是教学插画，不是模型推理结果。语义分割按像素分配类别；实例分割还要区分同类的各个对象。任务标注、模型输出与评估指标需要相互匹配。</p></section>';
+  }
+  function taskSceneSvg(mode){
+    const selected=taskSpecs[mode];let out='<svg viewBox="0 0 760 310" role="img" aria-label="同一张道路场景分别展示'+selected.name+'的图像级、边界框或像素掩码输出"><rect width="760" height="310" fill="#fffefa"/><text x="42" y="34" fill="#586571" font-size="13" font-weight="650">同一输入图像</text><text x="383" y="34" fill="#586571" font-size="13" font-weight="650">'+esc(selected.name)+'的输出示意</text><rect x="40" y="50" width="294" height="216" rx="5" fill="#deebea"/><rect x="40" y="165" width="294" height="101" fill="#b6c9c3"/><path d="M40 166L110 105L169 159L231 94L334 164" fill="#ceddd5"/><path d="M40 205H334M40 236H334" stroke="#9aacaa" stroke-width="3"/><path d="M164 166L206 166L248 266H116Z" fill="#8e9e9b"/><path d="M175 189H187M190 218H207M153 241H216" stroke="#f5f0dc" stroke-width="3" stroke-dasharray="8 7"/><rect x="132" y="156" width="100" height="39" rx="10" fill="#729187"/><path d="M146 156L164 140H202L220 156" fill="#729187"/><circle cx="154" cy="197" r="10" fill="#445955"/><circle cx="211" cy="197" r="10" fill="#445955"/><circle cx="88" cy="153" r="7" fill="#cb8a67"/><path d="M88 160L88 183M78 171L98 171M88 183L79 197M88 183L97 197" stroke="#cb8a67" stroke-width="5" stroke-linecap="round"/><text x="48" y="286" fill="#7b858d" font-size="10">输入固定，变化的是任务定义和监督粒度</text>';
+    if(mode==='classification'){
+      out+='<rect x="381" y="55" width="336" height="205" rx="7" fill="#f2f0f6" stroke="#e4dfed"/><rect x="402" y="77" width="99" height="22" rx="11" fill="#e7e1f1"/><text x="451" y="92" text-anchor="middle" fill="#655593" font-size="10" font-weight="650">图像级输出</text><text x="402" y="137" fill="#354552" font-size="20" font-weight="700">汽车</text><text x="699" y="136" text-anchor="end" fill="#557e71" font-size="16" font-weight="700">0.92</text><rect x="402" y="150" width="296" height="8" rx="4" fill="#e2e2de"/><rect x="402" y="150" width="272" height="8" rx="4" fill="#729d8c"/><text x="402" y="190" fill="#65727d" font-size="11">模型回答：这张图里最可能有什么？</text><text x="402" y="219" fill="#899198" font-size="10">不提供位置；只看得出整张图包含汽车</text>';
+    }else if(mode==='detection'){
+      out+='<rect x="126" y="136" width="111" height="70" fill="none" stroke="#7a65aa" stroke-width="2.5"/><rect x="126" y="121" width="96" height="16" rx="2" fill="#7a65aa"/><text x="132" y="133" fill="#fff" font-size="9">汽车 0.92</text><rect x="69" y="142" width="39" height="63" fill="none" stroke="#4c8b78" stroke-width="2.5"/><rect x="69" y="127" width="80" height="16" rx="2" fill="#4c8b78"/><text x="75" y="139" fill="#fff" font-size="9">行人 0.87</text><rect x="383" y="58" width="326" height="201" rx="6" fill="#f7f6f1" stroke="#e9e6df"/><text x="405" y="90" fill="#384652" font-size="15" font-weight="700">逐个目标输出</text><rect x="405" y="108" width="281" height="47" rx="4" fill="#f0edf6"/><rect x="405" y="108" width="3" height="47" fill="#7a65aa"/><text x="420" y="128" fill="#514477" font-size="11" font-weight="650">汽车 · 0.92</text><text x="420" y="144" fill="#73808b" font-size="10">边界框：左、上、右、下坐标</text><rect x="405" y="166" width="281" height="47" rx="4" fill="#edf4f0"/><rect x="405" y="166" width="3" height="47" fill="#4c8b78"/><text x="420" y="186" fill="#3c7966" font-size="11" font-weight="650">行人 · 0.87</text><text x="420" y="202" fill="#73808b" font-size="10">每个实例都有自己的框和类别</text><text x="405" y="238" fill="#899198" font-size="10">矩形定位，不精确描述目标轮廓</text>';
+    }else{
+      out+='<path d="M164 166L179 151L202 151L221 166L232 193L126 193L140 166Z" fill="#8067b3" fill-opacity=".42" stroke="#70589f" stroke-width="1.5"/><path d="M40 205H334M40 236H334M164 166L206 166L248 266H116Z" fill="#538f7b" fill-opacity=".23" stroke="#538f7b" stroke-width="1.2"/><rect x="383" y="58" width="326" height="201" rx="6" fill="#f7f6f1" stroke="#e9e6df"/><text x="405" y="90" fill="#384652" font-size="15" font-weight="700">每个像素都有类别</text><rect x="407" y="111" width="16" height="16" rx="3" fill="#8067b3" fill-opacity=".65"/><text x="433" y="123" fill="#56636e" font-size="11">汽车像素</text><rect x="407" y="141" width="16" height="16" rx="3" fill="#538f7b" fill-opacity=".5"/><text x="433" y="153" fill="#56636e" font-size="11">道路像素</text><rect x="407" y="171" width="16" height="16" rx="3" fill="#dce8e4"/><text x="433" y="183" fill="#56636e" font-size="11">背景像素</text><text x="405" y="220" fill="#73808b" font-size="10">紫色覆盖汽车区域，绿色覆盖道路区域</text><text x="405" y="239" fill="#899198" font-size="10">像素边界更细，标注也需要更多细节</text>';
+    }
+    return out+'</svg>';
+  }
+  function updateTasks(root){
+    const mode=root.dataset.taskMode||'classification',spec=taskSpecs[mode];
+    root.querySelector('[data-task-scene]').innerHTML=taskSceneSvg(mode);
+    root.querySelectorAll('[data-task-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.taskChoice===mode)));
+    root.querySelector('[data-task-readouts]').innerHTML='<div><span>系統要回答</span><strong>'+spec.question+'</strong></div><div><span>标注单位</span><strong>'+spec.label+'</strong></div><div><span>模型主要输出</span><strong>'+spec.output+'</strong></div><div><span>常见评估 / 标注特点</span><strong>'+spec.metric+' · '+spec.cost+'</strong></div>';
+    root.querySelector('[data-task-hint]').textContent=spec.summary+' 选能满足决策需求的最简单粒度。';
+  }
+
   function render(lessonId,sectionIndex){
     if(lessonId==='network'&&sectionIndex===1)return activationMarkup();
     if(lessonId==='losses'&&sectionIndex===1)return lossMarkup();
     if(lessonId==='optimizer'&&sectionIndex===0)return optimizerMarkup();
+    if(lessonId==='pooling'&&sectionIndex===0)return poolingMarkup();
+    if(lessonId==='training'&&sectionIndex===3)return trainingMarkup();
+    if(lessonId==='tasks'&&sectionIndex===1)return tasksMarkup();
     return '';
   }
   function initialize(){
     document.querySelectorAll('[data-activation-playground]').forEach(updateActivation);
     document.querySelectorAll('[data-loss-playground]').forEach(updateLoss);
     document.querySelectorAll('[data-optimizer-playground]').forEach(updateOptimizer);
+    document.querySelectorAll('[data-pooling-playground]').forEach(updatePooling);
+    document.querySelectorAll('[data-training-playground]').forEach(updateTraining);
+    document.querySelectorAll('[data-tasks-playground]').forEach(updateTasks);
   }
   window.lessonPlaygrounds={render,initialize};
 
@@ -149,6 +256,8 @@
     const activation=target.closest('[data-activation-x]');if(activation){updateActivation(activation.closest('[data-activation-playground]'));return}
     const loss=target.closest('[data-loss-error],[data-loss-delta]');if(loss){updateLoss(loss.closest('[data-loss-playground]'));return}
     const optimizer=target.closest('[data-optimizer-rate],[data-optimizer-step]');if(optimizer)updateOptimizer(optimizer.closest('[data-optimizer-playground]'));
+    const poolControl=target.closest('[data-pool-row],[data-pool-col]');if(poolControl){updatePooling(poolControl.closest('[data-pooling-playground]'));return}
+    const trainingControl=target.closest('[data-training-epoch]');if(trainingControl){updateTraining(trainingControl.closest('[data-training-playground]'));return}
   });
   document.addEventListener('click',event=>{
     const activationChoice=event.target.closest('[data-activation-choose]');
@@ -161,5 +270,19 @@
     if(optimizerChoice){const root=optimizerChoice.closest('[data-optimizer-playground]');root.dataset.optimizer=optimizerChoice.dataset.optimizerChoose;updateOptimizer(root);return}
     const optimizerReset=event.target.closest('[data-optimizer-reset]');
     if(optimizerReset){const root=optimizerReset.closest('[data-optimizer-playground]');root.dataset.optimizer='sgd';root.querySelector('[data-optimizer-rate]').value='0.20';root.querySelector('[data-optimizer-step]').value='10';updateOptimizer(root)}
+    const poolMethod=event.target.closest('[data-pool-method-choice]');
+    if(poolMethod){const root=poolMethod.closest('[data-pooling-playground]');root.dataset.poolMethod=poolMethod.dataset.poolMethodChoice;updatePooling(root);return}
+    const poolStride=event.target.closest('[data-pool-stride-choice]');
+    if(poolStride){const root=poolStride.closest('[data-pooling-playground]');root.dataset.poolStride=poolStride.dataset.poolStrideChoice;root.querySelector('[data-pool-row]').value='0';root.querySelector('[data-pool-col]').value='0';updatePooling(root);return}
+    const poolReset=event.target.closest('[data-pool-reset]');
+    if(poolReset){const root=poolReset.closest('[data-pooling-playground]');root.dataset.poolMethod='max';root.dataset.poolStride='2';root.querySelector('[data-pool-row]').value='0';root.querySelector('[data-pool-col]').value='0';updatePooling(root);return}
+    const trainingBest=event.target.closest('[data-training-best]');
+    if(trainingBest){const root=trainingBest.closest('[data-training-playground]');root.querySelector('[data-training-epoch]').value=String(bestTrainingEpoch);updateTraining(root);return}
+    const trainingReset=event.target.closest('[data-training-reset]');
+    if(trainingReset){const root=trainingReset.closest('[data-training-playground]');root.querySelector('[data-training-epoch]').value='20';updateTraining(root);return}
+    const taskChoice=event.target.closest('[data-task-choice]');
+    if(taskChoice){const root=taskChoice.closest('[data-tasks-playground]');root.dataset.taskMode=taskChoice.dataset.taskChoice;updateTasks(root);return}
+    const taskReset=event.target.closest('[data-task-reset]');
+    if(taskReset){const root=taskReset.closest('[data-tasks-playground]');root.dataset.taskMode='classification';updateTasks(root)}
   });
 })();

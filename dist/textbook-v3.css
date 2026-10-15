@@ -524,3 +524,29 @@ footer{border-color:#e5e2d9}
 @media(max-width:700px){.optimizer-layout{grid-template-columns:1fr}.optimizer-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.optimizer-current,.optimizer-score-table{align-self:stretch}}
 @media(max-width:520px){.lesson-playground{margin:20px -9px 25px;padding:13px 10px}.playground-heading{gap:9px}.playground-heading h3{font-size:16px}.playground-heading p{font-size:11px}.playground-reset{padding:6px 7px;font-size:9px}.playground-tabs{gap:5px}.playground-tabs button{padding:6px 7px;font-size:9px}.playground-chart{overflow-x:auto}.playground-chart svg{min-width:560px}.playground-controls{grid-template-columns:1fr;gap:11px}.playground-readouts{gap:5px}.playground-readouts>div{padding:7px}.playground-readouts strong{font-size:11px}.loss-controls{grid-template-columns:1fr}.loss-readout{padding:8px}.loss-readout strong{font-size:14px}.optimizer-controls{grid-template-columns:1fr}.optimizer-methods button{padding:6px 8px;font-size:10px}}
 @media(prefers-reduced-motion:reduce){.lesson-playground *{scroll-behavior:auto!important}}
+
+/* Interactive chapter visualizations for pooling, training curves, and task selection. */
+.pooling-methods,.task-mode-switch{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.pooling-methods button,.pooling-stride-switch button,.task-mode-switch button{min-height:34px;padding:7px 11px;border:1px solid #e4e0d7;border-radius:4px;background:#fffefa;color:#64717d;font:inherit;font-size:11px;cursor:pointer}
+.pooling-methods button[aria-pressed="true"],.pooling-stride-switch button[aria-pressed="true"],.task-mode-switch button[aria-pressed="true"]{border-color:#a99bc8;background:#f0edf6;color:#554584;box-shadow:inset 0 0 0 1px #d9d1e8}
+.pooling-controls{display:grid;grid-template-columns:minmax(0,1.25fr) repeat(2,minmax(120px,1fr));gap:17px;align-items:end;margin:14px 0 9px}
+.pooling-stride-switch{display:grid;gap:8px;color:#5b6874;font-size:11px}
+.pooling-stride-switch>div{display:flex;flex-wrap:wrap;gap:6px}
+.pooling-stride-switch button{min-height:31px;padding:6px 8px;font-size:10px}
+.pooling-readouts,.training-readouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:13px 0}
+.pooling-readouts>div,.training-readouts>div{display:grid;gap:5px;min-width:0;padding:10px 11px;border:1px solid #e8e5dd;border-radius:4px;background:#fffefa}
+.pooling-readouts span,.training-readouts span{color:#7b858d;font-size:9px;line-height:1.55}
+.pooling-readouts strong,.training-readouts strong{color:#3e4b57;font-size:13px;line-height:1.5;font-variant-numeric:tabular-nums}
+.pooling-readouts>div:nth-child(2) strong{color:#655593}
+.training-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;margin:14px 0 8px}
+.training-controls>.secondary{min-height:35px;padding:7px 11px;border:1px solid #ded9ce;border-radius:4px;background:#fffefa;color:#5e6872;font:inherit;font-size:10px;cursor:pointer}
+.training-controls>.secondary:hover{border-color:#a99bc8;color:#574786}
+.training-readouts>div:nth-child(3){border-top:2px solid #78a48f}
+.tasks-chart svg{min-height:220px}
+.task-readouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:13px 0}
+.task-readouts>div{display:grid;gap:5px;min-width:0;padding:10px 12px;border:1px solid #e8e5dd;border-radius:4px;background:#fffefa}
+.task-readouts span{color:#7b858d;font-size:9px;line-height:1.55}
+.task-readouts strong{color:#3e4b57;font-size:11px;line-height:1.65}
+.lesson-playground .pooling-methods button:focus-visible,.lesson-playground .pooling-stride-switch button:focus-visible,.lesson-playground .task-mode-switch button:focus-visible{outline:2px solid #7867aa;outline-offset:2px}
+@media(max-width:700px){.pooling-controls{grid-template-columns:1fr 1fr}.pooling-stride-switch{grid-column:1/-1}.training-controls{grid-template-columns:1fr}.training-controls>.secondary{justify-self:start}}
+@media(max-width:520px){.pooling-controls{grid-template-columns:1fr}.pooling-stride-switch{grid-column:auto}.pooling-readouts,.training-readouts{gap:5px}.pooling-readouts>div,.training-readouts>div{padding:7px}.pooling-readouts strong,.training-readouts strong{font-size:10px}.task-readouts{grid-template-columns:1fr 1fr;gap:5px}.task-readouts>div{padding:8px}.task-readouts strong{font-size:10px}}

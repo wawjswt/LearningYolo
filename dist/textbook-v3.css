@@ -238,6 +238,75 @@ footer{border-color:#e5e2d9}
 .nms-filtered rect:first-child{stroke:#8b9298;stroke-dasharray:3 4;opacity:.6}
 .nms-filtered .nms-label-bg{fill:#89919a}
 .nms-filtered text{fill:#fff}
+
+/* Tensor lesson workbenches: diagram, live indexing controls, and a small prediction loop. */
+.tensor-explorer,.tensor-transpose-explorer{margin:27px -8px 35px;padding:clamp(16px,2.5vw,24px);border:1px solid #e4e0d8;border-left:3px solid #8271b2;background:linear-gradient(145deg,#fbfaf6,#f4f1f8);color:#465463}
+.tensor-explorer-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+.tensor-explorer-heading h3{margin:4px 0 0;color:#2e3c4b;font:600 19px/1.5 Georgia,"Noto Serif CJK SC","Songti SC",serif}
+.tensor-explorer-heading .chapter-kicker{font-size:9px}
+.tensor-zero-note{flex:none;padding:6px 9px;border:1px solid #e2deea;background:#fffefa;color:#675693;font-size:10px}
+.tensor-explorer-intro,.tensor-transpose-explorer>p{margin:10px 0 14px;color:#63717e;font-size:12px;line-height:1.85}
+.tensor-shape-switch,.transpose-view-switch{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}
+.tensor-shape-switch button,.transpose-view-switch button{min-height:37px;padding:8px 12px;border:1px solid #ded9e7;background:#fffefa;color:#5e6876;font:inherit;font-size:11px;cursor:pointer;transition:background .16s,border-color .16s,color .16s}
+.tensor-shape-switch button[aria-pressed=true],.transpose-view-switch button[aria-pressed=true]{border-color:#8b7ab9;background:#eeeaf5;color:#51427f;font-weight:700}
+.tensor-shape-switch button:hover,.transpose-view-switch button:hover{border-color:#aa9bc9}
+.tensor-explorer button:focus-visible,.tensor-transpose-explorer button:focus-visible,.tensor-prediction:focus-visible,.tensor-axis-control input:focus-visible{outline:3px solid #7c6db2;outline-offset:3px}
+.tensor-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(260px,.88fr);gap:12px;align-items:stretch}
+.tensor-diagram-card,.tensor-controls-card,.tensor-steps-card,.tensor-predict-card{min-width:0;margin:0;padding:14px;border:1px solid #e9e5dc;background:#fffefa}
+.tensor-card-label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px;color:#394655;font-size:11px}
+.tensor-card-label strong{font-size:12px;color:#354252}
+.tensor-card-label>span{color:#8a929a;font-size:9px;text-align:right}
+.tensor-diagram-scroll{overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-color:#c9c4d7 transparent;scrollbar-width:thin}
+.tensor-diagram-scroll svg{display:block;width:100%;height:auto;min-width:620px;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.tensor-diagram-scroll svg text{font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.tensor-diagram-card figcaption{padding:8px 2px 0;color:#7b8691;font-size:10px;line-height:1.75}
+.tensor-axis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 13px}
+.tensor-axis-control{display:flex;flex-direction:column;gap:6px;color:#576473;font-size:10px}
+.tensor-axis-control>span{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.tensor-axis-control output{min-width:22px;padding:2px 5px;border-radius:2px;background:#eeeaf5;color:#574988;font:700 11px Consolas,"Cascadia Code",monospace;text-align:center}
+.tensor-axis-control input{width:100%;margin:2px 0 0;accent-color:#7464a9;cursor:pointer}
+.tensor-computation{margin-top:16px;padding-top:9px;border-top:1px solid #eeeae2}
+.tensor-computation>p,.transpose-facts>p{display:flex;justify-content:space-between;gap:12px;margin:5px 0;color:#76818c;font-size:10px}
+.tensor-computation code,.transpose-facts code{background:#f0eef6;color:#5a4c89;font-size:10px}
+.tensor-selected-value{display:flex;flex-direction:column;gap:5px;margin:11px 0 6px;padding:10px;border-left:2px solid #db994f;background:#f8f4ed}
+.tensor-selected-value span{color:#87909a;font-size:9px}
+.tensor-selected-value strong{color:#4f3e30;font:600 12px/1.7 Consolas,"Cascadia Code",monospace;overflow-wrap:anywhere}
+.tensor-computation .tensor-valid-range{display:block;margin-top:8px;color:#818a93;font-size:9px;line-height:1.8}
+.tensor-learning-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.tensor-formula{margin:0 0 10px;padding:8px 9px;background:#f3f0f7;color:#5a4e7c;font:11px/1.7 Consolas,"Cascadia Code",monospace}
+.tensor-step-hint{margin:0;padding:8px 0;color:#7a8590;font-size:10px;line-height:1.8}
+.tensor-step-list ol{list-style:none;margin:0;padding:0}
+.tensor-step-list li{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid #f0ede6;color:#566371;font-size:10px;line-height:1.65}
+.tensor-step-number{display:grid;place-items:center;flex:none;width:20px;height:20px;border-radius:50%;background:#eeeaf5;color:#655595;font-size:9px;font-weight:700}
+.tensor-step-list li strong{color:#4f407e;font:700 11px Consolas,"Cascadia Code",monospace}
+.tensor-step-list li small{display:block;color:#85909a;font-size:9px}
+.tensor-step-list li.tensor-step-total{color:#456d5e}
+.tensor-step-list li.tensor-step-total .tensor-step-number{background:#e9f1eb;color:#438069}
+.tensor-step-actions{display:flex;align-items:center;gap:9px;margin-top:10px}
+.tensor-step-actions button,.tensor-prediction-row button{min-height:34px;padding:7px 10px;border:1px solid #dcd7e7;background:#f2eff8;color:#574a83;font:inherit;font-size:10px;cursor:pointer}
+.tensor-step-actions button:hover,.tensor-prediction-row button:hover{border-color:#a698c8;background:#ebe6f4}
+.tensor-step-actions button:disabled{opacity:.58;cursor:default}
+.tensor-step-actions .tensor-quiet-button{border-color:transparent;background:transparent;color:#7d8791}
+.tensor-predict-card>p{margin:0 0 10px;color:#626f7c;font-size:11px;line-height:1.75}
+.tensor-prediction-label{display:block;margin-bottom:5px;color:#697685;font-size:10px}
+.tensor-prediction-row{display:flex;gap:8px}
+.tensor-prediction{width:100%;min-width:0;padding:8px 10px;border:1px solid #dedbd2;background:#fffefa;color:#394655;font:12px Consolas,"Cascadia Code",monospace}
+.tensor-prediction-feedback{min-height:22px;margin:8px 0 0!important;color:#4b705f!important;font-size:10px!important}
+.tensor-predict-card .tensor-small-note,.tensor-transpose-explorer .tensor-small-note{margin:6px 0 0;color:#858e96;font-size:9px;line-height:1.75}
+.tensor-transpose-explorer{margin-top:23px;padding:15px 17px;border-left-width:2px;background:#faf9f5}
+.tensor-transpose-explorer>p{margin-top:7px}
+.transpose-result{display:grid;grid-template-columns:minmax(170px,.75fr) minmax(220px,1fr);gap:20px;align-items:center;padding:13px;border:1px solid #ece8df;background:#fffefa}
+.transpose-matrix>strong{display:block;margin:0 0 8px;color:#5d5182;font:600 11px Consolas,"Cascadia Code",monospace}
+.transpose-matrix table{border-collapse:separate;border-spacing:4px}
+.transpose-matrix td{width:37px;height:30px;border:1px solid #e6e4de;background:#f4f5f2;color:#5d6875;font:11px Consolas,"Cascadia Code",monospace;text-align:center}
+.transpose-matrix td.is-highlighted{border-color:#c87928;background:#e5a057;color:#4c3827;font-weight:700}
+.transpose-facts{display:grid;gap:4px}
+.transpose-facts>p{margin:3px 0;font-size:10px}
+.transpose-facts>p strong{color:#5e5285;font-size:9px;text-align:right}
+.transpose-facts .transpose-coordinate{display:block;margin:4px 0 0;padding-top:8px;border-top:1px solid #eeeae2;color:#9a652c;font-size:10px;font-weight:650}
+@media(max-width:760px){.tensor-layout,.tensor-learning-grid{grid-template-columns:1fr}.tensor-layout{gap:10px}.tensor-diagram-scroll svg{min-width:620px}.tensor-transpose-explorer{margin-left:-5px;margin-right:-5px}}
+@media(max-width:480px){.tensor-explorer,.tensor-transpose-explorer{margin-left:-9px;margin-right:-9px;padding:13px}.tensor-explorer-heading{flex-direction:column;gap:7px}.tensor-zero-note{padding:4px 7px}.tensor-card-label{align-items:flex-start}.tensor-card-label>span{max-width:48%}.tensor-axis-grid{gap:10px}.transpose-result{grid-template-columns:1fr;gap:9px}.transpose-facts{padding-top:9px;border-top:1px solid #eeeae2}.tensor-step-actions{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.tensor-shape-switch button,.transpose-view-switch button{transition:none}}
 .nms-ground-truth rect{fill:none;stroke:#448c77;stroke-width:2;stroke-dasharray:5 3;vector-effect:non-scaling-stroke}
 .nms-ground-truth text{fill:#286b58;font:10px "Segoe UI","Microsoft YaHei",sans-serif}
 .nms-steps{margin:8px 0;padding-left:19px;color:#576372;font-size:11px;line-height:1.9}

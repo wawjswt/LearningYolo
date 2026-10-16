@@ -7,12 +7,12 @@
     window.removeEventListener('resize',readingEffectsHandler);
     readingEffectsHandler=null;
   }
-  function updateReadingEffects(route){
+  function updateReadingEffects(route,lessonId){
     clearReadingEffects();
     if(route!=='lesson')return;
     const progress=document.getElementById('reading-progress');
     const fill=document.getElementById('reading-progress-fill');
-    const sections=[...document.querySelectorAll('.text-section[id^="section-"], #chapter-review, #chapter-notes')];
+    const sections=[...document.querySelectorAll('.text-section[id^="section-"], #chapter-review, #chapter-quiz, #chapter-notes')];
     const links=[...document.querySelectorAll('.chapter-toc a')];
     if(!progress||!fill)return;
     readingEffectsHandler=()=>{
@@ -26,6 +26,10 @@
       for(const section of sections){
         if(section.getBoundingClientRect().top<=threshold)active=section.id;
         else break;
+      }
+      if(lessonId&&active){
+        state.lastSection=state.lastSection||{};
+        if(state.lastSection[lessonId]!==active){state.lastSection[lessonId]=active;save();}
       }
       for(const link of links){
         const current=link.getAttribute('href')==='#'+active;
@@ -42,8 +46,10 @@
   function exerciseCard(l,exercise,type,index){
     const label=type==='section'?'本节练习':'章末综合题 '+(index+1);
     const indexAttribute=type==='section'?'data-section-index':'data-exercise-index';
-    const options=exercise.options.map((option,i)=>'<button type="button" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'">'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>').join('');
-    return '<section class="exercise-card '+type+'-exercise"><span class="exercise-label">'+label+'</span><p class="exercise-prompt">'+rich(exercise.q)+'</p><div class="exercise-options" role="group" aria-label="'+label+'">'+options+'</div><div class="quiz-result exercise-feedback" role="status" aria-live="polite"></div></section>';
+    const key=l.id+':'+type+':'+index,saved=state.exerciseAnswers?.[key],selected=Number.isInteger(saved)&&saved>=0&&saved<exercise.options.length?saved:null;
+    const options=exercise.options.map((option,i)=>{const active=selected===i,correct=active&&selected===exercise.answer;return '<button type="button" class="'+(active?(correct?'correct':'wrong'):'')+'" aria-pressed="'+active+'" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'">'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>'}).join('');
+    const feedback=selected===null?'':(selected===exercise.answer?'回答正确。':'再想一想。正确答案：'+String.fromCharCode(65+exercise.answer)+'。')+'解析：'+exercise.why;
+    return '<section class="exercise-card '+type+'-exercise"><span class="exercise-label">'+label+'</span><p class="exercise-prompt">'+rich(exercise.q)+'</p><div class="exercise-options" role="group" aria-label="'+label+'">'+options+'</div><div class="quiz-result exercise-feedback" role="status" aria-live="polite">'+feedback+'</div></section>';
   }
   function articleSections(l){
     const placements=window.lessonFigures.placement(l);
@@ -59,7 +65,7 @@
       const tensorExplorer=l.id==='tensor'&&i===8?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&i===4?tensorTransposeMarkup():'';
       const lessonPlayground=window.lessonPlaygrounds?.render(l.id,i)||'';
-      return '<section class="text-section" id="section-'+(i+1)+'"><span class="section-number">0'+(i+1)+'</span><h2>'+s.title+'</h2>'+paragraphs+fallback+transposeExplorer+tensorExplorer+lessonPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
+      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+fallback+transposeExplorer+tensorExplorer+lessonPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
     }).join('');
   }
   function tensorExplorerMarkup(){
@@ -138,7 +144,8 @@
   function updateTensorSteps(root,indexes,strides){
     const list=root.querySelector('[data-tensor-step-list]'),next=root.querySelector('[data-tensor-step-next]');
     if(!list||!next)return;
-    const count=Math.min(indexes.length,Number(root.dataset.step)||0);
+    const count=Math.max(0,Math.min(indexes.length,Number(root.dataset.step)||0));
+    root.dataset.step=String(count);
     list.innerHTML=tensorStepMarkup(indexes,strides,count);
     next.disabled=count>=indexes.length;
     next.textContent=count>=indexes.length?'计算完成':'显示下一步（'+(count+1)+' / '+indexes.length+'）';
@@ -157,6 +164,14 @@
     root.querySelector('[data-tensor-range-readout]').textContent='合法范围：'+shape.map((size,axis)=>'轴 '+axis+' 为 0–'+(size-1)).join('；');
     root.querySelectorAll('[data-tensor-shape]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.tensorShape===root.dataset.shape)));
     updateTensorSteps(root,indexes,strides);
+    saveTensorProgress(root);
+  }
+  function saveTensorProgress(root){
+    const lessonId=root.closest('.text-section')?.dataset.lessonId;
+    if(!lessonId)return;
+    state.tensorProgress=state.tensorProgress||{};
+    state.tensorProgress[lessonId]={shape:root.dataset.shape,indices:root.dataset.indices,step:Number(root.dataset.step)||0,prediction:root.querySelector('[data-tensor-prediction]')?.value||'',feedback:root.querySelector('[data-tensor-prediction-feedback]')?.textContent||''};
+    save();
   }
   function updateTransposeView(root){
     const transposed=root.dataset.view==='transposed',rows=transposed?4:3,cols=transposed?3:4;
@@ -166,7 +181,17 @@
     root.querySelectorAll('[data-transpose-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.transposeView===(transposed?'transposed':'original'))));
   }
   function initializeTensorLearning(){
-    document.querySelectorAll('[data-tensor-explorer]').forEach(root=>updateTensorExplorer(root,true));
+    document.querySelectorAll('[data-tensor-explorer]').forEach(root=>{
+      const lessonId=root.closest('.text-section')?.dataset.lessonId,saved=state.tensorProgress?.[lessonId];
+      if(saved){
+        if(saved.shape==='3d'||saved.shape==='4d')root.dataset.shape=saved.shape;
+        root.dataset.indices=String(saved.indices||'');
+        root.dataset.step=String(saved.step||0);
+        root.querySelector('[data-tensor-prediction]').value=String(saved.prediction||'');
+        root.querySelector('[data-tensor-prediction-feedback]').textContent=String(saved.feedback||'');
+      }
+      updateTensorExplorer(root,true);
+    });
     document.querySelectorAll('[data-tensor-transpose]').forEach(updateTransposeView);
   }
   function heading(title,sub,eyebrow){
@@ -176,12 +201,29 @@
     const done=lessons.filter(l=>state.done.includes(l.id)).length;
     return {done:done,pct:Math.round(done/lessons.length*100)};
   }
+  function sectionTitle(value){return String(value||'').replace(/^\s*\d+\s*[.、．]\s*/,'')}
+  function resumeSectionId(l,requested){
+    const candidate=requested||state.lastSection?.[l.id]||'section-1';
+    if(candidate==='chapter-review'&&l.keypoints)return candidate;
+    if(candidate==='chapter-quiz'&&l.chapterExercises?.length)return candidate;
+    if(candidate==='chapter-notes')return candidate;
+    const match=/^section-(\d+)$/.exec(candidate);
+    return match&&Number(match[1])<=l.sections.length?candidate:'section-1';
+  }
+  function resumeSectionTitle(l,sectionId){
+    if(sectionId==='chapter-review')return '本章要点';
+    if(sectionId==='chapter-quiz')return '本章综合练习';
+    if(sectionId==='chapter-notes')return '笔记与进度';
+    const index=Number((/^section-(\d+)$/.exec(sectionId)||[])[1])-1;
+    return l.sections[index]?sectionTitle(l.sections[index].title):sectionTitle(l.sections[0]?.title)||'第一节';
+  }
   function home(){
     const p=progress(),next=lessons.find(l=>l.id===state.last&&!state.done.includes(l.id))||lessons.find(l=>!state.done.includes(l.id))||lessons[0];
+    const hasSavedSection=!!state.lastSection?.[next.id],nextSection=resumeSectionId(next),nextHref='#lesson/'+next.id+(hasSavedSection?'/'+nextSection:''),nextSectionTitle=resumeSectionTitle(next,nextSection),sectionNumber=/^section-(\d+)$/.exec(nextSection),nextSectionLabel=sectionNumber?(hasSavedSection?'第 '+Number(sectionNumber[1])+' 节 · ':'从第一节开始 · ')+nextSectionTitle:'接着读：'+nextSectionTitle,nextReadingHeading=hasSavedSection?'从上次的小节接着读':'从第一节开始学习',heroActionLabel=hasSavedSection?'继续学习 · '+nextSectionTitle:(p.done?'继续学习':'从第一章开始');
     return heading('从像素开始，读懂视觉模型。','一套循序渐进的中文教材：先建立深度学习直觉，再走进计算机视觉，最后读懂并训练 YOLOv5。','VISIONLAB · 图文学习路径')
-    +'<section class="welcome-panel"><div><span class="chapter-kicker">YOUR TEXTBOOK FOR DEEP LEARNING</span><h2>把公式、代码和图像，<br>连成一条能走通的路。</h2><p>每章先说明要解决的问题，再逐步展开概念、推导直觉和可运行示例。读完一节，你可以自测、记笔记，并从下一章接着学习。</p><a class="primary" href="#lesson/'+next.id+'">'+(p.done?'继续阅读':'从第一章开始')+' <span>→</span></a><a class="welcome-secondary" href="#path">查看完整目录</a></div><div class="welcome-art" aria-hidden="true"><span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span><div class="art-core">AI<br><small>VISION</small></div><span class="art-node node-one">像素</span><span class="art-node node-two">特征</span><span class="art-node node-three">检测</span><span class="art-line line-one"></span><span class="art-line line-two"></span></div></section>'
+    +'<section class="welcome-panel"><div><span class="chapter-kicker">YOUR TEXTBOOK FOR DEEP LEARNING</span><h2>把公式、代码和图像，<br>连成一条能走通的路。</h2><p>每章先说明要解决的问题，再逐步展开概念、推导直觉和可运行示例。读完一节，你可以自测、记笔记，并从下一章接着学习。</p><a class="primary" href="'+nextHref+'">'+heroActionLabel+' <span>→</span></a><a class="welcome-secondary" href="#path">查看完整目录</a></div><div class="welcome-art" aria-hidden="true"><span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span><div class="art-core">AI<br><small>VISION</small></div><span class="art-node node-one">像素</span><span class="art-node node-two">特征</span><span class="art-node node-three">检测</span><span class="art-line line-one"></span><span class="art-line line-two"></span></div></section>'
     +'<section class="overview-strip"><div><span>课程章节</span><strong>'+lessons.length+'<small>章</small></strong></div><div><span>学习阶段</span><strong>03<small>阶</small></strong></div><div><span>我的进度</span><strong>'+p.pct+'<small>%</small></strong></div><div class="progress-wide"><div class="progress-label"><span>已完成 '+p.done+' / '+lessons.length+' 章</span><span>'+p.pct+'%</span></div><div class="progress-bar"><i style="width:'+p.pct+'%"></i></div></div></section>'
-    +'<section class="next-reading"><div class="section-heading"><div><span class="chapter-kicker">PICK UP WHERE YOU LEFT OFF</span><h2>接下来读这一章</h2></div><a href="#path">完整学习路线 ↗</a></div><a class="next-reading-card" href="#lesson/'+next.id+'"><span class="next-number">'+String(lessons.indexOf(next)+1).padStart(2,'0')+'</span><span class="next-copy"><small>'+groups[next.group].name+' · '+next.level+' · 约 '+next.time+' 分钟</small><strong>'+next.title+'</strong><span>'+next.desc+'</span></span><span class="next-arrow">继续阅读　→</span></a></section>'
+    +'<section class="next-reading"><div class="section-heading"><div><span class="chapter-kicker">PICK UP WHERE YOU LEFT OFF</span><h2>'+nextReadingHeading+'</h2></div><a href="#path">完整学习路线 ↗</a></div><a class="next-reading-card" href="'+nextHref+'"><span class="next-number">'+String(lessons.indexOf(next)+1).padStart(2,'0')+'</span><span class="next-copy"><small>'+groups[next.group].name+' · '+next.level+' · 约 '+next.time+' 分钟</small><strong>'+next.title+'</strong><span class="resume-section-label">'+nextSectionLabel+'</span><span>'+next.desc+'</span></span><span class="next-arrow">继续阅读　→</span></a></section>'
     +'<section class="stage-preview"><div class="section-heading"><div><span class="chapter-kicker">THREE STAGES · '+lessons.length+' CHAPTERS</span><h2>沿着概念，一步步深入</h2></div><a href="#courses">浏览全部章节 ↗</a></div><div class="stage-grid">'+Object.entries(groups).map(([key,g],i)=>{const list=lessons.filter(l=>l.group===key),finished=list.filter(l=>state.done.includes(l.id)).length;return '<a class="stage-card '+key+'" href="#courses/'+key+'"><span class="stage-index">0'+(i+1)+'</span><span class="stage-meta">'+g.label+'</span><h3>'+g.name+'</h3><p>'+g.desc+'</p><span class="stage-bottom">'+list.length+' 章 · '+finished+' 章已完成 <b>→</b></span></a>'}).join('')+'</div></section>'
     +'<a class="pipeline-home-promo" href="#lab"><span class="pipeline-home-icon" aria-hidden="true">↗</span><span><small>INTERACTIVE CASE · 7 STEPS</small><strong>从一张图，走完一次目标检测</strong><em>跟着真实框、候选框和评估指标，逐步看懂完整流程。</em></span><b>开始完整案例 →</b></a>'
     +'<section class="reading-note"><span>✳</span><p><strong>建议这样学习</strong><br>先读每章目标与图解，再按小节顺序学习；遇到公式时，联系旁边的直觉说明。代码可以复制到本地尝试，自测和笔记帮助你确认真正掌握的部分。</p></section>';
@@ -254,6 +296,11 @@
     if(!l)return '<div class="empty">这章暂时没有找到。<a href="#courses">返回课程目录</a></div>';
     state.last=id;save();
     const index=lessons.indexOf(l),next=lessons[index+1],prev=lessons[index-1];
+    const tocCollapsed=state.tocCollapsed===true;
+    const tocItems=l.sections.map((s,i)=>'<li><a href="#section-'+(i+1)+'">'+sectionTitle(s.title)+'</a></li>').join('')
+      +(l.keypoints?'<li><a href="#chapter-review">本章要点</a></li>':'')
+      +(l.chapterExercises?.length?'<li><a href="#chapter-quiz">本章综合练习</a></li>':'')
+      +'<li><a href="#chapter-notes">笔记与进度</a></li>';
     const articleContent=articleSections(l);
     const examples=l.worked?'<section class="worked-example"><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+l.worked.title+'</h2><p><strong>问题</strong>　'+rich(l.worked.prompt)+'</p><p><strong>解析</strong>　'+rich(l.worked.solution)+'</p></section>':'';
     const code=l.code?'<section class="text-section code-section"><div class="code-block"><div class="code-head"><span>'+esc(l.language||'代码示例')+' · 建议逐行阅读</span><button class="copy" data-copy="'+l.id+'">复制代码</button></div><pre><code>'+esc(l.code)+'</code></pre></div><p class="code-note">先运行原始示例并观察结果，再一次只改变一个输入或参数。'+(l.group==='yolo'?'YOLOv5 命令行选项会随仓库版本变化，请用本地脚本的帮助信息核对。':'每做一步，先预测输入与输出形状，再用实际结果核对。')+'</p></section>':'';
@@ -263,13 +310,15 @@
     const videoLinks=[...(l.videoUrl?[{url:l.videoUrl,label:l.videoLabel||'可选视频资料'}]:[]),...(l.relatedVideos||[])].map(video=>'<a class="chapter-video-link" href="'+esc(video.url)+'" target="_blank" rel="noopener noreferrer">'+esc(video.label||'可选外部视频资料')+' ↗</a>').join('');
     return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(index+1).padStart(2,'0')+' 章　/　'+lessons.length+' 章</span></div>'
       +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span>'+videoLinks+'</div></header>'
-      +'<div class="chapter-layout"><aside class="chapter-toc"><strong>本章导航</strong><ol>'+l.sections.map((s,i)=>'<li><a href="#section-'+(i+1)+'">'+s.title+'</a></li>').join('')+'<li><a href="#chapter-review">本章要点</a></li><li><a href="#chapter-quiz">本章综合练习</a></li><li><a href="#chapter-notes">笔记与进度</a></li></ol></aside>'
+      +'<div class="chapter-layout"><aside class="chapter-toc'+(tocCollapsed?' is-collapsed':'')+'" aria-label="本章导航"><div class="chapter-toc-heading"><strong>本章导航</strong><button class="chapter-toc-toggle" type="button" data-toggle-toc aria-expanded="'+(!tocCollapsed)+'" aria-controls="chapter-toc-list">'+(tocCollapsed?'展开':'收起')+'</button></div><ol id="chapter-toc-list"'+(tocCollapsed?' hidden':'')+'>'+tocItems+'</ol></aside>'
       +'<div class="chapter-body">'+objectiveBox(l)+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
       +'<section class="chapter-notes" id="chapter-notes"><span class="chapter-kicker">MY STUDY NOTES</span><h2>写下你的思考</h2><p>用自己的话总结一个概念，或记下尚未解决的问题。笔记保存在当前浏览器。</p><textarea class="note-input" id="lesson-note" placeholder="例如：我现在可以用自己的话解释…… / 我还不确定的是……" aria-label="课程笔记">'+esc(state.notes[id]||'')+'</textarea><div class="lesson-actions"><button class="secondary" data-save-note="'+id+'">保存笔记</button><span id="note-status" class="saved" role="status"></span><button class="primary complete-button" data-complete="'+id+'">'+(state.done.includes(id)?'已完成 · 点击撤销':'标记本章已完成 ✓')+'</button></div></section>'
       +'<nav class="chapter-pagination">'+(prev?'<a href="#lesson/'+prev.id+'"><small>上一章</small><strong>← '+prev.title+'</strong></a>':'<a href="#path"><small>学习路线</small><strong>浏览课程阶段 →</strong></a>')+(next?'<a class="pagination-next" href="#lesson/'+next.id+'"><small>接下来</small><strong>'+next.title+' →</strong></a>':'<a class="pagination-next" href="#path"><small>全部完成</small><strong>回顾完整学习路线 →</strong></a>')+'</nav></div></div></article>';
   }
   function render(){
     const parts=location.hash.slice(1).split('/'),route=parts[0]||'home',id=parts[1];
+    const currentLesson=route==='lesson'?lessons.find(l=>l.id===id):null;
+    const targetSection=currentLesson&&(parts[2]||state.lastSection?.[id])?resumeSectionId(currentLesson,parts[2]):null;
     if(route==='courses')filter=id&&groups[id]?id:'all';
     const names={home:'学习概览',courses:'课程目录',path:'学习路线',lab:'交互实验室',notes:'我的笔记',resources:'资源导航',lesson:'教材阅读'};
     const crumb=route==='lesson'?(lessons.find(l=>l.id===id)||{}).title||'教材阅读':names[route]||'学习概览';
@@ -280,24 +329,39 @@
     document.getElementById('content').innerHTML=content;
     window.lessonPlaygrounds?.initialize();
     initializeTensorLearning();
-    if(route==='lesson'&&parts[2])document.getElementById(parts[2])?.scrollIntoView({behavior:'smooth',block:'start'});
+    if(route==='lesson'&&targetSection)document.getElementById(targetSection)?.scrollIntoView({behavior:'auto',block:'start'});
     if(route==='lab'){updateIoU();window.initializeInteractiveLab?.();}
     document.querySelector('.sidebar').classList.remove('open');
-    updateReadingEffects(route);
+    updateReadingEffects(route,id);
     document.title=(route==='lesson'?crumb:names[route]||'学习概览')+' · VisionLab';
   }
   window.home=home;window.courses=courses;window.path=path;window.lesson=lesson;window.render=render;
   document.addEventListener('input',event=>{
     const input=event.target.closest('input[data-tensor-axis]');
-    if(!input)return;
-    const root=input.closest('[data-tensor-explorer]');
-    root.dataset.indices=Array.from(root.querySelectorAll('[data-tensor-axis]')).map(axis=>axis.value).join(',');
-    root.dataset.step='0';
-    root.querySelector('[data-tensor-prediction]').value='';
-    root.querySelector('[data-tensor-prediction-feedback]').textContent='';
-    updateTensorExplorer(root,false);
+    if(input){
+      const root=input.closest('[data-tensor-explorer]');
+      root.dataset.indices=Array.from(root.querySelectorAll('[data-tensor-axis]')).map(axis=>axis.value).join(',');
+      root.dataset.step='0';
+      root.querySelector('[data-tensor-prediction]').value='';
+      root.querySelector('[data-tensor-prediction-feedback]').textContent='';
+      updateTensorExplorer(root,false);
+      return;
+    }
+    const prediction=event.target.closest('input[data-tensor-prediction]');
+    if(prediction)saveTensorProgress(prediction.closest('[data-tensor-explorer]'));
   });
   document.addEventListener('click',event=>{
+    const tocToggle=event.target.closest('[data-toggle-toc]');
+    if(tocToggle){
+      state.tocCollapsed=tocToggle.getAttribute('aria-expanded')==='true';
+      const list=document.getElementById(tocToggle.getAttribute('aria-controls'));
+      tocToggle.setAttribute('aria-expanded',String(!state.tocCollapsed));
+      tocToggle.textContent=state.tocCollapsed?'展开':'收起';
+      tocToggle.closest('.chapter-toc')?.classList.toggle('is-collapsed',state.tocCollapsed);
+      if(list)list.hidden=state.tocCollapsed;
+      save();
+      return;
+    }
     const shapeButton=event.target.closest('[data-tensor-shape]');
     if(shapeButton){
       const root=shapeButton.closest('[data-tensor-explorer]');
@@ -312,9 +376,10 @@
     const check=event.target.closest('[data-tensor-check]');
     if(check){
       const root=check.closest('[data-tensor-explorer]'),prediction=root.querySelector('[data-tensor-prediction]'),feedback=root.querySelector('[data-tensor-prediction-feedback]'),shape=tensorShape(root.dataset.shape),strides=tensorStrides(shape),indexes=(root.dataset.indices||'').split(',').map(Number),offset=indexes.reduce((sum,index,axis)=>sum+index*strides[axis],0);
-      if(prediction.value.trim()===''){feedback.textContent='先写下你的预测，再检查。';return}
+      if(prediction.value.trim()===''){feedback.textContent='先写下你的预测，再检查。';saveTensorProgress(root);return}
       if(Number.isInteger(Number(prediction.value))&&Number(prediction.value)===offset)feedback.textContent='答对了！逐轴相乘并相加，得到偏移 '+offset+'；本例元素值也是 '+offset+'。';
       else feedback.textContent='还没对上。逐轴把索引乘以对应的 stride，再把各项相加；可以先看一步步演示，再修改预测。';
+      saveTensorProgress(root);
       return;
     }
     const transpose=event.target.closest('[data-transpose-view]');
@@ -335,6 +400,6 @@
     window.render();
     if(destination.split('/').length<3)window.scrollTo(0,0);
   },true);
-  window.addEventListener('popstate',()=>{window.render();window.scrollTo(0,0)});
+  window.addEventListener('popstate',()=>{window.render();if(!location.hash.startsWith('#lesson/'))window.scrollTo(0,0)});
   render();
 })();

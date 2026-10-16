@@ -41,7 +41,7 @@ footer{border-color:#e5e2d9}
 .next-reading-card{display:flex;align-items:center;gap:20px;background:#fffefa;border:1px solid #e8e5dc;padding:19px 23px;transition:border-color .18s,transform .18s}
 .next-reading-card:hover{border-color:#b5a9d6;transform:translateY(-2px)}
 .next-number{font:36px Georgia,serif;color:#9d91c7;width:48px}
-.next-copy{display:grid;gap:4px;flex:1}.next-copy small{font-size:10px;color:#7b8591}.next-copy strong{font:600 19px Georgia,"Noto Serif CJK SC","Songti SC",serif}.next-copy>span{font-size:12px;color:#687686}
+.next-copy{display:grid;gap:4px;flex:1}.next-copy small{font-size:10px;color:#7b8591}.next-copy strong{font:600 19px Georgia,"Noto Serif CJK SC","Songti SC",serif}.next-copy>span{font-size:12px;color:#687686}.next-copy>.resume-section-label{color:#5b4e84;font-weight:650}
 .next-arrow{font-size:12px;color:#6c5ba9;white-space:nowrap}
 .stage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid #e6e3da;border-bottom:1px solid #e6e3da}
 .stage-card{position:relative;display:flex;flex-direction:column;min-height:230px;padding:23px 24px;color:inherit;border-right:1px solid #e6e3da;transition:background .18s}
@@ -83,7 +83,7 @@ footer{border-color:#e5e2d9}
 .chapter-byline .chapter-video-link{color:#6656a5;font-weight:650;text-decoration:underline;text-underline-offset:3px}.chapter-byline .chapter-video-link:focus-visible{outline:2px solid #6656a5;outline-offset:3px}
 .chapter-layout{display:grid;grid-template-columns:175px minmax(0,690px);gap:clamp(25px,5vw,64px);align-items:start;justify-content:center}
 .chapter-toc{position:sticky;top:25px;padding:13px 0 13px 15px;border-left:1px solid #dedbd2}
-.chapter-toc strong{font-size:11px;color:#41505d}.chapter-toc ol{padding-left:16px;margin:11px 0 0;color:#8b929b}.chapter-toc li{padding:4px 0;font-size:10px;line-height:1.65}.chapter-toc a{color:#697785}.chapter-toc a:hover{color:#6756a6}
+.chapter-toc-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.chapter-toc strong{font-size:11px;color:#41505d}.chapter-toc-toggle{padding:3px 6px;border:1px solid #e0dcd3;background:#faf9f5;color:#665b8d;font:10px "Segoe UI","Microsoft YaHei",sans-serif;cursor:pointer}.chapter-toc-toggle:hover{border-color:#a89cc6;background:#fffefa}.chapter-toc ol{padding-left:16px;margin:11px 0 0;color:#8b929b}.chapter-toc ol[hidden]{display:none!important}.chapter-toc li{padding:4px 0;font-size:10px;line-height:1.65}.chapter-toc a{color:#697785}.chapter-toc a:hover{color:#6756a6}
 .chapter-body{min-width:0;background:#fffefa;border:1px solid #ebe8df;padding:clamp(22px,4.5vw,53px);box-shadow:0 7px 30px #333b4506}
 .lesson-figure{margin:0 -8px 37px;padding:14px 15px 12px;background:#f8f7f2;border:1px solid #ece9e0}
 .figure-heading{display:flex;justify-content:space-between;color:#526170;font-size:10px;margin:0 3px 8px}.figure-heading span:last-child{color:#8b9298}
@@ -196,12 +196,14 @@ footer{border-color:#e5e2d9}
 .loss-curve{fill:none;stroke:#a99cc7;stroke-width:3}
 .gradient-walk{fill:none;stroke:#408f78;stroke-width:2;stroke-dasharray:5 4}
 .gradient-walk~circle{fill:#408f78;stroke:#fffefa;stroke-width:2}
+.lab-chart .gradient-step-point{fill:#408f78;stroke:#fffefa;stroke-width:2;cursor:pointer;transition:fill .15s,stroke .15s,stroke-width .15s}.lab-chart .gradient-step-point:hover,.lab-chart .gradient-step-point:focus-visible{fill:#574879;stroke:#e3b271;stroke-width:3;outline:none}.lab-chart .gradient-step-point.is-selected{fill:#574879;stroke:#e3b271;stroke-width:3}
 .lab-chart text{fill:#707b89;font-family:"Segoe UI","Microsoft YaHei",sans-serif;font-size:10px}
 .chart-axis{fill:none;stroke:#b8b5ac;stroke-width:1}
 .minimum-line{stroke:#c4badd;stroke-width:1;stroke-dasharray:4 4}
 .lab-chart-legend{display:flex;align-items:center;gap:7px;margin-top:10px;color:#788391;font-size:11px}
 .lab-chart-legend span,.lab-chart-legend i{display:inline-block;width:14px;height:3px;border-radius:2px;background:#a99cc7}
 .lab-chart-legend i{margin-left:9px;background:#408f78}
+.gradient-step-controls{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 3px}.gradient-step-controls button{padding:6px 9px;font-size:10px}.gradient-step-controls button:disabled{opacity:.45;cursor:not-allowed}.gradient-step-controls output{min-width:125px;text-align:center;color:#514771;font-size:11px;font-variant-numeric:tabular-nums}.gradient-chart-hint{margin:4px 0 0;color:#7a8590;font-size:10px;text-align:center}
 .lab-control-card{display:flex;flex-direction:column;align-items:stretch;gap:9px}
 .lab-control-card>label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;color:#394655;font-size:12px;font-weight:600}
 .lab-control-card output{color:#65549f;font-variant-numeric:tabular-nums}

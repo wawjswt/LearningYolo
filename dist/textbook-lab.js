@@ -70,6 +70,7 @@
   const metricPredictions = createTeachingPredictions();
   const tabIds = ['pipeline', 'iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'];
   let activeTab = 'pipeline';
+  let activeGradientStep = 0;
   let convolutionFocus = { row: 1, column: 1 };
   let mapWalkthroughStep = 0;
   let diagnosisIndex = 0;
@@ -534,8 +535,9 @@
   function gradientPanel() {
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-gradient" aria-labelledby="lab-tab-gradient" data-lab-panel="gradient" hidden>'
       + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">LOSS LANDSCAPE</span><h2>沿着斜坡，一步步找低点</h2></div><strong id="gradient-result"></strong></div>'
-      + '<div id="gradient-chart" class="lab-chart" aria-live="polite"></div><div class="lab-chart-legend"><span></span>损失曲线 <i></i>参数更新路径</div></div>'
+      + '<div id="gradient-chart" class="lab-chart" aria-live="polite"></div><div class="gradient-step-controls" role="group" aria-label="选择梯度下降步骤"><button class="secondary" type="button" data-gradient-step-nav="previous">← 上一步</button><output id="gradient-step-label" aria-live="polite"></output><button class="secondary" type="button" data-gradient-step-nav="next">下一步 →</button></div><div class="lab-chart-legend"><span></span>损失曲线 <i></i>参数更新路径</div><p class="gradient-chart-hint">点击曲线上的圆点，或用“上一步 / 下一步”查看同一步的计算。</p></div>'
       + '<div class="lab-control-card"><h3 class="lab-subheading">误差沿计算链反传</h3><div class="gradient-equation-grid"><div><span>前向：ŷ = w × x</span><b id="gradient-forward"></b></div><div><span>损失：L = ½(ŷ − y)²</span><b id="gradient-loss"></b></div><div><span>反向：∂L/∂w</span><b id="gradient-backprop"></b></div><div><span>更新：w ← w − η∇L</span><b id="gradient-update"></b></div></div>'
+      + '<p id="gradient-step-context" class="lab-small-note" aria-live="polite"></p>'
       + '<label for="gradient-lr">学习率 η <output id="gradient-lr-value">0.50</output></label><input id="gradient-lr" type="range" min="0.05" max="1.90" step="0.05" value="0.50">'
       + '<label for="gradient-steps">更新步数 <output id="gradient-steps-value">4</output></label><input id="gradient-steps" type="range" min="1" max="8" step="1" value="4">'
       + '<div id="gradient-explanation" class="lab-callout" aria-live="polite"></div><p class="lab-formula">单神经元示例：固定输入 x=1、目标 y=3，<code>ŷ=wx</code>；链式法则给出 <code>∂L/∂w = ∂L/∂ŷ × ∂ŷ/∂w = (ŷ−y)x</code>。每次更新后重新前向计算。</p>'
@@ -714,19 +716,26 @@
     }).join(' ');
     const points = path.map(item => ({ ...item, px: x(item.weight), py: y(item.loss) }));
     const walk = points.map((item, index) => (index ? 'L' : 'M') + item.px.toFixed(1) + ' ' + item.py.toFixed(1)).join(' ');
-    const marks = points.map(item => '<circle cx="' + item.px.toFixed(1) + '" cy="' + item.py.toFixed(1) + '" r="5"><title>第 ' + item.step + ' 步：w=' + format(item.weight) + '，损失=' + format(item.loss) + '</title></circle><text x="' + item.px.toFixed(1) + '" y="' + (item.py - 10).toFixed(1) + '" text-anchor="middle">' + item.step + '</text>').join('');
+    activeGradientStep = Math.max(0, Math.min(activeGradientStep, path.length - 1));
+    const selected = path[activeGradientStep];
+    const selectedUpdate = linearNeuronStep(selected.weight, 1, 3, rate);
+    const marks = points.map((item, index) => '<circle class="gradient-step-point' + (index === activeGradientStep ? ' is-selected' : '') + '" data-gradient-step="' + index + '" tabindex="0" role="button" aria-pressed="' + (index === activeGradientStep) + '" aria-label="选中第 ' + item.step + ' 步，权重 ' + format(item.weight) + '，损失 ' + format(item.loss) + '" cx="' + item.px.toFixed(1) + '" cy="' + item.py.toFixed(1) + '" r="' + (index === activeGradientStep ? '7' : '5') + '"><title>第 ' + item.step + ' 步：w=' + format(item.weight) + '，损失=' + format(item.loss) + '</title></circle><text x="' + item.px.toFixed(1) + '" y="' + (item.py - 10).toFixed(1) + '" text-anchor="middle">' + item.step + '</text>').join('');
     chart.innerHTML = '<svg viewBox="0 0 510 260" role="img" aria-label="抛物线损失曲线上的梯度下降路径"><path class="chart-axis" d="M52 18V210H472"/><path class="loss-curve" d="' + curve + '"/><path class="gradient-walk" d="' + walk + '"/><path class="minimum-line" d="M262 18V210"/><text x="267" y="32">最低点 w=3</text><text x="52" y="235">w = -4</text><text x="443" y="235">w = 10</text>' + marks + '</svg>';
-    const last = path[path.length - 1];
-    byId('gradient-result').textContent = 'w = ' + format(last.weight) + ' · L = ' + format(last.loss);
-    const firstStep = linearNeuronStep(-4, 1, 3, rate);
+    byId('gradient-result').textContent = '第 ' + selected.step + ' 步 · w = ' + format(selected.weight) + ' · L = ' + format(selected.loss);
+    byId('gradient-step-label').textContent = '当前第 ' + selected.step + ' 步 · η = ' + rate.toFixed(2);
+    document.querySelector('[data-gradient-step-nav="previous"]').disabled = activeGradientStep <= 0;
+    document.querySelector('[data-gradient-step-nav="next"]').disabled = activeGradientStep >= path.length - 1;
     const forward = byId('gradient-forward');
     const loss = byId('gradient-loss');
     const backprop = byId('gradient-backprop');
     const update = byId('gradient-update');
-    if (forward) forward.textContent = 'ŷ = ' + format(firstStep.prediction) + '（目标 3）';
-    if (loss) loss.textContent = format(firstStep.loss);
-    if (backprop) backprop.textContent = format(firstStep.gradient);
-    if (update) update.textContent = '-4 → ' + format(firstStep.nextWeight);
+    if (forward) forward.textContent = format(selected.weight) + ' × 1 = ' + format(selectedUpdate.prediction) + '（目标 3）';
+    if (loss) loss.textContent = format(selected.loss);
+    if (backprop) backprop.textContent = format(selectedUpdate.gradient);
+    if (update) update.textContent = format(selected.weight) + ' → ' + format(selectedUpdate.nextWeight);
+    byId('gradient-step-context').textContent = activeGradientStep < path.length - 1
+      ? '沿这一步更新后，会到达曲线上的第 ' + path[activeGradientStep + 1].step + ' 步。'
+      : '已显示设定的最后一步；右侧更新值是继续训练时的下一步预览，不包含在当前曲线中。';
     byId('gradient-explanation').textContent = rate < 0.25
       ? '学习率较小，每次沿斜坡前进一小步，下降平稳但需要更多轮。'
       : rate > 1
@@ -1163,6 +1172,19 @@
   document.addEventListener('click', event => {
     const tab = event.target.closest('[data-lab-tab]');
     if (tab) { setActiveTab(tab.dataset.labTab); return; }
+    const gradientPoint = event.target.closest('[data-gradient-step]');
+    if (gradientPoint) {
+      activeGradientStep = number(gradientPoint.dataset.gradientStep, 0);
+      updateGradient();
+      byId('gradient-chart').querySelector('[data-gradient-step="' + activeGradientStep + '"]')?.focus();
+      return;
+    }
+    const gradientNavigation = event.target.closest('[data-gradient-step-nav]');
+    if (gradientNavigation) {
+      activeGradientStep += gradientNavigation.dataset.gradientStepNav === 'next' ? 1 : -1;
+      updateGradient();
+      return;
+    }
     const diagnosisChoice = event.target.closest('[data-diagnosis-choice]');
     if (diagnosisChoice) { diagnosisAnswer = diagnosisChoice.getAttribute('data-diagnosis-choice'); updateDiagnosis(); return; }
     const diagnosisNav = event.target.closest('[data-diagnosis-nav]');
@@ -1194,6 +1216,7 @@
     if (reset) {
       byId('gradient-lr').value = '0.50';
       byId('gradient-steps').value = '4';
+      activeGradientStep = 0;
       updateGradient();
       return;
     }
@@ -1239,6 +1262,21 @@
   });
 
   document.addEventListener('keydown', event => {
+    const gradientPoint = event.target.closest('[data-gradient-step]');
+    if (gradientPoint) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        activeGradientStep = number(gradientPoint.dataset.gradientStep, 0);
+        updateGradient();
+        byId('gradient-chart').querySelector('[data-gradient-step="' + activeGradientStep + '"]')?.focus();
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        activeGradientStep += event.key === 'ArrowRight' ? 1 : -1;
+        updateGradient();
+        byId('gradient-chart').querySelector('[data-gradient-step="' + activeGradientStep + '"]')?.focus();
+      }
+      return;
+    }
     const tab = event.target.closest('[data-lab-tab]');
     if (!tab) return;
     const index = tabIds.indexOf(tab.dataset.labTab);

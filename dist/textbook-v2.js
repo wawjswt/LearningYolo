@@ -235,6 +235,65 @@ const additions = [
 
 const authored=[...lessons,...additions];
 for(const lesson of authored) Object.assign(lesson,textbook[lesson.id]||{});
+
+// Algorithm-depth supplements based on this workspace's YOLOv5 Detect and ComputeLoss implementation.
+const yoloAlgorithmSupplement={
+  architecture:{
+    paragraphs:{3:[
+      '先看检测头每个 anchor 输出什么。令 `nc` 为类别数，则 `no = nc + 5`：4 个框参数 `(tx,ty,tw,th)`、1 个 objectness logit 和 `nc` 个类别 logit。每层卷积先输出 `[B, 3×no, H, W]`，再整理成 `[B, 3, H, W, no]`。两类、640 输入时，P3/P4/P5 的整理后形状分别为 `[B,3,80,80,7]`、`[B,3,40,40,7]`、`[B,3,20,20,7]`；每张图共有 `3×(80²+40²+20²)=25200` 个候选。训练模式保留未归一化 logits；推理模式解码坐标并对 objectness 和类别分数做 sigmoid。',
+      '本地 `Detect.forward` 的推理解码为：令 `σ` 是 sigmoid、`(gx,gy)` 是网格坐标、`s` 是该层 stride、`(aw,ah)` 是换算到输入图像像素后的 anchor 尺寸，则 `cx=(2σ(tx)+gx−0.5)×s`、`cy=(2σ(ty)+gy−0.5)×s`、`w=(2σ(tw))²×aw`、`h=(2σ(th))²×ah`。代码生成的网格本身带有 `−0.5` 偏移；解码后的框先是输入画布上的中心点与宽高，之后才由 NMS 和坐标还原流程处理。',
+      '以下细节以当前工作区的 `models/yolo.py` 与 `utils/loss.py` 为准。YOLOv5 不同发布版本或本地修改可能改变返回值、增强、损失和推理接口；读代码时先确认模型配置、权重和脚本属于同一版本。'
+    ]},
+    worked:{title:'例题：从一个零值预测解码边界框',prompt:'P3 stride=8，网格坐标 `(gx,gy)=(10,20)`，anchor 为 `10×13` 像素，四个框 logit 都是 0。解码后的框中心和宽高是多少？若 objectness 与一个类别 logit 也都是 0，该类置信度是多少？',solution:'`σ(0)=0.5`。因此 `cx=(1+10−0.5)×8=84`，`cy=(1+20−0.5)×8=164`；`w=(2×0.5)²×10=10`，`h=(2×0.5)²×13=13`。中心框为 `(84,164,10,13)`，换成 `xyxy` 是 `(79,157.5,89,170.5)`。objectness 与类别概率均为 0.5，该类分数为 `0.5×0.5=0.25`。这是零 logits 的算术例子，不代表已训练模型的预测。'},
+    code:'# 在 YOLOv5 仓库根目录运行；nc=2，输入 640×640\nfrom models.yolo import Model\nimport torch\n\nmodel = Model("models/yolov5s.yaml", ch=3, nc=2).eval()\nwith torch.no_grad():\n    decoded, raw_scales = model(torch.zeros(1, 3, 640, 640))\nprint(decoded.shape)  # [1, 25200, 7]，NMS 前的解码候选\nfor prediction in raw_scales:\n    print(prediction.shape)\n# [1, 3, 80, 80, 7]\n# [1, 3, 40, 40, 7]\n# [1, 3, 20, 20, 7]\n# Detect.forward: models/yolo.py；完整过滤与 NMS: detect.py / utils/general.py'
+  },
+  anchors:{
+    paragraphs:{1:[
+      '把本地 `build_targets` 拆成可复算的步骤：①将标签中的归一化中心和宽高按每个特征图的宽高缩放到网格单位；②把每个目标与该层的各个 anchor 比较，令 `r=(w_target/w_anchor,h_target/h_anchor)`，当 `max(r_w,1/r_w,r_h,1/r_h) < anchor_t` 时保留匹配；③把目标中心落入的网格作为正样本，并检查它是否靠近水平或垂直网格边界，满足条件时再加入相邻网格；④记录图像索引、anchor 索引、网格坐标、相对网格的中心偏移，以及网格单位的宽高。一个真实框因此可能对应多个尺度、anchor 和网格位置。',
+      '算一个匹配例子：输入缩放后的目标框为 `32×48` 像素，P3 的一个 anchor 为 `10×13` 像素。宽高比例及其倒数是 `3.2、0.3125、3.69、0.27`，最大值约 `3.69`；若当前超参数 `anchor_t=4`，此 anchor 通过筛选。`anchor_t` 来自超参数配置，不应把 4 当成所有训练任务的固定常数。',
+      '邻格例子：在某尺度上目标中心为 `(12.2,9.3)` 个网格，初始格子是 `(12,9)`。本地实现用 `g=0.5` 检查中心到格线的距离；这个位置靠近左侧与上侧边界，因此除中心格外，还会尝试左、上邻格（不含对角格）。每个候选格都使用自己的相对中心偏移去回归同一个真实框。'
+    ]},
+    worked:{title:'例题：为什么一个目标会有多个正样本？',prompt:'目标宽高是 `32×48` 像素，P3 anchor 为 `10×13`，`anchor_t=4`。它能通过该 anchor 的宽高比筛选吗？如果网格中心位置是 `(12.2,9.3)`，会考虑哪些网格？',solution:'宽高比的最大对称比值为 `max(32/10,10/32,48/13,13/48)≈3.69<4`，所以该 anchor 匹配。中心格 `(12,9)` 会被选中；由于小数部分 `0.2` 和 `0.3` 都小于 `g=0.5`，实现还会尝试左邻格 `(11,9)` 与上邻格 `(12,8)`。实际正样本还取决于每个检测尺度、该尺度的 anchors、边界裁剪和训练配置。'},
+    code:'# utils/loss.py::ComputeLoss.build_targets 的规则摘要\n# targets: [image_index, class, x_center, y_center, width, height]，坐标先归一化\n# 对每个检测尺度，把 x/y/w/h 转为该特征图的网格单位\n# r = target_wh / anchor_wh\n# matched = max(r_w, 1/r_w, r_h, 1/r_h) < hyp["anchor_t"]\n# 匹配后选择中心格，并按 g=0.5 尝试四个水平/垂直邻格\n# 输出每个正样本的 (image, anchor, grid_y, grid_x) 与网格内目标框'
+  },
+  'yolo-loss':{
+    paragraphs:{0:[
+      '本地检测损失可写成三项。对匹配到的正样本，框项 `L_box = mean(1−CIoU(pred_box,target_box))`；objectness 项对每个网格和 anchor 的 objectness logit 都算 `BCEWithLogits`，未匹配位置目标为 0，匹配位置目标取分离梯度并截断到非负的 CIoU 分数；多类别时，分类项只在正样本上对类别 logits 与平滑 one-hot 目标算 `BCEWithLogits`。单类别配置在这份实现里跳过分类项。',
+      '三尺度的分项先分别累加；objectness 还乘以每层平衡系数。之后总损失为 `batch_size × (gain_box×L_box + gain_obj×L_obj + gain_cls×L_cls)`，gain 取自当前 hyp 配置。`BCEWithLogits` 直接接 logits，不要先手动 sigmoid；它把 sigmoid 与二元交叉熵稳定地合在一起。Focal loss 与 label smoothing 是否启用，也由配置决定。'
+    ],3:[
+      '按源码完整追一次：`ComputeLoss.__call__` 先调用 `build_targets`；每层取出匹配预测，将框 logits 解码到网格单位并计算 CIoU；用正样本 CIoU 构造 objectness 目标，分类分支（若 `nc>1`）计算 BCE；所有层累计并乘 hyp gain 与 batch size，返回总损失和 box/obj/cls 日志项。`train.py` 接着对总损失反向传播，再按梯度累积设置执行优化器更新。'
+    ]},
+    worked:{title:'例题：一个正样本的三种监督信号',prompt:'假设某个匹配框的 CIoU 为 0.72，objectness logit 为 0.8；两类任务的 class logits 为 `[0.1,1.2]`，真实类别是第 2 类。无 label smoothing 时，局部框项、objectness 目标和正样本分类 BCE 约是多少？',solution:'框项为 `1−0.72=0.28`；本地实现把分离梯度后的非负 CIoU 作为 objectness 目标，所以该正样本目标是 0.72。`BCEWithLogits(0.8,0.72)≈0.595`。分类目标为 `[0,1]`，两个类别的 BCEWithLogits 平均值约为 `(softplus(0.1)+softplus(−1.2))/2≈0.504`。这只是一个正样本的局部示例；实际 objectness loss 还包含大量背景位置、各尺度平衡、hyp gain 和 batch 缩放，不能直接当作日志总值。'},
+    code:'# 本地 utils/loss.py 的核心顺序（源码流程示意，不是独立脚本）\n# tcls, tbox, indices, anchors = build_targets(predictions, targets)\n# pbox = decode_box(matched_box_logits, matched_anchors)\n# lbox += (1 - CIoU(pbox, tbox)).mean()\n# object_target[positive] = CIoU.detach().clamp(min=0)\n# lobj += balance[level] * BCEWithLogits(object_logits, object_target)\n# if nc > 1: lcls += BCEWithLogits(class_logits, smoothed_one_hot)\n# total = batch_size * (hyp["box"]*lbox + hyp["obj"]*lobj + hyp["cls"]*lcls)\n# 逐行对照 ComputeLoss.__call__ 与 build_targets；不同 hyp 会改变 gain/threshold。',
+    language:'源码流程示意',
+    keypoints:['检测头先输出每个 anchor 的框、objectness 和类别 logits，再经过解码与筛选。','build_targets 根据 anchor 比率和邻近网格规则，为一个真实框生成一个或多个正样本。','框、objectness、分类分项在多尺度上计算并按 hyp 配置加权；训练迭代再通过反向传播更新参数。']
+  },
+  'train-yolo':{
+    paragraphs:{3:[
+      '把一个 batch 映射到源码：数据加载器给出图像张量和 `targets=[image_index,class,x,y,w,h]`（坐标已归一化）；训练模式的 `model(imgs)` 返回 P3/P4/P5 的原始预测 logits；`ComputeLoss(pred,targets)` 调用 `build_targets` 并算出 box、obj、cls 三项；`loss.backward()` 把梯度传回各层卷积参数。训练脚本使用 AMP 时由 GradScaler 执行缩放后的反向传播；达到梯度累积步数后才 `optimizer.step()`，随后更新 scaler 并清空梯度。验证在 eval 模式计算预测指标，不调用优化器。',
+      '建议按这个次序读本地代码：`train.py` 的 batch 循环中找到 `pred = model(imgs)` 和 `compute_loss(pred, targets)`；跳到 `utils/loss.py::ComputeLoss.__call__` 看分项；再读 `build_targets` 看正样本索引；返回 `train.py` 跟 `scaler.scale(loss).backward()`、`scaler.step(optimizer)` 与梯度累积条件。这样就能把“模型输出”与“参数为什么改变”连成一条可追踪的链。'
+    ]},
+    worked:{title:'例题：一次训练迭代中哪些张量被更新？',prompt:'一个 batch 经过 model、ComputeLoss、backward、optimizer.step。哪一步产生预测，哪一步产生梯度，哪一步真正改参数？',solution:'`pred=model(imgs)` 产生各检测尺度的原始预测；`ComputeLoss(pred,targets)` 得到标量目标与损失分项；`loss.backward()` 计算并累积参数梯度；`optimizer.step()` 按梯度和优化器状态修改参数。使用梯度累积时，多个 batch 的 backward 可能先累加，达到更新条件后才执行 step。'},
+    keypoints:['训练时 Detect 返回三尺度原始 logits；ComputeLoss 负责目标匹配与监督。','backward 计算梯度，optimizer.step 才更新模型参数；梯度累积会让两者不必每个 batch 一次。','验证阶段只做预测与统计，不能执行训练更新。']
+  },
+  inference:{
+    paragraphs:{0:[
+      '推理后处理的顺序也可以逐步对照代码：检测头将 logits 解码为输入画布上的 `(cx,cy,w,h)` 和 objectness/类别概率；NMS 先用 objectness 做一轮候选预筛，再计算每类分数 `objectness×class_probability` 并按 confidence 阈值筛选，将框从 `xywh` 转为 `xyxy` 后按类别进行 NMS；最后根据 letterbox 的缩放比例和 padding 撤销变换，把坐标映射回原图。评估脚本还会把这些预测与真实框按类别和 IoU 做一对一匹配。',
+      '因此，空结果要分段排查：解码前没有有效分数，检查模型、权重和输入；阈值后候选消失，检查 confidence；NMS 后减少过多，检查 IoU 阈值与类别模式；坐标回原图偏移，检查缩放与 padding 还原。'
+    ]},
+    keypoints:['Detect 解码坐标与分数；NMS 负责过滤低分并去除重复框。','置信度阈值、NMS IoU 阈值和评估 IoU 阈值作用于不同环节。','letterbox 的 padding 和缩放必须在输出框映射回原图时撤销。']
+  }
+};
+for(const [id,supplement] of Object.entries(yoloAlgorithmSupplement)){
+  const lesson=lessons.find(item=>item.id===id);
+  if(!lesson) continue;
+  for(const [sectionIndex,paragraphs] of Object.entries(supplement.paragraphs||{})) lesson.sections[Number(sectionIndex)].paragraphs.push(...paragraphs);
+  if(supplement.worked) lesson.worked=supplement.worked;
+  if(supplement.code) lesson.code=supplement.code;
+  if(supplement.language) lesson.language=supplement.language;
+  if(supplement.keypoints) lesson.keypoints=[...(lesson.keypoints||[]),...supplement.keypoints];
+}
+
 const idOrder=['ai-foundations','tensor','gradient','network','losses','optimizer','training','regularization','transfer','image','cnn','pooling','augmentation','tasks','iou','metrics','data-quality','architecture','dataset','anchors','yolo-loss','train-yolo','yolo-augment','inference','debugging'];
 const byId=new Map(authored.map(item=>[item.id,item]));
 lessons.splice(0,lessons.length,...idOrder.map(id=>byId.get(id)).filter(Boolean));

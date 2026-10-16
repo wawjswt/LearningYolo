@@ -10,6 +10,7 @@
   const tag=(x,y,w,label,fill,color)=>rect(x,y,w,28,fill,'none',14,0)+text(x+w/2,y+19,label,13,color,650);
   const cell=(x,y,w,h,label,fill,color=colors.ink)=>rect(x,y,w,h,fill,'#ffffff',3,1)+text(x+w/2,y+h/2+5,label,14,color,650);
   const workedStep=(step,markup)=>'<g data-worked-figure-step="'+step+'">'+markup+'</g>';
+  const figureStep=(step,markup)=>'<g data-figure-guide-step="'+step+'">'+markup+'</g>';
 
   const figures={
     'neuron-intro':{concept:'从输入到节点输出',section:0,paragraph:0,title:'输入经过权重、求和与激活后得到输出',description:'三个数值输入沿带有权重的连接进入同一节点，节点加权求和并加上偏置，再经激活函数产生输出。',caption:'每条连接的权重会影响节点输出；层层重复这种计算，就组成了神经网络。',draw:()=>{
@@ -116,30 +117,48 @@
       s+='<path d="M452 93 C486 101 500 110 521 126 S561 149 586 160 S637 170 691 177" fill="none" stroke="'+colors.purple+'" stroke-width="4" stroke-linecap="round"/>';
       s+=circle(501,112,5,colors.orange)+circle(587,160,5,colors.blue)+text(498,99,'高阈值',12,colors.orange,650)+text(587,151,'低阈值',12,colors.blue,650);s+=text(566,242,'AP 概括一类目标的 P–R 曲线表现',14,colors.purple,650);return s;
     }},
-    architecture:{concept:'Backbone、Neck 与多尺度 Head',section:0,paragraph:1,title:'YOLOv5 中特征提取、融合和多尺度预测',description:'Backbone 从图像中形成不同分辨率的特征，Neck 将深层语义与浅层空间细节融合，Detect Head 在多个尺度上预测边界框与类别。',caption:'高分辨率分支保留较多位置细节，小目标更容易被表示；深层分支感受野更大，适合较大目标。',draw:()=>{
-      let s=rect(27,101,94,96,colors.blueSoft,'none',8,0)+text(74,138,'输入图像',17,colors.blue,700)+text(74,165,'640 × 640',12,colors.muted,500);
-      const bx=[161,205,249,293];bx.forEach((x,i)=>s+=rect(x,89+i*4,33,116-i*8,[colors.blueSoft,colors.purpleSoft,colors.purpleSoft,colors.orangeSoft][i],[colors.blue,colors.purple,colors.purple,colors.orange][i],4,1.4));s+=text(245,236,'Backbone',16,colors.blue,700);
-      s+=arrow(123,149,156,149,colors.slate);s+=rect(346,81,145,126,colors.purpleSoft,'none',9,0)+text(418,115,'Neck',18,colors.purple,700)+text(418,144,'自上而下传语义',12,colors.ink,550)+text(418,166,'自下而上补细节',12,colors.ink,550);s+=arrow(314,149,340,149,colors.slate);
-      [[530,89,'P3','小目标',colors.green],[602,112,'P4','中目标',colors.blue],[674,135,'P5','大目标',colors.orange]].forEach(([x,y,n,label,color],i)=>{s+=arrow(491,144,x-22,y+18,color,1.8)+rect(x-20,y,54,54,i===0?colors.greenSoft:i===1?colors.blueSoft:colors.orangeSoft,color,5,1.5)+text(x+7,y+25,n,17,color,700)+text(x+7,y+75,label,12,colors.muted,550)});
-      s+=text(575,252,'Detect Head：每个尺度都输出候选框与类别分数',13,colors.ink,600);return s;
+    architecture:{concept:'Backbone、Neck 与多尺度 Head',section:0,paragraph:1,title:'YOLOv5 中特征提取、融合和多尺度预测',description:'Backbone 从图像中形成不同分辨率的特征，Neck 将深层语义与浅层空间细节融合，Detect Head 在多个尺度上预测边界框与类别。',caption:'高分辨率分支保留较多位置细节，小目标更容易被表示；深层分支感受野更大，适合较大目标。',guide:[
+      {title:'从图像开始',text:'输入图像先整理成模型使用的尺寸，例如图中 640×640。此时它还是像素，不是检测框。'},
+      {title:'Backbone 提取特征',text:'一层层卷积与下采样把像素变成特征图。越往深处，图面位置更少，但每个位置综合了更大范围的信息。'},
+      {title:'Neck 融合信息',text:'Neck 把深层的类别线索传回高分辨率特征，也把浅层位置细节向上融合，让预测同时得到“是什么”和“在哪里”的线索。'},
+      {title:'三个尺度分别预测',text:'P3 网格较密，通常更有利于小目标；P4、P5 的网格更粗，感受范围更大。每个检测头都预测候选框和类别分数。'}
+    ],draw:()=>{
+      let s=figureStep(1,rect(27,101,94,96,colors.blueSoft,'none',8,0)+text(74,138,'输入图像',17,colors.blue,700)+text(74,165,'640 × 640',12,colors.muted,500));
+      let backbone='';const bx=[161,205,249,293];bx.forEach((x,i)=>backbone+=rect(x,89+i*4,33,116-i*8,[colors.blueSoft,colors.purpleSoft,colors.purpleSoft,colors.orangeSoft][i],[colors.blue,colors.purple,colors.purple,colors.orange][i],4,1.4));backbone+=text(245,236,'Backbone',16,colors.blue,700);s+=figureStep(2,backbone);
+      s+=arrow(123,149,156,149,colors.slate)+figureStep(3,rect(346,81,145,126,colors.purpleSoft,'none',9,0)+text(418,115,'Neck',18,colors.purple,700)+text(418,144,'自上而下传语义',12,colors.ink,550)+text(418,166,'自下而上补细节',12,colors.ink,550))+arrow(314,149,340,149,colors.slate);
+      let heads='';[[530,89,'P3','小目标',colors.green],[602,112,'P4','中目标',colors.blue],[674,135,'P5','大目标',colors.orange]].forEach(([x,y,n,label,color],i)=>{heads+=arrow(491,144,x-22,y+18,color,1.8)+rect(x-20,y,54,54,i===0?colors.greenSoft:i===1?colors.blueSoft:colors.orangeSoft,color,5,1.5)+text(x+7,y+25,n,17,color,700)+text(x+7,y+75,label,12,colors.muted,550)});heads+=text(575,252,'Detect Head：每个尺度都输出候选框与类别分数',13,colors.ink,600);s+=figureStep(4,heads);return s;
     }},
-    dataset:{concept:'图像、框标注与 YAML',section:0,paragraph:1,title:'YOLO 数据集图片、标签行与类别表',description:'一张图片与同名标签文件配对。每个标签行由类别编号和归一化中心坐标、宽、高组成；data YAML 指定数据路径和类别顺序。',caption:'标签示例“0 0.52 0.43 0.26 0.38”：数字均相对图像宽高归一化，类别 0 必须与 YAML 的 names[0] 对齐。',draw:()=>{
-      let s=rect(35,48,197,168,colors.paper,colors.line,8,1)+text(133,76,'图片 + 标注',15,colors.muted,600);
-      s+='<rect x="61" y="91" width="145" height="92" fill="#e9eee9" stroke="'+colors.line+'" stroke-width="1"/><path d="M70 170 L106 132 L128 153 L154 112 L197 170 Z" fill="#a8c4b0"/><rect x="111" y="105" width="58" height="65" fill="none" stroke="'+colors.orange+'" stroke-width="3"/>';
-      s+=text(133,204,'images/0001.jpg',12,colors.blue,600)+arrow(239,132,288,132,colors.slate);
-      s+=rect(294,60,218,150,colors.purpleSoft,'none',8,0)+text(403,88,'labels/0001.txt',14,colors.purple,700)+rect(310,108,186,63,colors.paper,'none',5,0)+text(403,134,'0  0.52  0.43  0.26  0.38',13,colors.ink,650)+text(403,156,'class   x     y     w     h',11,colors.muted,550)+text(403,195,'同名文件，一图一标注',12,colors.muted,550);
-      s+=arrow(518,132,565,132,colors.slate)+rect(572,59,164,153,colors.greenSoft,'none',8,0)+text(654,89,'data.yaml',15,colors.green,700)+text(654,121,'train: images/train',11,colors.ink,550)+text(654,145,'val: images/val',11,colors.ink,550)+text(654,177,'names: [cat, dog]',12,colors.green,650)+text(386,260,'检查框是否贴合物体、类号是否从 0 开始，并逐项核对类别顺序。',14,colors.ink,600);return s;
+    dataset:{concept:'图像、框标注与 YAML',section:0,paragraph:1,title:'YOLO 数据集图片、标签行与类别表',description:'一张图片与同名标签文件配对。每个标签行由类别编号和归一化中心坐标、宽、高组成；data YAML 指定数据路径和类别顺序。',caption:'标签示例“0 0.52 0.43 0.26 0.38”：数字均相对图像宽高归一化，类别 0 必须与 YAML 的 names[0] 对齐。',guide:[
+      {title:'图片和标签配对',text:'每张训练图片要有同名的 .txt 标签文件。先在图上确认框确实贴着目标，避免把漏标或错框送进训练。'},
+      {title:'一行写一个目标',text:'每行依次是类别编号、框中心 x、中心 y、宽和高。这里的 x/y 是中心，不是左上角；宽高描述框的尺寸。'},
+      {title:'坐标按图像尺寸归一化',text:'x 和宽除以图像宽，y 和高除以图像高，所以四个数通常在 0 到 1 之间。这样换分辨率仍能表示同一个相对位置。'},
+      {title:'YAML 对齐类别顺序',text:'data.yaml 指明 train、val 路径和 names 列表。标签里的 0 对应 names[0]，类别顺序错了会让框位置正确、类别却错。'}
+    ],draw:()=>{
+      let s=figureStep(1,rect(35,48,197,168,colors.paper,colors.line,8,1)+text(133,76,'图片 + 标注',15,colors.muted,600)+'<rect x="61" y="91" width="145" height="92" fill="#e9eee9" stroke="'+colors.line+'" stroke-width="1"/><path d="M70 170 L106 132 L128 153 L154 112 L197 170 Z" fill="#a8c4b0"/><rect x="111" y="105" width="58" height="65" fill="none" stroke="'+colors.orange+'" stroke-width="3"/>'+text(133,204,'images/0001.jpg',12,colors.blue,600));
+      s+=arrow(239,132,288,132,colors.slate);
+      s+=figureStep(2,rect(294,60,218,150,colors.purpleSoft,'none',8,0)+text(403,88,'labels/0001.txt',14,colors.purple,700)+rect(310,108,186,63,colors.paper,'none',5,0)+text(403,156,'class   x     y     w     h',11,colors.muted,550)+text(403,195,'同名文件，一图一标注',12,colors.muted,550));
+      s+=figureStep(3,text(403,134,'0  0.52  0.43  0.26  0.38',13,colors.ink,650)+text(386,260,'x、宽 ÷ 图像宽；y、高 ÷ 图像高',13,colors.ink,600));
+      s+=figureStep(4,rect(572,59,164,153,colors.greenSoft,'none',8,0)+text(654,89,'data.yaml',15,colors.green,700)+text(654,121,'train: images/train',11,colors.ink,550)+text(654,145,'val: images/val',11,colors.ink,550)+text(654,177,'names: [cat, dog]',12,colors.green,650));return s;
     }},
-    'train-yolo':{concept:'训练过程与检查点',section:1,paragraph:0,title:'YOLOv5 从数据配置到最佳权重',description:'训练以 data YAML、模型配置和起始权重为输入，逐轮更新网络，并在验证集上选择 best.pt。last.pt 表示最后一轮的状态，未必是验证效果最佳的轮次。',caption:'保存配置、训练命令和代码版本，才能复现 best.pt 对应的训练过程。',draw:()=>{
+    'train-yolo':{concept:'训练过程与检查点',section:1,paragraph:0,title:'YOLOv5 从数据配置到最佳权重',description:'训练以 data YAML、模型配置和起始权重为输入，逐轮更新网络，并在验证集上选择 best.pt。last.pt 表示最后一轮的状态，未必是验证效果最佳的轮次。',caption:'保存配置、训练命令和代码版本，才能复现 best.pt 对应的训练过程。',guide:[
+      {title:'准备数据和模型',text:'训练脚本先读数据 YAML、模型结构、初始权重和超参数。类别数、标签顺序与模型输出需要对应。'},
+      {title:'训练批次更新参数',text:'一批图片经过模型得到预测，损失衡量预测和标签的差距；反向传播给出梯度，优化器据此更新权重。'},
+      {title:'验证集检查泛化',text:'每轮结束后在固定验证集上看损失和检测指标，观察模型对未参与更新的数据表现如何。'},
+      {title:'保留最佳与最后权重',text:'best.pt 是验证表现最佳时保存的权重；last.pt 是最后一轮的状态。训练结束不代表最后一轮最好。'}
+    ],draw:()=>{
       let s='';const items=[[39,colors.blueSoft,colors.blue,'数据','图像 + 标签'],[197,colors.purpleSoft,colors.purple,'模型','配置 + 权重'],[355,colors.orangeSoft,colors.orange,'训练','epoch 迭代'],[513,colors.greenSoft,colors.green,'验证','mAP / loss']];
-      items.forEach(([x,fill,color,title,sub])=>{s+=rect(x,69,133,96,fill,'none',8,0)+text(x+66,105,title,18,color,700)+text(x+66,135,sub,13,colors.ink,550)});s+=arrow(175,117,190,117,colors.slate)+arrow(333,117,348,117,colors.slate)+arrow(491,117,506,117,colors.slate);
+      items.forEach(([x,fill,color,title,sub],i)=>{s+=figureStep(i<2?1:i,rect(x,69,133,96,fill,'none',8,0)+text(x+66,105,title,18,color,700)+text(x+66,135,sub,13,colors.ink,550))});s+=arrow(175,117,190,117,colors.slate)+arrow(333,117,348,117,colors.slate)+arrow(491,117,506,117,colors.slate);
       s+=arrow(579,171,407,205,colors.green,1.8)+text(490,198,'下一轮',12,colors.green,600);
-      s+=rect(189,220,160,52,colors.greenSoft,colors.green,6,1.4)+text(269,242,'best.pt',16,colors.green,700)+text(269,260,'验证表现最好',11,colors.muted,550);
-      s+=rect(413,220,160,52,colors.slateSoft,colors.slate,6,1.4)+text(493,242,'last.pt',16,colors.muted,700)+text(493,260,'训练结束时保存',11,colors.muted,550);return s;
+      s+=figureStep(4,rect(189,220,160,52,colors.greenSoft,colors.green,6,1.4)+text(269,242,'best.pt',16,colors.green,700)+text(269,260,'验证表现最好',11,colors.muted,550)+rect(413,220,160,52,colors.slateSoft,colors.slate,6,1.4)+text(493,242,'last.pt',16,colors.muted,700)+text(493,260,'训练结束时保存',11,colors.muted,550));return s;
     }},
-    inference:{concept:'推理的前处理与后处理',section:1,paragraph:1,title:'YOLOv5 推理中的缩放、筛选和坐标还原',description:'输入图像先等比例缩放并填充到模型尺寸，网络输出候选框，置信度阈值和 NMS 做过滤，最后把坐标映射回原图。',caption:'如果忘记撤销 padding 或缩放比例，框可能整体偏移；置信度阈值和 NMS IoU 阈值控制不同步骤。',draw:()=>{
+    inference:{concept:'推理的前处理与后处理',section:1,paragraph:1,title:'YOLOv5 推理中的缩放、筛选和坐标还原',description:'输入图像先等比例缩放并填充到模型尺寸，网络输出候选框，置信度阈值和 NMS 做过滤，最后把坐标映射回原图。',caption:'如果忘记撤销 padding 或缩放比例，框可能整体偏移；置信度阈值和 NMS IoU 阈值控制不同步骤。',guide:[
+      {title:'保留原图比例',text:'先记录原图宽高。Letterbox 等比例缩小或放大，再用 padding 补成模型输入尺寸，避免把目标拉伸变形。'},
+      {title:'图像和框一起缩放',text:'模型在补边后的画布上预测。映射回原图时，要先扣掉上下左右的 padding，再除以缩放比例。'},
+      {title:'筛选低分框并去重',text:'置信度阈值先去掉低分候选；NMS 再按框重叠抑制重复预测。这两个阈值作用不同，调参时分开观察。'},
+      {title:'把坐标还原到原图',text:'确认坐标已撤销缩放和 padding，并裁到原图边界。框偏移时，优先核对预处理与还原是否使用同一组尺寸和比例。'}
+    ],draw:()=>{
       let s='';const xs=[35,213,391,569],titles=['原始图像','Letterbox','模型候选','还原结果'],subs=['640 × 480','缩放 + 填充','打分 + NMS','原图坐标'];
-      xs.forEach((x,i)=>{s+=rect(x,60,150,147,[colors.blueSoft,colors.slateSoft,colors.purpleSoft,colors.greenSoft][i],'none',8,0)+text(x+75,89,titles[i],16,[colors.blue,colors.slate,colors.purple,colors.green][i],700);s+=rect(x+31,104,88,70,i===1?'#e6e5e0':'#dfe9e2','none',4,0);if(i===1){s+=rect(x+42,104,67,70,'#cad9db','none',0,0);s+=rect(x+42,117,67,44,'#a9c3b2','none',0,0)}if(i===2||i===3)s+='<rect x="'+(x+49)+'" y="'+(i===2?'119':'114')+'" width="49" height="42" fill="none" stroke="'+(i===2?colors.orange:colors.green)+'" stroke-width="3"/>';s+=text(x+75,194,subs[i],12,colors.ink,550)});
+      xs.forEach((x,i)=>{let stage=rect(x,60,150,147,[colors.blueSoft,colors.slateSoft,colors.purpleSoft,colors.greenSoft][i],'none',8,0)+text(x+75,89,titles[i],16,[colors.blue,colors.slate,colors.purple,colors.green][i],700);stage+=rect(x+31,104,88,70,i===1?'#e6e5e0':'#dfe9e2','none',4,0);if(i===1){stage+=rect(x+42,104,67,70,'#cad9db','none',0,0);stage+=rect(x+42,117,67,44,'#a9c3b2','none',0,0)}if(i===2||i===3)stage+='<rect x="'+(x+49)+'" y="'+(i===2?'119':'114')+'" width="49" height="42" fill="none" stroke="'+(i===2?colors.orange:colors.green)+'" stroke-width="3"/>';stage+=text(x+75,194,subs[i],12,colors.ink,550);s+=figureStep(i+1,stage)});
       for(let i=0;i<3;i++)s+=arrow(xs[i]+154,133,xs[i+1]-8,133,colors.slate);
       s+=text(380,252,'conf-thres：筛低分候选　　 NMS IoU：移除重复预测　　 坐标：撤销缩放与填充',13,colors.ink,600);return s;
     }},
@@ -200,32 +219,49 @@
       s+=text(525,152,'同一视频只进入一个分区',13,colors.ink,600)+text(525,178,'按类别、场景与目标大小检查覆盖',12,colors.muted,550);
       s+=text(380,251,'拆分之后再统计重复图、类别不均衡和漏标样本。',14,colors.ink,600);return s;
     }},
-    anchors:{concept:'网格、Anchor 与检测尺度',section:0,paragraph:1,title:'Anchor 作为网格位置上的宽高先验',description:'每个特征网格位置关联多种 Anchor 宽高。训练时将目标分配给合适的网格、Anchor 和尺度，网络再预测相对偏移得到最终框。',caption:'Anchor 是参考宽高而非最终固定框；多尺度检测分支为不同目标尺寸提供表示能力。',draw:()=>{
-      let s=text(165,40,'特征网格',15,colors.muted,600);for(let y=0;y<4;y++)for(let x=0;x<4;x++)s+=rect(57+x*54,59+y*40,52,38,(x===2&&y===1)?colors.blueSoft:colors.paper,(x===2&&y===1)?colors.blue:colors.line,1,1);
-      s+='<rect x="167" y="95" width="32" height="26" fill="none" stroke="'+colors.orange+'" stroke-width="2.5"/><rect x="158" y="87" width="50" height="42" fill="none" stroke="'+colors.purple+'" stroke-width="2" stroke-dasharray="5 3"/>';
-      s+=text(165,239,'同一网格：多种先验框',13,colors.ink,600)+arrow(278,136,349,136,colors.slate);
-      s+=rect(359,55,170,152,colors.purpleSoft,'none',8,0)+text(444,82,'匹配目标',16,colors.purple,700)+rect(392,104,103,61,'none',colors.orange,2,3)+text(444,192,'Anchor + 网格位置',12,colors.muted,550);
-      s+=arrow(538,136,585,136,colors.slate)+rect(594,60,134,139,colors.greenSoft,'none',8,0)+text(661,91,'预测偏移',15,colors.green,700)+text(661,120,'中心 Δx, Δy',12,colors.ink,550)+text(661,145,'宽高变化',12,colors.ink,550)+text(661,174,'→ 最终边界框',12,colors.green,650);
-      s+=text(380,266,'不同步幅的检测分支让小、中、大目标在不同分辨率上被表示。',13,colors.ink,600);return s;
+    anchors:{concept:'网格、Anchor 与检测尺度',section:0,paragraph:1,title:'Anchor 作为网格位置上的宽高先验',description:'每个特征网格位置关联多种 Anchor 宽高。训练时将目标分配给合适的网格、Anchor 和尺度，网络再预测相对偏移得到最终框。',caption:'Anchor 是参考宽高而非最终固定框；多尺度检测分支为不同目标尺寸提供表示能力。',guide:[
+      {title:'网格给出位置',text:'特征图上的每个格子对应原图的一片区域。目标中心落在哪些相邻位置，会影响训练时哪些位置收到正样本监督。'},
+      {title:'Anchor 提供宽高参考',text:'同一位置可比较几种 Anchor 的宽高形状。YOLOv5 会按目标与 Anchor 的宽高比例筛选匹配项；Anchor 是起点，不是固定输出框。'},
+      {title:'预测偏移得到边界框',text:'匹配之后，网络预测相对中心位置和宽高的变化，再结合网格、stride 与 Anchor 解码成图像上的框。'},
+      {title:'不同尺度覆盖不同目标',text:'P3、P4、P5 的网格分辨率不同，可表达不同尺寸的目标。具体正样本分配细节会随仓库版本和配置变化。'}
+    ],draw:()=>{
+      let grid=text(165,40,'特征网格',15,colors.muted,600);for(let y=0;y<4;y++)for(let x=0;x<4;x++)grid+=rect(57+x*54,59+y*40,52,38,(x===2&&y===1)?colors.blueSoft:colors.paper,(x===2&&y===1)?colors.blue:colors.line,1,1);
+      grid+='<rect x="167" y="95" width="32" height="26" fill="none" stroke="'+colors.orange+'" stroke-width="2.5"/><rect x="158" y="87" width="50" height="42" fill="none" stroke="'+colors.purple+'" stroke-width="2" stroke-dasharray="5 3"/>'+text(165,239,'同一网格：多种先验框',13,colors.ink,600);let s=figureStep(1,grid)+arrow(278,136,349,136,colors.slate);
+      s+=figureStep(2,rect(359,55,170,152,colors.purpleSoft,'none',8,0)+text(444,82,'匹配目标',16,colors.purple,700)+rect(392,104,103,61,'none',colors.orange,2,3)+text(444,192,'Anchor + 网格位置',12,colors.muted,550));
+      s+=arrow(538,136,585,136,colors.slate)+figureStep(3,rect(594,60,134,139,colors.greenSoft,'none',8,0)+text(661,91,'预测偏移',15,colors.green,700)+text(661,120,'中心 Δx, Δy',12,colors.ink,550)+text(661,145,'宽高变化',12,colors.ink,550)+text(661,174,'→ 最终边界框',12,colors.green,650));
+      s+=figureStep(4,text(380,266,'不同步幅的检测分支让小、中、大目标在不同分辨率上被表示。',13,colors.ink,600));return s;
     }},
-    'yolo-loss':{concept:'定位、目标性与类别监督',section:0,paragraph:1,title:'YOLO 检测损失由多个监督目标组成',description:'YOLO 检测训练对预测框的位置、网格是否包含目标、目标类别进行不同监督，并按权重合并形成总损失。',caption:'三个损失项关注的错误不同；需要结合标签分配、训练曲线和验证错误样例共同判断。',draw:()=>{
-      let s=rect(35,57,159,137,colors.blueSoft,'none',8,0)+text(114,86,'匹配样本',16,colors.blue,700)+rect(71,103,87,57,'none',colors.blue,2,2)+text(114,180,'标签框 ↔ 预测框',12,colors.muted,550)+arrow(200,126,249,126,colors.slate);
-      const rows=[[colors.greenSoft,colors.green,'Lbox','位置偏差'],[colors.orangeSoft,colors.orange,'Lobj','是否有目标'],[colors.purpleSoft,colors.purple,'Lcls','类别是否正确']];rows.forEach((r,i)=>{const y=54+i*56;s+=rect(257,y,145,45,r[0],'none',6,0)+text(294,y+28,r[2],17,r[1],700)+text(352,y+27,r[3],12,colors.ink,550)});
-      s+=text(427,140,'加权求和',12,colors.muted,550)+arrow(407,126,470,126,colors.slate)+rect(479,77,238,98,colors.paper,colors.line,8,1)+text(598,110,'Ltotal = λbox Lbox',15,colors.ink,650)+text(598,139,'+ λobj Lobj + λcls Lcls',15,colors.ink,650);
+    'yolo-loss':{concept:'定位、目标性与类别监督',section:0,paragraph:1,title:'YOLO 检测损失由多个监督目标组成',description:'YOLO 检测训练对预测框的位置、网格是否包含目标、目标类别进行不同监督，并按权重合并形成总损失。',caption:'三个损失项关注的错误不同；需要结合标签分配、训练曲线和验证错误样例共同判断。',guide:[
+      {title:'先找到匹配样本',text:'损失是在目标分配后计算的。先确定哪个网格和 Anchor 负责预测这个真实框，才知道哪些预测需要被监督。'},
+      {title:'Lbox 看位置',text:'位置损失比较预测框和真实框的几何差异。它大时，先看框坐标、匹配结果和定位误差。'},
+      {title:'Lobj 看有没有目标',text:'目标性损失训练每个候选位置回答“这里有没有目标”。漏标可能把真实目标附近当作背景，造成相互矛盾的监督。'},
+      {title:'Lcls 看类别并合并',text:'类别损失检查正样本的类别预测；各项再按增益系数加权求和。日志里的单项大小需结合权重与训练版本一起读。'}
+    ],draw:()=>{
+      let s=figureStep(1,rect(35,57,159,137,colors.blueSoft,'none',8,0)+text(114,86,'匹配样本',16,colors.blue,700)+rect(71,103,87,57,'none',colors.blue,2,2)+text(114,180,'标签框 ↔ 预测框',12,colors.muted,550))+arrow(200,126,249,126,colors.slate);
+      const rows=[[colors.greenSoft,colors.green,'Lbox','位置偏差'],[colors.orangeSoft,colors.orange,'Lobj','是否有目标'],[colors.purpleSoft,colors.purple,'Lcls','类别是否正确']];rows.forEach((r,i)=>{const y=54+i*56;s+=figureStep(i+2,rect(257,y,145,45,r[0],'none',6,0)+text(294,y+28,r[2],17,r[1],700)+text(352,y+27,r[3],12,colors.ink,550))});
+      s+=text(427,140,'加权求和',12,colors.muted,550)+arrow(407,126,470,126,colors.slate)+figureStep(4,rect(479,77,238,98,colors.paper,colors.line,8,1)+text(598,110,'Ltotal = λbox Lbox',15,colors.ink,650)+text(598,139,'+ λobj Lobj + λcls Lcls',15,colors.ink,650));
       s+=text(380,242,'权重、正负样本匹配与标签质量都会影响各项梯度。',14,colors.muted,600);return s;
     }},
-    'yolo-augment':{concept:'Mosaic 增强与标签同步',section:0,paragraph:1,title:'Mosaic 将四张图像拼接并同步变换目标框',description:'Mosaic 从四张训练图像抽样并拼接为一张输入；每个目标框需要同步平移、缩放、裁剪，超出边界的部分需正确截断或移除。',caption:'增强会改变小目标尺寸和场景分布；验证集保持固定，再逐项比较增强是否带来收益。',draw:()=>{
-      let s=rect(41,48,231,166,colors.paper,colors.line,8,1);const fills=['#d9e8dd','#e9dbcd','#d6e2ed','#e7e1cf'];for(let y=0;y<2;y++)for(let x=0;x<2;x++)s+=rect(54+x*105,61+y*70,101,66,fills[y*2+x],'#fff',2,1)+rect(82+x*105,78+y*70,36,35,'none',x===0?colors.orange:colors.blue,1,2);s+=line(168,61,168,201,colors.paper,2)+line(54,131,261,131,colors.paper,2)+text(157,237,'四图拼接',13,colors.muted,600);
-      s+=arrow(279,130,335,130,colors.slate)+rect(343,64,172,121,colors.purpleSoft,'none',8,0)+text(429,94,'逐框同步变换',16,colors.purple,700)+text(429,124,'缩放与平移',13,colors.ink,550)+text(429,151,'裁剪与越界处理',12,colors.ink,550)+arrow(523,130,578,130,colors.slate);
-      s+=rect(586,69,134,111,colors.greenSoft,'none',8,0)+text(653,101,'检查样本',15,colors.green,700)+text(653,130,'框仍贴合目标',12,colors.ink,550)+text(653,154,'验证集固定',12,colors.ink,550)+text(380,252,'增强幅度过强也可能缩小目标或制造不合理场景。',14,colors.ink,600);return s;
+    'yolo-augment':{concept:'Mosaic 增强与标签同步',section:0,paragraph:1,title:'Mosaic 将四张图像拼接并同步变换目标框',description:'Mosaic 从四张训练图像抽样并拼接为一张输入；每个目标框需要同步平移、缩放、裁剪，超出边界的部分需正确截断或移除。',caption:'增强会改变小目标尺寸和场景分布；验证集保持固定，再逐项比较增强是否带来收益。',guide:[
+      {title:'抽取四张训练图',text:'Mosaic 从训练样本中抽取四张图，增加一个训练输入里出现多种背景和目标组合的机会。'},
+      {title:'拼接成新的场景',text:'四张图像按随机中心拼到同一画布。拼接边界会形成新的上下文，也可能让目标变小或被切到边缘。'},
+      {title:'边界框必须同步',text:'每个框都要用图像相同的缩放、平移和裁剪变换；越出画布的部分要截断或移除。只改图、不改框会直接制造错标签。'},
+      {title:'看增强结果再评估',text:'抽查增强后的图和框是否仍对应。增强强度用固定验证集比较，确认收益后再保留。'}
+    ],draw:()=>{
+      let s=rect(41,48,231,166,colors.paper,colors.line,8,1);const fills=['#d9e8dd','#e9dbcd','#d6e2ed','#e7e1cf'];let tiles='';for(let y=0;y<2;y++)for(let x=0;x<2;x++)tiles+=rect(54+x*105,61+y*70,101,66,fills[y*2+x],'#fff',2,1)+rect(82+x*105,78+y*70,36,35,'none',x===0?colors.orange:colors.blue,1,2);s+=figureStep(1,tiles)+figureStep(2,line(168,61,168,201,colors.paper,2)+line(54,131,261,131,colors.paper,2)+text(157,237,'四图拼接',13,colors.muted,600));
+      s+=arrow(279,130,335,130,colors.slate)+figureStep(3,rect(343,64,172,121,colors.purpleSoft,'none',8,0)+text(429,94,'逐框同步变换',16,colors.purple,700)+text(429,124,'缩放与平移',13,colors.ink,550)+text(429,151,'裁剪与越界处理',12,colors.ink,550))+arrow(523,130,578,130,colors.slate);
+      s+=figureStep(4,rect(586,69,134,111,colors.greenSoft,'none',8,0)+text(653,101,'检查样本',15,colors.green,700)+text(653,130,'框仍贴合目标',12,colors.ink,550)+text(653,154,'验证集固定',12,colors.ink,550)+text(380,252,'增强幅度过强也可能缩小目标或制造不合理场景。',14,colors.ink,600));return s;
     }},
-    debugging:{concept:'从症状沿链路排查',section:1,paragraph:1,title:'将检测故障映射到数据、训练和推理环节',description:'将现象分成无框、框偏移、错类、重复框和验证退化，再依据症状检查数据标签、坐标预处理、类别映射、阈值或训练泛化。',caption:'一次只验证一个假设，并在固定样例上比较修改前后的结果，避免多处同时改动掩盖根因。',draw:()=>{
-      let s=rect(33,89,137,72,colors.purpleSoft,'none',8,0)+text(101,119,'观察症状',16,colors.purple,700)+text(101,143,'图像 + 日志',12,colors.ink,550);
-      s+=arrow(176,126,217,126,colors.slate)+rect(224,43,177,168,colors.paper,colors.line,8,1)+text(312,69,'分类型',15,colors.muted,600);
-      [['无框',colors.red],['框偏移',colors.orange],['错类',colors.blue],['重复框',colors.purple]].forEach((r,i)=>s+=tag(239+(i%2)*79,83+Math.floor(i/2)*44,69,r[0],i===0?colors.redSoft:i===1?colors.orangeSoft:i===2?colors.blueSoft:colors.purpleSoft,r[1]));
-      s+=arrow(407,126,448,126,colors.slate)+rect(456,43,266,168,colors.greenSoft,'none',8,0)+text(589,70,'针对性检查',15,colors.green,700);
-      [['标签/类别映射',colors.blue],['缩放/坐标还原',colors.orange],['置信度/NMS',colors.purple],['数据分布/过拟合',colors.green]].forEach((r,i)=>s+=text(589,100+i*27,'• '+r[0],13,colors.ink,550));
-      s+=text(380,254,'抽样复核 → 设定一个改动 → 用同一验证集复测',15,colors.ink,650);return s;
+    debugging:{concept:'从症状沿链路排查',section:1,paragraph:1,title:'将检测故障映射到数据、训练和推理环节',description:'将现象分成无框、框偏移、错类、重复框和验证退化，再依据症状检查数据标签、坐标预处理、类别映射、阈值或训练泛化。',caption:'一次只验证一个假设，并在固定样例上比较修改前后的结果，避免多处同时改动掩盖根因。',guide:[
+      {title:'先固定问题样例',text:'保存出现问题的图片、预测结果和日志。固定同一张图，后面才能判断某个改动是否真的解决问题。'},
+      {title:'把症状分开',text:'无框、框偏移、类别错误、重复框和验证下降属于不同现象。先描述“哪里不对”，避免笼统地说模型效果差。'},
+      {title:'沿链路找对应环节',text:'错类先查类别映射；偏框查标签与坐标还原；重复框查 NMS；无框查权重、预处理和置信度阈值；验证下降再看数据分布与过拟合。'},
+      {title:'一次改一个假设',text:'选最可能的一项检查，修改后用同一图片和固定验证集复测。记录结果，再决定下一步，避免多处同时改动掩盖根因。'}
+    ],draw:()=>{
+      let s=figureStep(1,rect(33,89,137,72,colors.purpleSoft,'none',8,0)+text(101,119,'观察症状',16,colors.purple,700)+text(101,143,'图像 + 日志',12,colors.ink,550));
+      s+=arrow(176,126,217,126,colors.slate)+figureStep(2,rect(224,43,177,168,colors.paper,colors.line,8,1)+text(312,69,'分类型',15,colors.muted,600)+[['无框',colors.red],['框偏移',colors.orange],['错类',colors.blue],['重复框',colors.purple]].map((r,i)=>tag(239+(i%2)*79,83+Math.floor(i/2)*44,69,r[0],i===0?colors.redSoft:i===1?colors.orangeSoft:i===2?colors.blueSoft:colors.purpleSoft,r[1])).join(''));
+      s+=arrow(407,126,448,126,colors.slate)+figureStep(3,rect(456,43,266,168,colors.greenSoft,'none',8,0)+text(589,70,'针对性检查',15,colors.green,700)+[['标签/类别映射',colors.blue],['缩放/坐标还原',colors.orange],['置信度/NMS',colors.purple],['数据分布/过拟合',colors.green]].map((r,i)=>text(589,100+i*27,'• '+r[0],13,colors.ink,550)).join(''));
+      s+=figureStep(4,text(380,254,'抽样复核 → 设定一个改动 → 用同一验证集复测',15,colors.ink,650));return s;
     }}
   };
 
@@ -329,8 +365,11 @@
     const spec=figures[key]||workedFigures[key];
     if(!spec)return '';
     const id='chapter-figure-'+String(lesson.id+'-'+key).replace(/[^a-z0-9_-]/gi,'-');
-    const label=kind==='worked'?'例题图解':'本节图解',hint=kind==='worked'?'对应分步推演':'对照正文观察';
-    return '<figure class="chapter-concept-figure" data-visual="'+esc(key)+'" tabindex="0"><div class="figure-heading"><span>'+label+' · '+esc(spec.concept)+'</span><span>'+hint+'</span></div><svg viewBox="0 0 760 310" role="img" aria-labelledby="'+id+'-title '+id+'-desc" focusable="false"><title id="'+id+'-title">'+esc(spec.title)+'</title><desc id="'+id+'-desc">'+esc(spec.description)+'</desc>'+spec.draw()+'</svg><figcaption><strong>'+esc(spec.concept)+'：</strong>'+esc(spec.caption)+'</figcaption></figure>';
+    const label=kind==='worked'?'例题图解':'本节图解',guided=kind!=='worked'&&Array.isArray(spec.guide)&&spec.guide.length>0;
+    const hint=kind==='worked'?'对应分步推演':guided?'互动图解 · '+spec.guide.length+' 步':'对照正文观察';
+    const guideMarkup=guided?'<div class="figure-guide"><div class="figure-guide-heading"><h3>跟着图走</h3><span>先看重点，再读解释</span></div><ol class="figure-guide-steps" id="'+id+'-guide">'+spec.guide.map((step,index)=>'<li data-concept-guide-step-item="'+(index+1)+'"><button type="button" class="figure-guide-step-index" data-concept-guide-jump="'+(index+1)+'" aria-label="跳到图解步骤 '+(index+1)+'" aria-current="'+(index===0?'step':'false')+'">'+String(index+1).padStart(2,'0')+'</button><div class="figure-guide-step-copy"><strong>'+esc(step.title)+'</strong><p>'+esc(step.text)+'</p></div></li>').join('')+'</ol><div class="figure-guide-controls" role="group" aria-label="图解步骤控制"><button type="button" class="worked-control-button" data-concept-guide-prev disabled>上一步</button><output data-concept-guide-progress>第 1 / '+spec.guide.length+' 步</output><button type="button" class="worked-control-button" data-concept-guide-next>下一步</button><button type="button" class="worked-control-button is-quiet" data-concept-guide-toggle aria-expanded="false" aria-controls="'+id+'-guide">显示全部步骤</button><button type="button" class="worked-control-button is-quiet" data-concept-guide-reset>从头看</button></div><p class="figure-guide-status" data-concept-guide-status role="status" aria-live="polite">图中已突出第 1 步：'+esc(spec.guide[0].title)+'。</p>'+(lesson.worked?'<button type="button" class="figure-guide-example-link" data-guide-example-id="worked-example-'+esc(lesson.id)+'" aria-label="接着学习例题：'+esc(lesson.worked.title)+'">接着做本章例题 ↓</button>':'')+'</div>':'';
+    const guidedAttrs=guided?' data-concept-guide-root="true" data-guide-current-step="1" data-guide-expanded="false"':'';
+    return '<figure class="chapter-concept-figure" data-visual="'+esc(key)+'"'+guidedAttrs+' tabindex="0"><div class="figure-heading"><span>'+label+' · '+esc(spec.concept)+'</span><span>'+hint+'</span></div><svg viewBox="0 0 760 310" role="img" aria-labelledby="'+id+'-title '+id+'-desc" focusable="false"><title id="'+id+'-title">'+esc(spec.title)+'</title><desc id="'+id+'-desc">'+esc(spec.description)+'</desc>'+spec.draw()+'</svg>'+guideMarkup+'<figcaption><strong>'+esc(spec.concept)+'：</strong>'+esc(spec.caption)+'</figcaption></figure>';
   }
   window.lessonFigures={render:render,placement(lesson){const keys=lesson.figureKeys||[lesson.visual];return keys.map(key=>{const spec=figures[key];return spec?{key,section:spec.section,paragraph:spec.paragraph}:null}).filter(Boolean)},keys(){return [...Object.keys(figures),...Object.keys(workedFigures)]}};
 })();

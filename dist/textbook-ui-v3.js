@@ -304,7 +304,7 @@
     const solutionLabel=guidedSteps?'结论':'解析';
     const guidedAttrs=guidedSteps?' data-worked-example data-worked-step="1" data-worked-expanded="false"':'';
     const conclusion=guidedSteps?'<p data-worked-conclusion hidden><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p>':'<p><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p>';
-    return '<section class="worked-example"'+guidedAttrs+'><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+rich(worked.title)+'</h2><p><strong>问题</strong>　'+rich(worked.prompt)+'</p>'+figure+steps+conclusion+'</section>';
+    return '<section id="worked-example-'+esc(l.id)+'" class="worked-example"'+guidedAttrs+'><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+rich(worked.title)+'</h2><p><strong>问题</strong>　'+rich(worked.prompt)+'</p>'+figure+steps+conclusion+'</section>';
   }
   function updateWorkedExample(root,step,expanded){
     const items=Array.from(root.querySelectorAll('[data-worked-step-item]'));
@@ -338,6 +338,37 @@
   }
   function initializeWorkedExamples(){
     document.querySelectorAll('[data-worked-example]').forEach(root=>updateWorkedExample(root,1,false));
+  }
+  function updateConceptGuide(root,step,expanded){
+    const items=Array.from(root.querySelectorAll('[data-concept-guide-step-item]'));
+    const count=items.length;
+    if(!count)return;
+    const current=Math.max(1,Math.min(count,Number(step)||1));
+    root.dataset.guideCurrentStep=String(current);
+    root.dataset.guideExpanded=String(Boolean(expanded));
+    let currentTitle='';
+    items.forEach((item,index)=>{
+      const itemStep=index+1;
+      item.hidden=!expanded&&itemStep>current;
+      const button=item.querySelector('[data-concept-guide-jump]');
+      if(button)button.setAttribute('aria-current',String(itemStep===current?'step':'false'));
+      item.classList.toggle('is-current',itemStep===current);
+      item.classList.toggle('is-complete',itemStep<current);
+      if(itemStep===current)currentTitle=item.querySelector('.figure-guide-step-copy strong')?.textContent||'';
+    });
+    const progress=root.querySelector('[data-concept-guide-progress]');
+    if(progress)progress.textContent='第 '+current+' / '+count+' 步';
+    const status=root.querySelector('[data-concept-guide-status]');
+    if(status)status.textContent=(expanded?'已展开全部 '+count+' 步；':'')+'图中已突出第 '+current+' 步：'+currentTitle+'。';
+    const previous=root.querySelector('[data-concept-guide-prev]');
+    const next=root.querySelector('[data-concept-guide-next]');
+    if(previous)previous.disabled=current<=1;
+    if(next)next.disabled=current>=count;
+    const toggle=root.querySelector('[data-concept-guide-toggle]');
+    if(toggle){toggle.setAttribute('aria-expanded',String(Boolean(expanded)));toggle.textContent=expanded?'收起后续步骤':'显示全部步骤';}
+  }
+  function initializeConceptGuides(){
+    document.querySelectorAll('[data-concept-guide-root]').forEach(root=>updateConceptGuide(root,1,false));
   }
   function lesson(id){
     const l=lessons.find(x=>x.id===id);
@@ -375,6 +406,7 @@
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     document.querySelectorAll('[data-course-count]').forEach(badge=>{badge.textContent=String(lessons.length);badge.setAttribute('aria-label',lessons.length+' 节课程')});
     document.getElementById('content').innerHTML=content;
+    initializeConceptGuides();
     initializeWorkedExamples();
     window.lessonPlaygrounds?.initialize();
     initializeTensorLearning();
@@ -400,6 +432,31 @@
     if(prediction)saveTensorProgress(prediction.closest('[data-tensor-explorer]'));
   });
   document.addEventListener('click',event=>{
+    const guideControl=event.target.closest('.figure-guide-controls button');
+    if(guideControl){
+      const root=guideControl.closest('[data-concept-guide-root]');
+      const current=Number(root?.dataset.guideCurrentStep)||1;
+      const expanded=root?.dataset.guideExpanded==='true';
+      if(root){
+        if(guideControl.matches('[data-concept-guide-prev]'))updateConceptGuide(root,current-1,expanded);
+        else if(guideControl.matches('[data-concept-guide-next]'))updateConceptGuide(root,current+1,expanded);
+        else if(guideControl.matches('[data-concept-guide-toggle]'))updateConceptGuide(root,current,!expanded);
+        else if(guideControl.matches('[data-concept-guide-reset]'))updateConceptGuide(root,1,false);
+      }
+      return;
+    }
+    const guideJump=event.target.closest('[data-concept-guide-jump]');
+    if(guideJump){
+      const root=guideJump.closest('[data-concept-guide-root]');
+      if(root)updateConceptGuide(root,guideJump.dataset.conceptGuideJump,root.dataset.guideExpanded==='true');
+      return;
+    }
+    const guideExample=event.target.closest('[data-guide-example-id]');
+    if(guideExample){
+      const target=document.getElementById(guideExample.dataset.guideExampleId);
+      if(target){const behavior=window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth';target.scrollIntoView({behavior:behavior,block:'start'});target.setAttribute('tabindex','-1');target.focus({preventScroll:true});}
+      return;
+    }
     const workedControl=event.target.closest('.worked-example-controls button');
     if(workedControl){
       const root=workedControl.closest('[data-worked-example]');

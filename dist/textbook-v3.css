@@ -125,6 +125,28 @@ footer{border-color:#e5e2d9}
 .worked-example [data-worked-conclusion][hidden]{display:none}
 .worked-example .chapter-concept-figure[data-worked-current-step] [data-worked-figure-step]{opacity:.28;transition:opacity .22s ease,filter .22s ease}
 .worked-example .chapter-concept-figure[data-worked-current-step="1"] [data-worked-figure-step="1"],.worked-example .chapter-concept-figure[data-worked-current-step="2"] [data-worked-figure-step="2"],.worked-example .chapter-concept-figure[data-worked-current-step="3"] [data-worked-figure-step="3"],.worked-example .chapter-concept-figure[data-worked-current-step="4"] [data-worked-figure-step="4"],.worked-example .chapter-concept-figure[data-worked-current-step="5"] [data-worked-figure-step="5"]{opacity:1;filter:drop-shadow(0 0 2px rgba(116,98,168,.36))}
+.figure-guide{margin:11px 3px 5px;padding:11px 12px;background:#fffefa;border:1px solid #e8e5dc;border-left:2px solid #8171ad}
+.figure-guide-heading{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 8px;color:#394858;font-size:12px}.figure-guide-heading h3{margin:0;color:#394858;font:650 12px/1.5 "Segoe UI","Microsoft YaHei",sans-serif}
+.figure-guide-heading span{color:#8a929a;font-size:10px}
+.figure-guide-steps{display:grid;gap:6px;list-style:none;padding:0;margin:0}
+.figure-guide-steps li{display:grid;grid-template-columns:42px minmax(0,1fr);gap:9px;align-items:start;padding:8px 9px;background:#fbfaf7;border:1px solid #ebe8e1;color:#485766;transition:border-color .18s ease,background .18s ease}
+.figure-guide-steps li[hidden]{display:none}
+.figure-guide-steps li.is-current{border-color:#aa9bc9;background:#f5f2fa;box-shadow:inset 2px 0 #8371ad}
+.figure-guide-step-index{min-height:28px;padding:4px 5px;border:1px solid #ddd8e8;border-radius:3px;background:#f7f5fa;color:#75659f;font:700 10px/1.3 "Segoe UI","Microsoft YaHei",sans-serif;cursor:pointer}
+.figure-guide-step-index[aria-current="step"]{border-color:#8171ad;background:#eeeaf5;color:#55487e}
+.figure-guide-step-index:focus-visible{outline:3px solid #8171ad;outline-offset:2px}
+.figure-guide-step-copy{min-width:0}
+.figure-guide-step-copy strong{display:block;margin:0 0 2px;color:#344252;font-size:12px;line-height:1.5}
+.figure-guide-step-copy p{margin:0;color:#596775;font-size:11px;line-height:1.75}
+.figure-guide-controls{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 0 0;padding:8px 0 0;border-top:1px solid #ebe8e1}
+.figure-guide-controls output{margin-right:auto;color:#66568f;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.figure-guide-status{min-height:1.4em;margin:5px 0 0;color:#718078;font-size:10px;line-height:1.5}
+.figure-guide-example-link{margin-top:5px;padding:4px 0;border:0;background:transparent;color:#66568f;font:600 11px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.figure-guide-example-link:hover{color:#443875}
+.figure-guide-example-link:focus-visible{outline:3px solid #8171ad;outline-offset:2px}
+.chapter-concept-figure[data-guide-current-step] [data-figure-guide-step]{opacity:.38;transition:opacity .22s ease,filter .22s ease}
+.chapter-concept-figure[data-guide-current-step="1"] [data-figure-guide-step="1"],.chapter-concept-figure[data-guide-current-step="2"] [data-figure-guide-step="2"],.chapter-concept-figure[data-guide-current-step="3"] [data-figure-guide-step="3"],.chapter-concept-figure[data-guide-current-step="4"] [data-figure-guide-step="4"]{opacity:1;filter:drop-shadow(0 0 2px rgba(116,98,168,.36))}
+.worked-example{scroll-margin-top:22px}
 .code-section{margin-top:32px}
 .code-block{border-radius:3px;margin:20px 0 8px;background:#242936;color:#ebebf1;overflow:hidden}
 .code-head{padding:11px 14px;background:#303643;color:#ccd0d8;font-size:10px}.copy{padding:5px 9px;border:1px solid #596170;border-radius:2px;color:#ece8ff}
@@ -950,8 +972,8 @@ footer{border-color:#e5e2d9}
 .gradient-method-playground .playground-footnote{margin-top:9px}
 .gradient-method-playground .playground-footnote a{color:#675993;text-decoration:underline;text-underline-offset:2px}
 @media(max-width:760px){.gradient-method-layout{grid-template-columns:1fr}.gradient-method-controls{grid-template-columns:1fr}.gradient-method-readouts{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.worked-example{padding:16px}.worked-example-steps li{grid-template-columns:60px minmax(0,1fr);gap:8px;padding:9px}.worked-example-controls{gap:6px;padding:9px 0}.worked-example-controls output{flex-basis:calc(100% - 4px);margin:0 0 2px}.worked-control-button{min-height:36px;padding:7px 9px}}
-@media(prefers-reduced-motion:reduce){.worked-example-steps li,.worked-control-button,.worked-example .chapter-concept-figure [data-worked-figure-step]{transition:none}}
+@media(max-width:600px){.worked-example{padding:16px}.worked-example-steps li{grid-template-columns:60px minmax(0,1fr);gap:8px;padding:9px}.worked-example-controls{gap:6px;padding:9px 0}.worked-example-controls output{flex-basis:calc(100% - 4px);margin:0 0 2px}.worked-control-button{min-height:36px;padding:7px 9px}.figure-guide{margin:9px 2px 4px;padding:9px}.figure-guide-steps li{grid-template-columns:38px minmax(0,1fr);gap:7px;padding:8px}.figure-guide-controls{gap:5px}.figure-guide-controls output{flex-basis:100%;margin:0 0 2px}.figure-guide-example-link{min-height:36px}}
+@media(prefers-reduced-motion:reduce){.worked-example-steps li,.worked-control-button,.worked-example .chapter-concept-figure [data-worked-figure-step],.figure-guide-steps li,.chapter-concept-figure[data-guide-current-step] [data-figure-guide-step]{transition:none}}
 
 /* Compact lab navigation and guided prediction tasks. */
 main:has(.lab-page-intro){padding-top:26px}

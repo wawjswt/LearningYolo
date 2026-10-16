@@ -228,11 +228,92 @@
     }}
   };
 
-  function render(lesson,key=lesson.visual){
-    const spec=figures[key];
+  const workedFigures={
+    'worked-architecture':{concept:'网格、stride 与 anchor 解码',title:'一个 P3 网格预测如何变成最终边界框',description:'P3 网格位置和 anchor 接收零 logits；sigmoid、stride 与 anchor 尺寸将其解码为画布坐标中的边界框，并计算类别分数。',caption:'例题中的中心为 (84,164)，框大小为 10×13 像素；置信度分数是 objectness 概率乘类别概率。',draw:()=>{
+      let s=rect(25,54,205,174,colors.blueSoft,'none',8,0)+text(127,78,'P3 · stride 8',15,colors.blue,700);
+      for(let y=0;y<3;y++)for(let x=0;x<4;x++)s+=rect(48+x*39,91+y*35,37,33,x===2&&y===1?colors.greenSoft:colors.paper,x===2&&y===1?colors.green:colors.line,1,1);
+      s+=text(126,216,'网格 (10,20) · anchor 10×13',11,colors.ink,600);
+      s+=arrow(237,140,276,140,colors.slate)+rect(283,54,190,174,colors.purpleSoft,'none',8,0)+text(378,82,'预测 logits',15,colors.purple,700)+text(378,116,'tx, ty, tw, th = 0',13,colors.ink,600)+text(378,143,'σ(0) = 0.5',16,colors.purple,700)+text(378,177,'网格带 −0.5 偏移',11,colors.muted,550)+text(378,204,'中心乘 stride 8',11,colors.muted,550);
+      s+=arrow(480,140,519,140,colors.slate)+rect(526,54,208,174,colors.greenSoft,'none',8,0)+text(630,82,'解码结果',15,colors.green,700)+rect(591,104,80,62,'none',colors.green,2,3)+text(631,136,'10×13',12,colors.green,700)+text(630,187,'中心 (84,164)',13,colors.ink,650)+text(630,209,'分数 0.5×0.5=0.25',11,colors.muted,550);
+      s+=text(380,269,'xyxy = (79, 157.5, 89, 170.5)',15,colors.ink,650);return s;
+    }},
+    'worked-dataset':{concept:'像素框到归一化标签',title:'从 1000×500 像素图像计算 YOLO 标签',description:'左侧框出像素坐标为左上角 400,160、宽 200、高 80 的目标；右侧逐项除以图像宽高，得到第 0 类的归一化标签。',caption:'x 与宽度除以图像宽度 1000；y 与高度除以图像高度 500。',draw:()=>{
+      let s=rect(25,52,320,184,colors.paper,colors.line,8,1)+text(185,77,'原图 1000×500',14,colors.blue,700)+rect(47,91,276,138,'#eef2eb','none',3,0);
+      s+='<rect x="157" y="135" width="55" height="22" fill="'+colors.orangeSoft+'" stroke="'+colors.orange+'" stroke-width="2.5"/>';
+      s+=line(157,126,157,163,colors.orange,1,'3 3')+line(212,126,212,163,colors.orange,1,'3 3')+text(185,181,'框：400,160 → 600,240',11,colors.ink,600)+text(185,205,'中心 (500,200) · 大小 200×80',11,colors.muted,550);
+      s+=arrow(354,143,391,143,colors.slate)+rect(399,52,335,184,colors.purpleSoft,'none',8,0)+text(566,78,'逐项归一化',14,colors.purple,700);
+      s+=text(426,111,'cx  500 ÷ 1000 = 0.50',12,colors.ink,600,'start')+text(426,136,'cy  200 ÷ 500 = 0.40',12,colors.ink,600,'start')+text(426,161,'w   200 ÷ 1000 = 0.20',12,colors.ink,600,'start')+text(426,186,'h    80 ÷ 500 = 0.16',12,colors.ink,600,'start')+tag(440,198,253,'0  0.50  0.40  0.20  0.16',colors.greenSoft,colors.green);
+      s+=text(380,272,'标签顺序：class · x_center · y_center · width · height',12,colors.ink,600);return s;
+    }},
+    'worked-anchors':{concept:'Anchor 比例筛选与邻格分配',title:'一个目标框怎样命中 anchor 并分给邻近网格',description:'32×48 目标通过 10×13 anchor 的比例筛选；网格中心的小数部分靠近左边和上边，因此中心格、左邻格和上邻格都成为候选正样本。',caption:'本例 3 个网格位置都匹配同一个目标；完整结果还需检查其他尺度、anchors 和图像边界。',draw:()=>{
+      let s=rect(25,50,300,184,colors.paper,colors.line,8,1)+text(175,75,'网格位置 · 中心 (12.2, 9.3)',13,colors.blue,700);
+      const gx=73,gy=98,cw=70,ch=42;
+      for(let y=0;y<3;y++)for(let x=0;x<3;x++){
+        const active=(x===1&&y===1)||(x===0&&y===1)||(x===1&&y===0),center=x===1&&y===1;
+        s+=rect(gx+x*cw,gy+y*ch,cw-2,ch-2,center?colors.greenSoft:active?colors.orangeSoft:colors.paper,center?colors.green:active?colors.orange:colors.line,2,1);
+        s+=text(gx+x*cw+(cw-2)/2,gy+y*ch+24,['(11,8)','(12,8)','(13,8)','(11,9)','(12,9)','(13,9)','(11,10)','(12,10)','(13,10)'][y*3+x],10,active?(center?colors.green:colors.orange):colors.muted,600);
+      }
+      s+=arrow(330,141,366,141,colors.slate)+rect(375,50,359,184,colors.purpleSoft,'none',8,0)+text(554,76,'Anchor 宽高筛选',14,colors.purple,700)+text(402,111,'目标 32×48 ÷ anchor 10×13',11,colors.ink,600,'start')+text(402,137,'最大对称比例 = 48/13 ≈ 3.69',12,colors.ink,600,'start')+text(402,164,'3.69 < anchor_t 4 → 通过',13,colors.green,700,'start')+tag(444,187,220,'中心 + 左邻 + 上邻',colors.orangeSoft,colors.orange);
+      s+=text(380,268,'邻近网格重复使用同一真实框，各自计算局部偏移。',13,colors.ink,600);return s;
+    }},
+    'worked-yolo-loss':{concept:'一个正样本的三路监督',title:'同一个匹配框如何产生 box、objectness 和分类损失',description:'CIoU 转换为框误差；objectness logit 对齐 CIoU 软目标；类别 logits 对齐 one-hot 类别目标，最后再按权重合并。',caption:'显示的是一个正样本上的局部损失；真实日志还累计大量背景位置、多个检测尺度、超参数 gain 和 batch。',draw:()=>{
+      let s='';
+      const rows=[
+        {y:60,fill:colors.greenSoft,color:colors.green,name:'位置',input:'CIoU = 0.72',target:'1 − 0.72',result:'Lbox = 0.28'},
+        {y:116,fill:colors.orangeSoft,color:colors.orange,name:'目标性',input:'logit 0.8 → 目标 0.72',target:'BCEWithLogits',result:'Lobj ≈ 0.595'},
+        {y:172,fill:colors.purpleSoft,color:colors.purple,name:'类别',input:'logits [0.1, 1.2]',target:'真实类 [0, 1]',result:'Lcls ≈ 0.504'}
+      ];
+      rows.forEach(r=>{s+=rect(26,r.y,707,47,r.fill,'none',6,0)+tag(35,r.y+9,81,r.name,colors.paper,r.color)+text(260,r.y+29,r.input,12,colors.ink,600)+arrow(392,r.y+23,429,r.y+23,colors.slate,1.5)+text(506,r.y+29,r.target,11,colors.ink,600)+text(665,r.y+29,r.result,13,r.color,700)});
+      s+=text(380,258,'总损失 = batch × (gain_box·Lbox + gain_obj·Lobj + gain_cls·Lcls)',12,colors.ink,650);return s;
+    }},
+    'worked-train-yolo':{concept:'前向、反向与权重更新',title:'训练一次 batch：从模型输出到参数更新',description:'图像和标签经过前向预测与损失计算；反向传播产生梯度，optimizer.step 才更新参数。验证结果用于比较最佳 checkpoint。',caption:'玩具参数仅说明梯度更新方向；YOLO 实际更新的是网络中的大量参数张量。',draw:()=>{
+      let s='';
+      const nodes=[
+        {x:17,fill:colors.blueSoft,color:colors.blue,title:'样本',sub:'imgs + targets'},
+        {x:163,fill:colors.purpleSoft,color:colors.purple,title:'前向',sub:'pred = model(imgs)'},
+        {x:309,fill:colors.orangeSoft,color:colors.orange,title:'损失',sub:'ComputeLoss'},
+        {x:455,fill:colors.greenSoft,color:colors.green,title:'梯度',sub:'loss.backward()'},
+        {x:601,fill:colors.paper,color:colors.ink,title:'更新',sub:'optimizer.step()'}
+      ];
+      nodes.forEach(n=>s+=rect(n.x,63,128,75,n.fill,'none',7,0)+text(n.x+64,92,n.title,15,n.color,700)+text(n.x+64,118,n.sub,10,colors.ink,550));
+      for(let i=0;i<nodes.length-1;i++)s+=arrow(nodes[i].x+130,101,nodes[i+1].x-4,101,colors.slate,1.6);
+      s+=rect(70,172,286,66,colors.greenSoft,'none',7,0)+text(213,196,'验证挑选 checkpoint',13,colors.green,700)+text(213,219,'best.pt = 验证最好 · last.pt = 训练末尾',10,colors.ink,550);
+      s+=rect(385,172,350,66,colors.slateSoft,'none',7,0)+text(560,196,'单参数玩具例子',13,colors.muted,700)+text(560,219,'w: 1 − 0.1×0.6 → 0.94',12,colors.ink,600);
+      s+=text(380,270,'实际训练含梯度累积与 AMP；验证过程不调用 optimizer.step()。',12,colors.ink,600);return s;
+    }},
+    'worked-yolo-augment':{concept:'输入尺寸、目标像素与特征图',title:'输入边长增加时，小目标和 P3 网格怎样变化',description:'把输入边长从 640 提高到 960，同一小目标从约 8 像素增至 12 像素；stride 8 的 P3 特征图从 80×80 增至 120×120。',caption:'P3 空间位置增加 2.25 倍；实际显存和速度比例还受 batch、网络结构及设备影响。',draw:()=>{
+      let s='';
+      s+=rect(28,52,330,179,colors.blueSoft,'none',8,0)+text(193,78,'输入 imgsz = 640',14,colors.blue,700)+rect(62,96,108,108,colors.paper,colors.line,4,1);
+      for(let i=1;i<4;i++){s+=line(62+i*27,96,62+i*27,204,colors.line,1);s+=line(62,96+i*27,170,96+i*27,colors.line,1)}
+      s+=rect(113,139,14,14,colors.orangeSoft,colors.orange,2,1)+text(235,128,'目标约 8×8 px',13,colors.ink,600)+text(235,163,'P3：80×80',13,colors.blue,650)+text(235,190,'空间位置：6,400',11,colors.muted,550);
+      s+=arrow(362,141,394,141,colors.slate)+rect(401,52,331,179,colors.greenSoft,'none',8,0)+text(566,78,'输入 imgsz = 960',14,colors.green,700)+rect(435,96,108,108,colors.paper,colors.line,4,1);
+      for(let i=1;i<4;i++){s+=line(435+i*27,96,435+i*27,204,colors.line,1);s+=line(435,96+i*27,543,96+i*27,colors.line,1)}
+      s+=rect(498,135,21,21,colors.orangeSoft,colors.orange,2,1)+text(608,128,'目标约 12×12 px',13,colors.ink,600)+text(608,163,'P3：120×120',13,colors.green,650)+text(608,190,'空间位置：14,400',11,colors.muted,550);
+      s+=text(380,266,'边长 ×1.5　→　目标边长 ×1.5　→　P3 位置数 ×2.25',13,colors.ink,650);return s;
+    }},
+    'worked-inference':{concept:'Confidence、NMS 与 letterbox 还原',title:'从自动填充到 NMS，再把预测框映射回原图',description:'640×500 原图缩放后上下各自动补 6 像素。两个候选都通过置信度阈值，同类高重叠框经 NMS 留下高分框，再撤销上方 padding。',caption:'本例 stride 为 32、输入图宽度不变；画布高度变为 512。坐标还原时须撤销 padding 与缩放。',draw:()=>{
+      let s='';
+      const xs=[20,203,386,569],fills=[colors.blueSoft,colors.slateSoft,colors.purpleSoft,colors.greenSoft],cols=[colors.blue,colors.slate,colors.purple,colors.green],heads=['原始图像','自动填充','NMS 去重','映射回原图'],subs=['640×500','640×512','阈值 0.25 / IoU 0.45','最终 xyxy'];
+      xs.forEach((x,i)=>{s+=rect(x,55,167,171,fills[i],'none',7,0)+text(x+83,81,heads[i],13,cols[i],700);s+=rect(x+25,97,i===1?117:117,i===1?94:91,i===1?'#dce3df':'#fffefa','none',4,0);s+=text(x+83,205,subs[i],10,colors.ink,550)});
+      s+='<rect x="67" y="115" width="37" height="37" fill="none" stroke="'+colors.green+'" stroke-width="2.5"/><rect x="228" y="97" width="117" height="1.1" fill="'+colors.slate+'"/><rect x="228" y="189.6" width="117" height="1.1" fill="'+colors.slate+'"/><rect x="250" y="116.4" width="37" height="37" fill="none" stroke="'+colors.green+'" stroke-width="2.5"/><rect x="432" y="116" width="37" height="37" fill="none" stroke="'+colors.orange+'" stroke-width="2.5"/><rect x="436" y="119" width="37" height="37" fill="none" stroke="'+colors.green+'" stroke-width="2.5"/><rect x="615" y="115" width="37" height="37" fill="none" stroke="'+colors.green+'" stroke-width="2.5"/>';
+      s+=arrow(190,135,198,135,colors.slate,1.5)+arrow(373,135,381,135,colors.slate,1.5)+arrow(556,135,564,135,colors.slate,1.5);
+      s+=text(380,270,'先按置信度筛选，再用 IoU 去重，最后撤销补边。',13,colors.ink,600);return s;
+    }},
+    'worked-debugging':{concept:'置信度阈值如何隐藏候选框',title:'objectness 与类别分数相乘后才和阈值比较',description:'objectness 0.35 与类别概率 0.60 相乘得到 0.21；在 confidence 阈值 0.25 下候选框被过滤，阈值 0.15 时才显示。',caption:'临时降低阈值可以判断候选是否存在；阈值变低也可能带来更多误报。',draw:()=>{
+      let s='';
+      s+=rect(27,60,215,155,colors.blueSoft,'none',8,0)+text(134,87,'模型输出概率',14,colors.blue,700)+text(134,121,'objectness 0.35',13,colors.ink,600)+text(134,148,'类别概率 0.60',13,colors.ink,600)+text(134,184,'0.35 × 0.60 = 0.21',15,colors.purple,700);
+      s+=arrow(246,137,284,137,colors.slate)+rect(291,60,202,155,colors.orangeSoft,'none',8,0)+text(392,87,'confidence 筛选',14,colors.orange,700)+line(319,139,466,139,colors.slate,2)+circle(389,139,7,colors.orange,colors.paper,2)+text(392,117,'分数 0.21',11,colors.ink,600)+text(346,169,'阈值 0.15',10,colors.green,650)+text(443,169,'阈值 0.25',10,colors.red,650)+text(392,195,'0.21 低于 0.25',11,colors.red,700);
+      s+=arrow(497,137,535,137,colors.slate)+rect(542,60,192,155,colors.greenSoft,'none',8,0)+text(638,87,'诊断判断',14,colors.green,700)+text(638,122,'阈值 0.15：候选可见',11,colors.ink,600)+text(638,150,'阈值 0.25：候选隐藏',11,colors.ink,600)+text(638,184,'再查权重与输入',11,colors.muted,550);
+      s+=text(380,266,'调低阈值只用于定位原因；最终阈值要在验证集上选择。',12,colors.ink,600);return s;
+    }}
+  };
+
+  function render(lesson,key=lesson.visual,kind='lesson'){
+    const spec=figures[key]||workedFigures[key];
     if(!spec)return '';
     const id='chapter-figure-'+String(lesson.id+'-'+key).replace(/[^a-z0-9_-]/gi,'-');
-    return '<figure class="chapter-concept-figure" data-visual="'+esc(key)+'" tabindex="0"><div class="figure-heading"><span>本节图解 · '+esc(spec.concept)+'</span><span>对照正文观察</span></div><svg viewBox="0 0 760 310" role="img" aria-labelledby="'+id+'-title '+id+'-desc" focusable="false"><title id="'+id+'-title">'+esc(spec.title)+'</title><desc id="'+id+'-desc">'+esc(spec.description)+'</desc>'+spec.draw()+'</svg><figcaption><strong>'+esc(spec.concept)+'：</strong>'+esc(spec.caption)+'</figcaption></figure>';
+    const label=kind==='worked'?'例题图解':'本节图解',hint=kind==='worked'?'对应分步推演':'对照正文观察';
+    return '<figure class="chapter-concept-figure" data-visual="'+esc(key)+'" tabindex="0"><div class="figure-heading"><span>'+label+' · '+esc(spec.concept)+'</span><span>'+hint+'</span></div><svg viewBox="0 0 760 310" role="img" aria-labelledby="'+id+'-title '+id+'-desc" focusable="false"><title id="'+id+'-title">'+esc(spec.title)+'</title><desc id="'+id+'-desc">'+esc(spec.description)+'</desc>'+spec.draw()+'</svg><figcaption><strong>'+esc(spec.concept)+'：</strong>'+esc(spec.caption)+'</figcaption></figure>';
   }
-  window.lessonFigures={render:render,placement(lesson){const keys=lesson.figureKeys||[lesson.visual];return keys.map(key=>{const spec=figures[key];return spec?{key,section:spec.section,paragraph:spec.paragraph}:null}).filter(Boolean)},keys(){return Object.keys(figures)}};
+  window.lessonFigures={render:render,placement(lesson){const keys=lesson.figureKeys||[lesson.visual];return keys.map(key=>{const spec=figures[key];return spec?{key,section:spec.section,paragraph:spec.paragraph}:null}).filter(Boolean)},keys(){return [...Object.keys(figures),...Object.keys(workedFigures)]}};
 })();

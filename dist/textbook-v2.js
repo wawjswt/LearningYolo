@@ -294,6 +294,110 @@ for(const [id,supplement] of Object.entries(yoloAlgorithmSupplement)){
   if(supplement.keypoints) lesson.keypoints=[...(lesson.keypoints||[]),...supplement.keypoints];
 }
 
+const guidedWorkedExamples={
+  architecture:{
+    title:'例题：从零 logits 解码一个边界框',
+    prompt:'P3 stride=8，网格坐标 `(gx,gy)=(10,20)`，anchor 为 `10×13` 像素，框 logits、objectness logit 和类别 logit 都是 0。解码框与类别分数是多少？',
+    steps:[
+      '四个框 logit 都为 0，因此 `σ(0)=0.5`。P3 网格带有 `−0.5` 偏移，当前基点是 `(10−0.5,20−0.5)=(9.5,19.5)`。',
+      '中心坐标：`cx=(2×0.5+9.5)×8=84`，`cy=(2×0.5+19.5)×8=164`。',
+      '宽高：`w=(2×0.5)²×10=10`，`h=(2×0.5)²×13=13`。',
+      '换成左上、右下坐标：`xyxy=(79,157.5,89,170.5)`。objectness 与类别概率各为 `0.5`，相乘后该类分数为 `0.25`。'
+    ],
+    solution:'这个零 logits 算例得到中心 `(84,164)`、宽高 `10×13`、类别分数 `0.25`。它只演示解码算术，不代表已训练模型的实际输出。',
+    figureKey:'worked-architecture'
+  },
+  dataset:{
+    title:'例题：把像素边界框写成 YOLO 标签',
+    prompt:'图像大小为 `1000×500`。目标框左上角为 `(400,160)`，宽 `200`、高 `80`；若它是第 0 类，标签行怎么写？',
+    steps:[
+      '先由左上角和宽高求中心：`cx=400+200/2=500`，`cy=160+80/2=200`。',
+      '横向量除以图像宽度 1000：`x=500/1000=0.5`，`w=200/1000=0.2`。',
+      '纵向量除以图像高度 500：`y=200/500=0.4`，`h=80/500=0.16`。',
+      '按 `class x_center y_center width height` 顺序写成 `0 0.5 0.4 0.2 0.16`，再把框画回原图核对位置。'
+    ],
+    solution:'标签行是 `0 0.5 0.4 0.2 0.16`。横向坐标和宽度用图像宽度归一化，纵向坐标和高度用图像高度归一化。',
+    figureKey:'worked-dataset'
+  },
+  anchors:{
+    title:'例题：一个目标怎样匹配到多个正样本',
+    prompt:'目标为 `32×48` 像素，P3 anchor 为 `10×13`，`anchor_t=4`。中心落在网格坐标 `(12.2,9.3)`；哪些匹配会被尝试？',
+    steps:[
+      '计算宽高的对称比例：`32/10=3.2`、`10/32=0.3125`、`48/13≈3.69`、`13/48≈0.27`；最大值 `3.69<4`，所以该 anchor 通过筛选。',
+      '中心的整数网格是 `(12,9)`，先把该格作为正样本位置。',
+      '小数部分为 `0.2` 和 `0.3`，都小于 `g=0.5`；中心靠近左侧和上侧边界，因此还尝试左邻 `(11,9)` 与上邻 `(12,8)`。',
+      '同一个框因此能监督中心格和相邻格。真实分配还要逐尺度、逐 anchor 计算，并受边界裁剪与配置影响。'
+    ],
+    solution:'该 anchor 通过比例阈值；此例会尝试 `(12,9)`、`(11,9)`、`(12,8)` 三个网格位置。每个位置都用自己的局部偏移来回归同一真实框。',
+    figureKey:'worked-anchors'
+  },
+  'yolo-loss':{
+    title:'例题：一个正样本如何产生三种监督',
+    prompt:'假设一个匹配框的 CIoU 为 `0.72`，objectness logit 为 `0.8`；两类 logits 为 `[0.1,1.2]`，真实类别是第 2 类。无 label smoothing 时，局部损失各是多少？',
+    steps:[
+      '框项把重合质量转为误差：`L_box=1−0.72=0.28`。',
+      'objectness 的训练目标取停止梯度后的 CIoU 分数 `0.72`；`BCEWithLogits(0.8,0.72)≈0.595`。',
+      '分类目标为 `[0,1]`。逐类计算 BCE 后取平均：`(softplus(0.1)+softplus(−1.2))/2≈0.504`。',
+      '日志中的总损失还会累计背景位置和多个尺度，再乘以各项 gain 与 batch size；这里的三个值只对应一个正样本的局部计算。'
+    ],
+    solution:'这个正样本的局部示例是 `L_box=0.28`、`L_obj≈0.595`、`L_cls≈0.504`。它们不能直接当作训练日志中的总损失。',
+    figureKey:'worked-yolo-loss'
+  },
+  'train-yolo':{
+    title:'例题：一次训练迭代中，参数在哪一步改变？',
+    prompt:'一个 batch 依次经过 `model`、`ComputeLoss`、`backward` 和 `optimizer.step`。哪一步生成预测、计算梯度、修改参数？如何理解 `best.pt` 与 `last.pt`？',
+    steps:[
+      '`pred=model(imgs)` 做前向计算并生成 P3/P4/P5 预测；此时参数还没有更新。',
+      '`ComputeLoss(pred,targets)` 用标签和预测算出 box、objectness、分类损失。',
+      '`loss.backward()` 计算参数梯度。梯度累积时，多个 batch 的梯度可能先相加。',
+      '`optimizer.step()` 才按梯度更新参数。用单个玩具参数理解这一步：`w=1`、梯度 `0.6`、学习率 `0.1`，更新为 `w=1−0.1×0.6=0.94`；这不是 YOLO 网络的真实参数值。',
+      '验证集用于比较 checkpoint：`best.pt` 保存验证表现最好的状态，`last.pt` 保存训练最后阶段的状态。'
+    ],
+    solution:'前向生成预测，损失函数给出优化目标，`backward()` 计算梯度，`optimizer.step()` 改参数。验证表现用来挑选 `best.pt`，训练末尾状态则是 `last.pt`。',
+    figureKey:'worked-train-yolo'
+  },
+  'yolo-augment':{
+    title:'例题：提高输入尺寸会给小目标和计算量带来什么变化？',
+    prompt:'某目标在 `640×640` 输入图上约为 `8×8` 像素。保持图像内容不变，把输入尺寸提高到 `960×960`，目标尺寸和 P3 网格数量约如何变化？',
+    steps:[
+      '输入边长倍率是 `960/640=1.5`，同一目标的边长约从 `8` 像素变为 `12` 像素。',
+      'stride=8 的 P3 特征图由 `80×80` 变成 `120×120`。',
+      'P3 的空间位置数由 `6400` 变成 `14400`，约为 `2.25` 倍；显存与速度成本也会增加，但实际比例还受网络、batch 和设备影响。',
+      '在同一固定验证集上比较小目标 Recall、显存和速度；一次只调整输入尺寸，才能看出改动是否值得。'
+    ],
+    solution:'边长增加 `1.5` 倍，目标约从 `8×8` 变为 `12×12`；P3 网格位置约增加到 `2.25` 倍。更高输入可能帮助小目标，也会增加计算开销，需用同一验证协议比较。',
+    figureKey:'worked-yolo-augment'
+  },
+  inference:{
+    title:'例题：筛掉重复框，再把坐标还原到原图',
+    prompt:'原图为 `640×500`，推理使用 stride=32 的自动填充。两个同类候选框分数为 `0.72` 和 `0.66`，IoU 为 `0.70`；confidence 阈值为 `0.25`，NMS IoU 阈值为 `0.45`。高分框在模型画布上的坐标为 `[120,106,320,306]`。最终保留哪个框？',
+    steps:[
+      '宽度已是 640，缩放倍率 `r=1`。高度剩余 `640−500=140`；自动填充取 stride 余量 `140 mod 32=12`，上下各补 `6` 像素，模型画布高为 `512`。',
+      '两个分数都大于 `0.25`，先通过 confidence 筛选。',
+      '同类别框的 IoU `0.70>0.45`，NMS 保留较高分的 `0.72`，压掉 `0.66` 的重复框。',
+      '还原坐标时撤销上方 6 像素 padding：`[120,106,320,306] → [120,100,320,300]`；横坐标不变。'
+    ],
+    solution:'保留分数 `0.72` 的候选框。撤销 letterbox 的上方 padding 后，原图坐标为 `[120,100,320,300]`。此例按同类候选框说明 NMS；不同类别的框是否互相抑制取决于 class-aware 设置。',
+    figureKey:'worked-inference'
+  },
+  debugging:{
+    title:'例题：模型似乎没框，可能是阈值筛掉了候选',
+    prompt:'某候选框的 objectness 概率为 `0.35`，类别概率为 `0.60`。confidence 阈值是 `0.25`，画面没有显示框。先检查什么？',
+    steps:[
+      '类别分数按 `objectness×类别概率` 计算：`0.35×0.60=0.21`。',
+      '虽然 objectness `0.35>0.25`，最终类别分数 `0.21<0.25`，候选会在 confidence 筛选时被丢弃。',
+      '临时把阈值降到 `0.15`，该候选分数就能通过；这一步只用于诊断，低阈值也可能带来更多误报。',
+      '若低阈值下仍没有候选，再检查加载的权重、类别映射、输入预处理和验证样例。'
+    ],
+    solution:'该候选分数是 `0.21`，低于阈值 `0.25`，所以会被过滤。先用较低阈值判断候选是否存在，再继续排查权重、数据与后处理。',
+    figureKey:'worked-debugging'
+  }
+};
+for(const lesson of authored){
+  const worked=guidedWorkedExamples[lesson.id];
+  if(worked) lesson.worked={...(lesson.worked||{}),...worked};
+}
+
 const idOrder=['ai-foundations','tensor','gradient','network','losses','optimizer','training','regularization','transfer','image','cnn','pooling','augmentation','tasks','iou','metrics','data-quality','architecture','dataset','anchors','yolo-loss','train-yolo','yolo-augment','inference','debugging'];
 const byId=new Map(authored.map(item=>[item.id,item]));
 lessons.splice(0,lessons.length,...idOrder.map(id=>byId.get(id)).filter(Boolean));

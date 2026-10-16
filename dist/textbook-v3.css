@@ -103,6 +103,11 @@ footer{border-color:#e5e2d9}
 .worked-example{padding:20px 22px;margin:40px 0;background:#f4f2ec;border-left:2px solid #8676b3}
 .worked-example .chapter-kicker,.keypoint-review .chapter-kicker,.chapter-quiz .chapter-kicker,.chapter-notes .chapter-kicker{font-size:9px}
 .worked-example p{font-size:14px;line-height:1.95;margin-bottom:10px}.worked-example p strong{color:#313e4b}
+.worked-example>.chapter-concept-figure{margin:15px -4px 18px}
+.worked-example-steps{margin:18px 0 14px}.worked-example-steps h3{font:650 14px/1.6 "Segoe UI","Microsoft YaHei",sans-serif;color:#394858;margin:0 0 10px}
+.worked-example-steps ol{display:grid;gap:8px;list-style:none;padding:0;margin:0}
+.worked-example-steps li{display:grid;grid-template-columns:60px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;background:#fffefa;border:1px solid #e8e5dc;color:#485766;font-size:13px;line-height:1.9}
+.worked-step-index{padding-top:2px;color:#75659f;font-size:9px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
 .code-section{margin-top:32px}
 .code-block{border-radius:3px;margin:20px 0 8px;background:#242936;color:#ebebf1;overflow:hidden}
 .code-head{padding:11px 14px;background:#303643;color:#ccd0d8;font-size:10px}.copy{padding:5px 9px;border:1px solid #596170;border-radius:2px;color:#ece8ff}
@@ -124,6 +129,7 @@ footer{border-color:#e5e2d9}
 .exercise-feedback{margin-top:8px;color:#4e6c5e}
 .chapter-quiz .exercise-card{margin-top:15px;background:#fffefa;border-color:#ebe7df;border-left-color:#9a83cd}
 @media(max-width:600px){.exercise-card{padding:14px}.exercise-options button{padding:10px;font-size:12px}}
+@media(max-width:600px){.worked-example{padding:17px 14px}.worked-example>.chapter-concept-figure{margin:13px -8px 16px}.worked-example-steps li{grid-template-columns:48px minmax(0,1fr);gap:7px;padding:9px}.worked-example-steps li>div{font-size:12px;line-height:1.85}}
 @media(prefers-reduced-motion:reduce){.exercise-options button{transition:none}.exercise-options button:hover{transform:none}}
 .chapter-notes{border-top:1px solid #e7e4dc;padding-top:23px;margin:35px 0 0;scroll-margin-top:24px}.chapter-notes h2{margin:3px 0 4px;font-size:19px}.chapter-notes>p{font-size:12px;color:#78838d;line-height:1.8}
 .note-input{min-height:145px;padding:14px;background:#fcfbf8;border-color:#e2dfd6;font-size:13px;line-height:1.8}

@@ -291,6 +291,15 @@
   function objectiveBox(l){
     return '<section class="learning-contract"><div><h2>学完本章，你将能够</h2><ul>'+l.goals.map(g=>'<li>'+g+'</li>').join('')+'</ul></div><p><strong>先修知识</strong><span>'+rich(l.prereq||'可从上一章接着阅读；不需要提前掌握本领域全部数学。')+'</span></p></section>';
   }
+  function workedExampleMarkup(l){
+    if(!l.worked)return '';
+    const worked=l.worked;
+    const figure=worked.figureKey?window.lessonFigures.render(l,worked.figureKey,'worked'):'';
+    const steps=Array.isArray(worked.steps)&&worked.steps.length
+      ?'<div class="worked-example-steps"><h3>分步推演</h3><ol>'+worked.steps.map((step,index)=>'<li><span class="worked-step-index">步骤 '+String(index+1).padStart(2,'0')+'</span><div>'+rich(step)+'</div></li>').join('')+'</ol></div>':'';
+    const solutionLabel=steps?'结论':'解析';
+    return '<section class="worked-example"><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+rich(worked.title)+'</h2><p><strong>问题</strong>　'+rich(worked.prompt)+'</p>'+figure+steps+'<p><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p></section>';
+  }
   function lesson(id){
     const l=lessons.find(x=>x.id===id);
     if(!l)return '<div class="empty">这章暂时没有找到。<a href="#courses">返回课程目录</a></div>';
@@ -302,7 +311,7 @@
       +(l.chapterExercises?.length?'<li><a href="#chapter-quiz">本章综合练习</a></li>':'')
       +'<li><a href="#chapter-notes">笔记与进度</a></li>';
     const articleContent=articleSections(l);
-    const examples=l.worked?'<section class="worked-example"><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+l.worked.title+'</h2><p><strong>问题</strong>　'+rich(l.worked.prompt)+'</p><p><strong>解析</strong>　'+rich(l.worked.solution)+'</p></section>':'';
+    const examples=workedExampleMarkup(l);
     const code=l.code?'<section class="text-section code-section"><div class="code-block"><div class="code-head"><span>'+esc(l.language||'代码示例')+' · 建议逐行阅读</span><button class="copy" data-copy="'+l.id+'">复制代码</button></div><pre><code>'+esc(l.code)+'</code></pre></div><p class="code-note">'+(l.language==='源码流程示意'?'这段内容是源码逻辑摘要，不是可独立运行的脚本；请按注释中的文件与方法名对照仓库。':'先运行原始示例并观察结果，再一次只改变一个输入或参数。'+(l.group==='yolo'?'YOLOv5 命令行选项会随仓库版本变化，请用本地脚本的帮助信息核对。':'每做一步，先预测输入与输出形状，再用实际结果核对。'))+'</p></section>':'';
     const quiz=l.chapterExercises?.length?'<section class="chapter-quiz" id="chapter-quiz"><span class="chapter-kicker">CHAPTER REVIEW · 章末综合练习</span><h2>本章综合练习</h2><p>结合本章概念完成练习；每题作答后查看解析。</p>'+l.chapterExercises.map((exercise,i)=>exerciseCard(l,exercise,'chapter',i)).join('')+'</section>':'';
     const keypoints=l.keypoints?'<section class="keypoint-review"><span class="chapter-kicker">CHAPTER REVIEW</span><h2>本章要点</h2><ul>'+l.keypoints.map(x=>'<li>'+x+'</li>').join('')+'</ul></section>':'';

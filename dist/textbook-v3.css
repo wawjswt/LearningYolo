@@ -1022,3 +1022,37 @@ main:has(.lab-page-intro){padding-top:26px}
 @media(max-width:760px){.lab-task-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){main:has(.lab-page-intro){padding-top:22px}.lab-page-intro{margin-bottom:10px}.lab-page-intro h1{font-size:27px}.lab-page-intro>p:last-child{font-size:12px}.lab-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-bottom:10px}.lab-tabs button{min-height:36px;padding:7px 8px;font-size:11px}.lab-task-card{margin-bottom:10px;padding:11px}.lab-task-question{align-items:flex-start;gap:7px;font-size:12px}.lab-task-options{grid-template-columns:1fr}.lab-task-footer{align-items:flex-start;flex-direction:column}.lab-task-retry{align-self:flex-end}.pipeline-progress-summary{grid-template-columns:auto auto minmax(0,1fr);gap:5px 8px}.pipeline-progress-track{grid-column:1/-1}.pipeline-stepper{display:flex;gap:6px;overflow-x:auto;margin-right:-10px;padding:0 10px 8px 0;scrollbar-width:thin}.pipeline-stepper li{flex:0 0 128px;min-width:0}.pipeline-stepper button{min-height:44px}.pipeline-navigation{margin-top:10px}}
 @media(prefers-reduced-motion:reduce){.pipeline-progress-track i{transition:none}}
+
+/* Give technical diagrams enough room and keep the active explanation easy to follow. */
+.textbook-page{max-width:1180px}
+.chapter-layout{width:100%;max-width:1120px;grid-template-columns:minmax(145px,164px) minmax(0,1fr);gap:clamp(22px,3.2vw,42px)}
+.chapter-body{padding:clamp(24px,3vw,42px)}
+.chapter-concept-figure{margin:25px -10px 34px;padding:16px 18px 14px;background:linear-gradient(145deg,#fdfcf9 0%,#f7f5ee 100%);border:1px solid #ded9ce;border-left:4px solid #7564a4;border-radius:4px;box-shadow:0 7px 20px rgba(49,55,67,.045)}
+.chapter-concept-figure .figure-heading{align-items:center;gap:12px;margin:0 4px 12px;color:#394858;font-size:12px;font-weight:650}
+.chapter-concept-figure .figure-heading span:first-child{min-width:0}
+.chapter-concept-figure .figure-heading span:last-child{display:inline-flex;flex:none;padding:4px 8px;border:1px solid #ded8eb;border-radius:999px;background:#efecf6;color:#55487e;font-size:10px;font-weight:700}
+.chapter-concept-figure svg{min-height:240px;max-height:390px}
+.chapter-concept-figure figcaption{padding:9px 5px 0;color:#4f5d69;font-size:13px;line-height:1.8}
+.figure-guide{margin:12px 3px 5px;padding:13px 14px;background:#fff;border:1px solid #e2ded4;border-left:3px solid #7968aa;border-radius:3px}
+.figure-guide-heading{font-size:13px}
+.figure-guide-heading h3{font-size:13px}
+.figure-guide-heading span{color:#697686}
+.figure-guide-steps{gap:7px}
+.figure-guide-steps li{grid-template-columns:44px minmax(0,1fr);gap:10px;padding:9px 11px}
+.figure-guide-steps li.is-current{border-color:#8d7db3;background:#f0edf7;box-shadow:inset 3px 0 #7564a4}
+.figure-guide-step-index{min-height:32px;background:#f4f1f8;font-size:11px}
+.figure-guide-step-index[aria-current=step]{border-color:#7867a8;background:#7867a8;color:#fff}
+.figure-guide-step-copy strong{font-size:13px}
+.figure-guide-step-copy p{color:#485765;font-size:12px;line-height:1.72}
+.figure-guide-controls{gap:7px;margin-top:10px}
+.figure-guide-controls output{font-size:11px}
+.figure-guide-controls .worked-control-button{min-height:36px}
+.figure-guide-status{margin-top:7px;color:#526d5b;font-size:11px}
+.figure-guide-example-link{font-size:12px}
+.chapter-concept-figure[data-guide-current-step] [data-figure-guide-step]{opacity:.66;transition:opacity .22s ease,filter .22s ease}
+.chapter-concept-figure[data-guide-current-step="1"] [data-figure-guide-step="1"],.chapter-concept-figure[data-guide-current-step="2"] [data-figure-guide-step="2"],.chapter-concept-figure[data-guide-current-step="3"] [data-figure-guide-step="3"],.chapter-concept-figure[data-guide-current-step="4"] [data-figure-guide-step="4"]{opacity:1;filter:drop-shadow(0 3px 3px rgba(84,69,125,.2)) saturate(1.12)}
+.worked-example .chapter-concept-figure[data-worked-current-step] [data-worked-figure-step]{opacity:.62}
+.worked-example .chapter-concept-figure[data-worked-current-step="1"] [data-worked-figure-step="1"],.worked-example .chapter-concept-figure[data-worked-current-step="2"] [data-worked-figure-step="2"],.worked-example .chapter-concept-figure[data-worked-current-step="3"] [data-worked-figure-step="3"],.worked-example .chapter-concept-figure[data-worked-current-step="4"] [data-worked-figure-step="4"],.worked-example .chapter-concept-figure[data-worked-current-step="5"] [data-worked-figure-step="5"]{opacity:1;filter:drop-shadow(0 3px 3px rgba(84,69,125,.2)) saturate(1.12)}
+@media(max-width:980px){.textbook-page{max-width:960px}.chapter-layout{max-width:960px;grid-template-columns:minmax(128px,150px) minmax(0,1fr);gap:clamp(18px,2.5vw,27px)}.chapter-body{padding:clamp(22px,3vw,32px)}}
+@media(max-width:760px){.textbook-page{max-width:680px}.chapter-layout{max-width:680px;grid-template-columns:minmax(0,1fr);gap:12px}.chapter-body{padding:22px 20px}}
+@media(max-width:480px){.chapter-layout,.textbook-page{max-width:100%}.chapter-body{padding:18px 14px}.chapter-concept-figure{margin:18px -7px 25px;padding:10px 9px 11px}.chapter-concept-figure .figure-heading{flex-wrap:wrap;gap:5px 8px;font-size:10px}.chapter-concept-figure .figure-heading span:last-child{display:inline-flex;font-size:9px}.chapter-concept-figure svg{width:580px;max-width:none;min-height:0;max-height:none}.figure-guide{padding:10px}.figure-guide-steps li{grid-template-columns:38px minmax(0,1fr);gap:7px;padding:8px}.figure-guide-step-copy p{font-size:11px}.figure-guide-controls{gap:5px}.figure-guide-controls output{flex-basis:100%;margin:0 0 2px}.figure-guide-controls .worked-control-button{min-height:38px}}

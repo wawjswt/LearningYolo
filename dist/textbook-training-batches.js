@@ -5,10 +5,10 @@
 
   function batchExplorerMarkup(){
     return '<section class="training-batch-explorer" data-training-batches aria-labelledby="training-batch-title">'
-      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · Batch / Iteration / Epoch</span><h3 id="training-batch-title">把训练集拆开，数清每一次参数更新</h3><p>先复现视频的 60,000 张图片与 batch size=100，再改变样本数、批大小或 epoch 数，看训练日志里的计数怎样变化。</p></div></div>'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · Batch / Iteration / Epoch</span><h3 id="training-batch-title">把训练集拆开，数清每一次参数更新</h3><p>先看 60,000 张训练图片与 batch size=100 的算例，再改变样本数、批大小或 epoch 数，看训练日志里的计数怎样变化。</p></div></div>'
       +'<div class="training-batch-controls">'
-      +'<label>训练样本数<select data-tbp-samples aria-label="选择训练样本数量"><option value="1000">1,000 张</option><option value="6000">6,000 张</option><option value="10000">10,000 张</option><option value="60000" selected>60,000 张 · 视频例子</option></select></label>'
-      +'<label>batch size<select data-tbp-size aria-label="选择每个批次的样本数"><option value="32">32 张</option><option value="64">64 张</option><option value="100" selected>100 张 · 视频例子</option><option value="128">128 张</option><option value="256">256 张</option><option value="1000">1,000 张</option></select></label>'
+      +'<label>训练样本数<select data-tbp-samples aria-label="选择训练样本数量"><option value="1000">1,000 张</option><option value="6000">6,000 张</option><option value="10000">10,000 张</option><option value="60000" selected>60,000 张 · 算例</option></select></label>'
+      +'<label>batch size<select data-tbp-size aria-label="选择每个批次的样本数"><option value="32">32 张</option><option value="64">64 张</option><option value="100" selected>100 张 · 算例</option><option value="128">128 张</option><option value="256">256 张</option><option value="1000">1,000 张</option></select></label>'
       +'<label class="training-batch-epochs">训练轮数 <output data-tbp-epochs-value>5</output><input type="range" min="1" max="20" step="1" value="5" data-tbp-epochs aria-label="设置训练 epoch 数"></label>'
       +'<label class="training-batch-drop"><input type="checkbox" data-tbp-drop>丢弃最后不足一批的样本（drop_last）</label>'
       +'</div>'
@@ -26,7 +26,7 @@
       +'<section class="training-batch-totals" aria-label="训练计数"><div><span>每个 Epoch 批次数</span><strong data-tbp-per-epoch>600</strong><small data-tbp-formula>ceil(60,000 ÷ 100)</small></div><div><span>本轮实际读取</span><strong data-tbp-used>60,000 张</strong><small data-tbp-remainder>没有样本被跳过</small></div><div><span>训练完所有 Epoch</span><strong data-tbp-total-steps>3,000 次更新</strong><small data-tbp-total-batches>5 轮 × 每轮 600 次</small></div></section>'
       +'</div>'
       +'<p class="training-batch-epoch-note"><strong>Epoch 怎么数？</strong><span>上面一轮的所有 Batch 都处理完，训练集就完整走过一遍，Epoch 加 1。继续训练 5 轮就是再走 5 遍；验证集在每轮后单独评估。</span></p>'
-      +'<aside class="training-batch-verdict"><strong>视频知识核对</strong><p>三者的核心定义和 60,000 ÷ 100 = 600 的例子是正确的。补充两个边界：常见循环里“一批一次更新”成立；使用梯度累积时，多个小批次才做一次参数更新。batch size=1 会让更新更受单个样本影响，也较难发挥 GPU 的批量并行，但并非不能训练或必然浪费算力。多跑 Epoch 也不保证验证效果一直变好，轮数要结合验证集判断。</p></aside>'
+      +'<aside class="training-batch-verdict"><strong>训练计数的边界</strong><p>常见训练循环会在每个 batch 后调用一次 optimizer.step()，因此一次 iteration 通常对应一次参数更新。使用梯度累积时，多个小批次的梯度会先累加，再执行一次更新，iteration 与参数更新次数便不再一一对应。batch size=1 仍可训练，但每次梯度只基于一个样本，波动通常更大，GPU 的批量并行利用率也可能较低。增加 Epoch 数不保证验证效果持续变好，应结合验证集指标判断。</p></aside>'
       +'<p class="playground-footnote">这里按常见的 map-style 数据集、每批调用一次 optimizer.step() 来计数。最后一个不足批次默认保留；勾选 drop_last 后会跳过它。梯度累积和自定义 sampler 会改变简单的“一批一次更新”关系。</p>'
       +'</section>';
   }

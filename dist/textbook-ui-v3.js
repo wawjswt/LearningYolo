@@ -295,10 +295,49 @@
     if(!l.worked)return '';
     const worked=l.worked;
     const figure=worked.figureKey?window.lessonFigures.render(l,worked.figureKey,'worked'):'';
-    const steps=Array.isArray(worked.steps)&&worked.steps.length
-      ?'<div class="worked-example-steps"><h3>分步推演</h3><ol>'+worked.steps.map((step,index)=>'<li><span class="worked-step-index">步骤 '+String(index+1).padStart(2,'0')+'</span><div>'+rich(step)+'</div></li>').join('')+'</ol></div>':'';
-    const solutionLabel=steps?'结论':'解析';
-    return '<section class="worked-example"><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+rich(worked.title)+'</h2><p><strong>问题</strong>　'+rich(worked.prompt)+'</p>'+figure+steps+'<p><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p></section>';
+    const guidedSteps=Array.isArray(worked.steps)&&worked.steps.length;
+    const count=guidedSteps?worked.steps.length:0;
+    const steps=guidedSteps
+      ?'<div class="worked-example-steps"><h3>分步推演</h3><ol id="worked-steps-'+esc(l.id)+'" data-worked-list>'+worked.steps.map((step,index)=>'<li data-worked-step-item="'+(index+1)+'"><button type="button" class="worked-step-index" data-worked-jump="'+(index+1)+'" aria-label="跳到步骤 '+(index+1)+'" aria-current="'+(index===0?'step':'false')+'">步骤 '+String(index+1).padStart(2,'0')+'</button><div class="worked-step-content">'+rich(step)+'</div></li>').join('')+'</ol>'
+        +'<div class="worked-example-controls" role="group" aria-label="例题步骤控制"><button type="button" class="worked-control-button" data-worked-prev disabled>上一步</button><output data-worked-progress>第 1 / '+count+' 步</output><button type="button" class="worked-control-button" data-worked-next>下一步</button><button type="button" class="worked-control-button is-quiet" data-worked-toggle-all aria-expanded="false" aria-controls="worked-steps-'+esc(l.id)+'">显示全部步骤</button><button type="button" class="worked-control-button is-quiet" data-worked-reset>从头演示</button></div>'
+        +'<p class="worked-example-status" data-worked-status role="status" aria-live="polite">图中已高亮第 1 步对应内容。</p></div>':'';
+    const solutionLabel=guidedSteps?'结论':'解析';
+    const guidedAttrs=guidedSteps?' data-worked-example data-worked-step="1" data-worked-expanded="false"':'';
+    const conclusion=guidedSteps?'<p data-worked-conclusion hidden><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p>':'<p><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p>';
+    return '<section class="worked-example"'+guidedAttrs+'><span class="chapter-kicker">WORKED EXAMPLE · 例题拆解</span><h2>'+rich(worked.title)+'</h2><p><strong>问题</strong>　'+rich(worked.prompt)+'</p>'+figure+steps+conclusion+'</section>';
+  }
+  function updateWorkedExample(root,step,expanded){
+    const items=Array.from(root.querySelectorAll('[data-worked-step-item]'));
+    const count=items.length;
+    if(!count)return;
+    const current=Math.max(1,Math.min(count,Number(step)||1));
+    root.dataset.workedStep=String(current);
+    root.dataset.workedExpanded=String(Boolean(expanded));
+    items.forEach((item,index)=>{
+      const itemStep=index+1;
+      item.hidden=!expanded&&itemStep>current;
+      const button=item.querySelector('[data-worked-jump]');
+      if(button)button.setAttribute('aria-current',String(itemStep===current?'step':'false'));
+      item.classList.toggle('is-current',itemStep===current);
+      item.classList.toggle('is-complete',itemStep<current);
+    });
+    const figure=root.querySelector('.chapter-concept-figure');
+    if(figure)figure.dataset.workedCurrentStep=String(current);
+    const progress=root.querySelector('[data-worked-progress]');
+    if(progress)progress.textContent='第 '+current+' / '+count+' 步';
+    const status=root.querySelector('[data-worked-status]');
+    if(status)status.textContent=expanded?'已显示全部 '+count+' 步，图中高亮第 '+current+' 步。':'已显示到第 '+current+' 步，共 '+count+' 步；图中高亮对应内容。';
+    const previous=root.querySelector('[data-worked-prev]');
+    const next=root.querySelector('[data-worked-next]');
+    if(previous)previous.disabled=current<=1;
+    if(next)next.disabled=current>=count;
+    const toggleAll=root.querySelector('[data-worked-toggle-all]');
+    if(toggleAll){toggleAll.setAttribute('aria-expanded',String(Boolean(expanded)));toggleAll.textContent=expanded?'收起后续步骤':'显示全部步骤';}
+    const conclusion=root.querySelector('[data-worked-conclusion]');
+    if(conclusion)conclusion.hidden=!expanded&&current<count;
+  }
+  function initializeWorkedExamples(){
+    document.querySelectorAll('[data-worked-example]').forEach(root=>updateWorkedExample(root,1,false));
   }
   function lesson(id){
     const l=lessons.find(x=>x.id===id);
@@ -336,6 +375,7 @@
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     document.querySelectorAll('[data-course-count]').forEach(badge=>{badge.textContent=String(lessons.length);badge.setAttribute('aria-label',lessons.length+' 节课程')});
     document.getElementById('content').innerHTML=content;
+    initializeWorkedExamples();
     window.lessonPlaygrounds?.initialize();
     initializeTensorLearning();
     if(route==='lesson'&&targetSection)document.getElementById(targetSection)?.scrollIntoView({behavior:'auto',block:'start'});
@@ -360,6 +400,25 @@
     if(prediction)saveTensorProgress(prediction.closest('[data-tensor-explorer]'));
   });
   document.addEventListener('click',event=>{
+    const workedControl=event.target.closest('.worked-example-controls button');
+    if(workedControl){
+      const root=workedControl.closest('[data-worked-example]');
+      const current=Number(root?.dataset.workedStep)||1;
+      const expanded=root?.dataset.workedExpanded==='true';
+      if(root){
+        if(workedControl.matches('[data-worked-prev]'))updateWorkedExample(root,current-1,expanded);
+        else if(workedControl.matches('[data-worked-next]'))updateWorkedExample(root,current+1,expanded);
+        else if(workedControl.matches('[data-worked-toggle-all]'))updateWorkedExample(root,current,!expanded);
+        else if(workedControl.matches('[data-worked-reset]'))updateWorkedExample(root,1,false);
+      }
+      return;
+    }
+    const workedJump=event.target.closest('[data-worked-jump]');
+    if(workedJump){
+      const root=workedJump.closest('[data-worked-example]');
+      if(root)updateWorkedExample(root,workedJump.dataset.workedJump,root.dataset.workedExpanded==='true');
+      return;
+    }
     const tocToggle=event.target.closest('[data-toggle-toc]');
     if(tocToggle){
       state.tocCollapsed=tocToggle.getAttribute('aria-expanded')==='true';

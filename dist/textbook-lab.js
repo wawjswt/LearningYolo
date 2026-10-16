@@ -70,6 +70,7 @@
   const metricPredictions = createTeachingPredictions();
   const tabIds = ['pipeline', 'iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'];
   let activeTab = 'pipeline';
+  const labTaskState = Object.fromEntries(tabIds.map(id => [id, { scenario: 0, answer: null, observation: '' }]));
   let activeGradientStep = 0;
   let convolutionFocus = { row: 1, column: 1 };
   let mapWalkthroughStep = 0;
@@ -534,6 +535,7 @@
 
   function gradientPanel() {
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-gradient" aria-labelledby="lab-tab-gradient" data-lab-panel="gradient" hidden>'
+      + renderLabTaskCard('gradient')
       + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">LOSS LANDSCAPE</span><h2>沿着斜坡，一步步找低点</h2></div><strong id="gradient-result"></strong></div>'
       + '<div id="gradient-chart" class="lab-chart" aria-live="polite"></div><div class="gradient-step-controls" role="group" aria-label="选择梯度下降步骤"><button class="secondary" type="button" data-gradient-step-nav="previous">← 上一步</button><output id="gradient-step-label" aria-live="polite"></output><button class="secondary" type="button" data-gradient-step-nav="next">下一步 →</button></div><div class="lab-chart-legend"><span></span>损失曲线 <i></i>参数更新路径</div><p class="gradient-chart-hint">点击曲线上的圆点，或用“上一步 / 下一步”查看同一步的计算。</p></div>'
       + '<div class="lab-control-card"><h3 class="lab-subheading">误差沿计算链反传</h3><div class="gradient-equation-grid"><div><span>前向：ŷ = w × x</span><b id="gradient-forward"></b></div><div><span>损失：L = ½(ŷ − y)²</span><b id="gradient-loss"></b></div><div><span>反向：∂L/∂w</span><b id="gradient-backprop"></b></div><div><span>更新：w ← w − η∇L</span><b id="gradient-update"></b></div></div>'
@@ -548,6 +550,7 @@
 
   function augmentationPanel() {
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-augmentation" aria-labelledby="lab-tab-augmentation" data-lab-panel="augmentation" hidden>'
+      + renderLabTaskCard('augmentation')
       + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">YOLOV5 · TRAINING AUGMENTATION</span><h2>变换图像，也要同步变换标签</h2></div><span id="augmentation-badge" class="lab-step-badge">水平翻转</span></div>'
       + '<div id="augmentation-visual" class="augmentation-visual" aria-live="polite"></div><p id="augmentation-caption" class="lab-callout"></p></div>'
       + '<div class="lab-control-card"><label for="augmentation-mode">选择增强方式</label><select id="augmentation-mode"><option value="flip">水平翻转</option><option value="scale">缩放与裁剪</option><option value="color">颜色扰动（HSV 示意）</option><option value="mosaic">Mosaic 四图拼接</option></select>'
@@ -557,6 +560,7 @@
 
   function diagnosisPanel() {
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-diagnosis" aria-labelledby="lab-tab-diagnosis" data-lab-panel="diagnosis" hidden>'
+      + renderLabTaskCard('diagnosis')
       + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">ANNOTATION · PREDICTION · METRICS</span><h2>看图找出检测错误</h2></div><span id="diagnosis-progress" class="lab-step-badge">练习 1 / 4</span></div>'
       + '<div id="diagnosis-scene" class="diagnosis-scene" aria-live="polite"></div><p class="diagnosis-legend"><span>绿色虚线：真实标注</span><span>紫色实线：模型预测</span></p><p id="diagnosis-prompt" class="lab-callout">观察真实框和预测框，判断主要问题。</p>'
       + '<div class="diagnosis-navigation"><button type="button" class="secondary" data-diagnosis-nav="prev">← 上一题</button><button type="button" class="secondary" data-diagnosis-nav="next">下一题 →</button></div></div>'
@@ -568,6 +572,7 @@
 
   function convolutionPanel() {
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-convolution" aria-labelledby="lab-tab-convolution" data-lab-panel="convolution" hidden>'
+      + renderLabTaskCard('convolution')
       + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">KERNEL × IMAGE</span><h2>卷积核怎样留下特征</h2></div><span id="conv-output-shape" class="lab-step-badge">输出 3×3</span></div>'
       + '<div id="conv-visual" class="conv-visual" aria-live="polite"></div><p id="conv-detail" class="lab-callout" aria-live="polite"></p></div>'
       + '<div class="lab-control-card"><label for="conv-input">选择输入图案</label><select id="conv-input"><option value="shape">方块边缘</option><option value="vertical">竖直亮边</option><option value="checker">棋盘图案</option></select>'
@@ -579,6 +584,7 @@
 
   function nmsPanel() {
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-nms" aria-labelledby="lab-tab-nms" data-lab-panel="nms" hidden>'
+      + renderLabTaskCard('nms')
       + '<div class="lab-sim-layout"><div class="lab-visual-card"><div class="lab-card-heading"><div><span class="chapter-kicker">CONFIDENCE → NMS</span><h2>从重叠候选框中选出结果</h2></div><span class="lab-step-badge">同类别示例</span></div>'
       + '<div id="nms-visual" class="nms-visual" aria-live="polite"></div><p id="nms-summary" class="lab-callout" aria-live="polite"></p></div>'
       + '<div class="lab-control-card"><label for="nms-confidence">置信度阈值 <output id="nms-confidence-value">0.30</output></label><input id="nms-confidence" type="range" min="0.20" max="0.90" step="0.05" value="0.30">'
@@ -665,8 +671,8 @@
   function metricsPanel() {
     const sampleGroundTruthCount = Object.values(metricGroundTruths).reduce((sum, count) => sum + count, 0);
     return '<section class="experiment-panel" role="tabpanel" id="lab-panel-metrics" aria-labelledby="lab-tab-metrics" data-lab-panel="metrics" hidden>'
-      + swimV9CasePanel()
-      + '<div class="metric-intro-card"><span class="chapter-kicker">INTERACTIVE TEACHING EXAMPLE · SYNTHETIC DATA</span><h2>交互计算：阈值怎样改变检测指标</h2><p id="metric-data-description">本区教学样例包含 ' + sampleGroundTruthCount + ' 个标注目标、' + metricPredictions.length + ' 个预测框和 3 个类别，用于观察置信度和 IoU 对指标的影响。上方 swim_v9 区域展示你的真实曲线；可导入逐框验证 JSON 来计算其他模型的真实曲线。</p>'
+      + renderLabTaskCard('metrics')
+      + '<div class="metric-intro-card"><span class="chapter-kicker">INTERACTIVE TEACHING EXAMPLE · SYNTHETIC DATA</span><h2>交互计算：阈值怎样改变检测指标</h2><p id="metric-data-description">本区教学样例包含 ' + sampleGroundTruthCount + ' 个标注目标、' + metricPredictions.length + ' 个预测框和 3 个类别，用于观察置信度和 IoU 对指标的影响。下方 swim_v9 区域展示你的真实曲线；可导入逐框验证 JSON 来计算其他模型的真实曲线。</p>'
       + '<div class="metric-import-toolbar"><span id="metric-data-mode" class="metric-data-mode">合成教学样例</span><label class="metric-upload-button" for="metric-import-file">导入 YOLOv5 验证 JSON<input id="metric-import-file" type="file" accept=".json,application/json"></label><a class="secondary metric-export-link" href="visionlab-yolov5-export.py" download>下载 YOLOv5 导出脚本</a><button class="secondary metric-reset-button" type="button" data-metric-reset>恢复合成样例</button></div><p id="metric-data-status" class="metric-data-status" aria-live="polite">这是用于操作学习的合成数据，不是 swim_v9 评估结果。</p>'
       + '<details class="metric-export-guide"><summary>怎样从 swim_v9 生成可交互的真实曲线</summary><ol><li>下载导出脚本，放到 YOLOv5 仓库根目录。</li><li>用训练时相同的权重、验证集和输入尺寸重新运行验证：</li></ol><pre><code>python visionlab-yolov5-export.py --weights runs/train/swim_v9/weights/best.pt --data data/swim.yaml --imgsz 960 --device 0 --output runs/val/swim_v9.json</code></pre><p>脚本会保存每个预测框的类别、置信度，以及它在 IoU=0.50 至 0.95 下是否匹配标注。网页只在本机浏览器读取导出的 JSON。你的现有结果文件夹保存了 PR/F1 图片和每轮汇总指标，但没有逐框置信度与匹配记录；导入 JSON 后，网页才能让游标沿真实 PR/F1 曲线移动。</p></details></div>'
       + '<div class="metric-workbench"><div class="metric-chart-stack"><article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">PRECISION ↔ RECALL</span><h3>PR 曲线 · 交互教学样例</h3></div><span class="lab-step-badge">置信度阈值逐步变化</span></div><div id="metric-pr-chart" class="metric-chart" aria-live="polite"></div><p class="metric-chart-caption">本图用合成数据或导入的真实逐框数据重算；真实 swim_v9 原始 PR 图见上方。曲线越靠近右上角，通常表示找回更多目标时仍能保持较高准确率。</p></article>'
@@ -679,7 +685,98 @@
       + '<article class="lab-visual-card metric-map-card"><div class="lab-card-heading"><div><span class="chapter-kicker">AVERAGE PRECISION · MEAN AP</span><h3>从 PR 面积到 mAP</h3></div><div id="metric-map-summary" class="metric-map-summary" aria-live="polite"></div></div><div class="metric-ap-legend"><span><i class="ap50"></i>AP@0.50</span><span><i class="ap5095"></i>AP@0.50:0.95</span></div><div id="metric-map-breakdown" class="metric-map-breakdown"></div><p class="metric-chart-caption">AP 是某一类别 PR 曲线下的插值面积；mAP@0.50 先在 IoU=0.50 计算每类 AP，再对类别求平均。mAP@0.50:0.95 则把 IoU 从 0.50 到 0.95（步长 0.05）的 AP 一并平均，共 10 个阈值。导入数据严格使用 YOLOv5 的验证匹配结果；上方 swim_v9 数值直接取自原始训练图与 results.csv。</p></article>'
       + mapWalkthroughPanel()
       + '<p class="lab-formula metric-reading-note">置信度改变 PR 曲线上的工作点；匹配 IoU 改变哪些预测算 TP。AP 是单个类别 PR 曲线下的面积，mAP 再对类别及指定 IoU 阈值求平均。</p>'
-      + '<a class="lab-lesson-link" href="#lesson/metrics">接着学习：NMS、Precision、Recall 与 mAP →</a></section>';
+      + '<a class="lab-lesson-link" href="#lesson/metrics">接着学习：NMS、Precision、Recall 与 mAP →</a>'
+      + swimV9CasePanel() + '</section>';
+  }
+
+  const labTaskScenarios = {
+    pipeline: [
+      { question: '同一段视频的相邻帧若随机拆进训练集和验证集，验证成绩更可能怎样？', options: ['偏乐观，不能代表新视频', '更严格，通常偏低', '拆分方式不会影响验证'], answer: 0, explanation: '相邻帧画面高度相似。若两边都出现近似画面，验证集就不再像真正的“新来源”，分数可能被高估。', operation: '在第 1 步比较“按视频 / 场景分组”和“随机拆图片”。', load: () => setPipelineTaskCondition('group') },
+      { question: '这类数据要避免相邻帧泄漏，应该按什么单位拆分？', options: ['按视频或场景分组', '逐张图片随机拆分', '把同一帧复制到两边'], answer: 0, explanation: '把同一视频或场景的帧放在同一数据分区，可以让验证集更接近模型未见过的新来源。', operation: '第 1 步已切换为随机拆图；选“按视频 / 场景分组”观察风险提示如何变化。', load: () => setPipelineTaskCondition('random') },
+    ],
+    iou: [
+      { question: '点击“完全重合”后，两个同尺寸矩形框的 IoU 会变成多少？', options: ['0', '约 0.333', '1'], answer: 2, explanation: '完全重合时，交集面积等于并集面积，所以 IoU = 1。', operation: '先看当前 IoU，再点画布下方的“完全重合”；也可拖动 x、y 滑块。', load: () => setIouTaskCondition(140, 110) },
+      { question: '把预测框移到 x=0、y=25，IoU 大约是多少？', options: ['约 0.12', '约 0.333', '约 1'], answer: 0, explanation: '两个框仍有一小块交叠：交集约 3,900，并集约 32,100，因此 IoU 约为 0.121。', operation: '预测框已移到左上方；检查交集和并集数值，再与起始位置比较。', load: () => setIouTaskCondition(0, 25) },
+    ],
+    gradient: [
+      { question: '学习率 η=0.50、从 w=-4 开始时，参数会怎样接近最低点 w=3？', options: ['逐步靠近，损失持续下降', '越过最低点后持续发散', '参数保持不变'], answer: 0, explanation: '对这个二次损失，η=0.50 每步缩小与最低点的距离一半，因此参数单调靠近 w=3，损失逐步下降。', operation: '观察曲线上的更新点；也可以拖动学习率和更新步数。', load: () => setGradientTaskCondition(0.5, 4) },
+      { question: '把学习率改成 η=1.50 后，参数怎样变化？', options: ['在 w=3 两侧来回，但逐步收敛', '仍沿同一方向单调靠近', '每一步都离最低点更远'], answer: 0, explanation: 'η=1.50 会越过最低点；本例的误差因子为 1−η=−0.5，方向交替、幅度减半，所以仍然收敛。', operation: '当前 η=1.50；看更新点是否跨过 w=3，并观察损失是否下降。', load: () => setGradientTaskCondition(1.5, 4) },
+    ],
+    convolution: [
+      { question: '5×5 输入、3×3 卷积核、无填充且步长为 1，输出有多大？', options: ['3×3', '2×2', '5×5'], answer: 0, explanation: '每个方向的输出长度为 ⌊(5−3)/1⌋+1=3，因此是 3×3。', operation: '先确认步长为 1，查看输出特征图；公式中的输入和卷积核尺寸保持不变。', load: () => setConvolutionTaskCondition(1) },
+      { question: '只把步长从 1 改为 2，输出尺寸会怎样？', options: ['变成 2×2', '仍是 3×3', '变成 1×1'], answer: 0, explanation: '输出长度为 ⌊(5−3)/2⌋+1=2。步长变大后，卷积核落点变少，输出特征图缩小。', operation: '步长已设为 2；检查输出网格，并留意每一步跨过两个输入位置。', load: () => setConvolutionTaskCondition(2) },
+    ],
+    augmentation: [
+      { question: '图像做水平翻转时，目标的边界框应该怎样处理？', options: ['同步镜像坐标', '保持原坐标不动', '删除边界框'], answer: 0, explanation: '标签必须跟随图像中的目标一起翻转；只翻图、不变换边界框会让监督位置错位。', operation: '保持“水平翻转”，查看原图和变换后图上的框位置。', load: () => setAugmentationTaskCondition('flip', 1.2) },
+      { question: '缩放比例设为 1.50 时，框相对画面中心会怎样？', options: ['离中心更远，框随图像放大', '位置和大小不变', '所有框都移到中心'], answer: 0, explanation: '示例以画面中心为缩放中心；比例 1.50 会把框各坐标相对中心的距离放大 1.5 倍。', operation: '已切换到缩放 1.50×；对比变换前后的框和坐标。', load: () => setAugmentationTaskCondition('scale', 1.5) },
+    ],
+    diagnosis: [
+      { question: '图中有一个真实目标，却没有任何预测框。主要会记作什么？', options: ['FN：漏掉了真实目标', 'FP：多报了一个目标', 'TP：正确匹配'], answer: 0, explanation: '真实标注没有被预测找回，计为一个 FN（false negative）。', operation: '观察第 1 题：先判断真实框，再数图中是否有预测框。', load: () => setDiagnosisTaskCondition(0) },
+      { question: '预测框落在背景，真实行人也没有被找回，会产生什么？', options: ['1 个 FP 和 1 个 FN', '只有 1 个 FP', '只有 1 个 FN'], answer: 0, explanation: '背景预测是 FP；未被任何预测匹配的真实行人同时是 FN。', operation: '已切换到误检示例；对照图中的背景预测框与未匹配的真实框。', load: () => setDiagnosisTaskCondition(1) },
+    ],
+    nms: [
+      { question: 'A 与 B 的 IoU 约为 0.59，NMS 阈值为 0.50。低分框 B 会怎样？', options: ['被 A 抑制', '与 A 一起保留', '因置信度阈值自动删除'], answer: 0, explanation: '同类别情况下，NMS 会保留高分 A；因为 IoU 约 0.59 高于阈值 0.50，B 会被抑制。', operation: '查看当前筛选过程，找到 A、B 的重叠关系和 B 的处理原因。', load: () => setNmsTaskCondition(0.5) },
+      { question: '把 NMS IoU 阈值调到 0.80 后，B 还会被 A 抑制吗？', options: ['不会，0.59 没超过 0.80', '会，阈值越高越容易抑制', '置信度会因此下降'], answer: 0, explanation: '抑制条件是两框 IoU 高于阈值。0.59 没超过 0.80，因此 B 会留下；更高的 NMS IoU 阈值通常更宽松。', operation: '阈值已设为 0.80；确认 B 从“被抑制”变为“保留”。', load: () => setNmsTaskCondition(0.8) },
+    ],
+    metrics: [
+      { question: '固定同一批预测，把匹配 IoU 阈值从 0.50 提高到 0.90，TP 数会怎样？', options: ['不会增加，只可能减少或不变', '一定增加', '不受 IoU 阈值影响'], answer: 0, explanation: '阈值越高，预测框必须与真实框重叠得更充分才算 TP；原本匹配的框可能变成 FP，同时真实目标可能成为 FN。', operation: '在交互计算区把匹配 IoU 调到 0.90，观察 TP、FP、FN 和指标。', load: () => setMetricTaskCondition(0.5, 0.7) },
+      { question: '把置信度阈值提高到 0.95，Recall 能比低阈值时更高吗？', options: ['不能增加，可能下降', '一定增加', 'Recall 与置信度无关'], answer: 0, explanation: '阈值提高只会留下同样或更少的候选框，所以 TP 不会增加，Recall 不会提高；Precision 是否上升则不作保证。', operation: '已把置信度阈值设为 0.95；查看留下的预测框数量和 Recall。', load: () => setMetricTaskCondition(0.5, 0.95) },
+    ],
+  };
+
+  function renderLabTaskCard(id) {
+    const scenarios = labTaskScenarios[id];
+    const state = labTaskState[id];
+    const scenario = scenarios[state.scenario];
+    const selectedAnswer = state.answer;
+    const correct = selectedAnswer === scenario.answer;
+    const feedback = selectedAnswer === null ? '' : (correct ? '判断正确。' : '再对照实验想一想；参考判断：' + scenario.options[scenario.answer] + '。') + scenario.explanation;
+    return '<section class="lab-task-card" data-lab-task="' + id + '" aria-labelledby="lab-task-title-' + id + '">'
+      + '<div class="lab-task-header"><div><span class="chapter-kicker">PREDICT · TRY · EXPLAIN</span><h3 id="lab-task-title-' + id + '">先预测，再验证</h3></div><span class="lab-task-counter">条件 ' + (state.scenario + 1) + ' / 2</span></div>'
+      + '<p class="lab-task-question"><span>先预测</span>' + escapeHtml(scenario.question) + '</p>'
+      + '<div class="lab-task-options" role="group" aria-label="选择你的预测">' + scenario.options.map((option, index) => '<button type="button" data-lab-task-answer="' + id + '" data-answer-index="' + index + '" aria-pressed="' + String(selectedAnswer === index) + '"' + (selectedAnswer === index ? ' class="' + (correct ? 'is-correct' : 'is-wrong') + '"' : '') + '>' + escapeHtml(option) + '</button>').join('') + '</div>'
+      + '<p class="lab-task-feedback' + (selectedAnswer === null ? '' : correct ? ' is-correct' : ' is-wrong') + '" data-lab-task-feedback aria-live="polite"' + (selectedAnswer === null ? ' hidden' : '') + '>' + escapeHtml(feedback) + '</p>'
+      + '<div class="lab-task-footer"><p><b>操作提示</b><span>' + escapeHtml(scenario.operation) + '</span><span class="lab-task-observation" data-lab-task-observation aria-live="polite">' + escapeHtml(state.observation || '主要控件始终可操作；动手后对照画布与数值。') + '</span></p>'
+      + '<button class="lab-task-retry" type="button" data-lab-task-swap="' + id + '">' + (state.scenario === 0 ? '换条件再判断 ↗' : '回到起始条件 ↺') + '</button></div></section>';
+  }
+
+  function setTaskInput(id, value) {
+    const input = byId(id);
+    if (!input) return;
+    input.value = String(value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    if (input.tagName === 'SELECT') input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function setPipelineTaskCondition(split) {
+    window.detectionPipeline?.setSplit?.(split);
+  }
+
+  function setIouTaskCondition(x, y) {
+    setTaskInput('box-x', x);
+    setTaskInput('box-y', y);
+  }
+
+  function setGradientTaskCondition(rate, steps) {
+    activeGradientStep = 0;
+    setTaskInput('gradient-lr', rate);
+    setTaskInput('gradient-steps', steps);
+  }
+
+  function setConvolutionTaskCondition(stride) { setTaskInput('conv-stride', stride); }
+  function setAugmentationTaskCondition(mode, strength) {
+    setTaskInput('augmentation-mode', mode);
+    setTaskInput('augmentation-strength', strength);
+  }
+  function setDiagnosisTaskCondition(index) {
+    diagnosisIndex = Math.max(0, Math.min(teachingDiagnosisCases.length - 1, index));
+    diagnosisAnswer = '';
+    updateDiagnosis();
+  }
+  function setNmsTaskCondition(threshold) { setTaskInput('nms-iou', threshold); }
+  function setMetricTaskCondition(iou, confidence) {
+    setTaskInput('metric-iou', iou);
+    setTaskInput('metric-confidence', confidence);
   }
 
   function renderInteractiveLab() {
@@ -689,11 +786,12 @@
     const tabs = [
       ['pipeline', '完整检测流程'], ['iou', 'IoU 框重叠'], ['gradient', '反向传播'], ['convolution', '卷积特征'], ['augmentation', '数据增强'], ['diagnosis', '错误诊断'], ['nms', 'YOLO 后处理'], ['metrics', 'PR · F1 · mAP'],
     ];
-    return '<section class="page-intro"><p class="eyebrow">LEARN BY INTERACTION</p><h1>让概念动起来。</h1><p>拖动参数、切换算子、观察结果变化。每个实验都把图像、计算步骤和教材章节连在一起。</p></section>'
-      + '<p class="lab-notice"><strong>建议：</strong>先预测参数变化会带来什么结果，再操作控件验证自己的判断。</p>'
+    const pipelineMarkup = window.detectionPipeline ? window.detectionPipeline.render() : '';
+    const pipelineWithTask = pipelineMarkup.replace('data-detection-pipeline hidden>', 'data-detection-pipeline hidden>' + renderLabTaskCard('pipeline'));
+    return '<section class="page-intro lab-page-intro"><p class="eyebrow">LEARN BY INTERACTION</p><h1>先预测，再验证。</h1><p>每个实验都从一个小问题开始。选出你的判断，操作控件，再用画布和数值核对。</p></section>'
       + '<div class="lab-tabs" role="tablist" aria-label="选择学习实验">' + tabs.map(([id, label], index) => '<button type="button" role="tab" id="lab-tab-' + id + '" aria-controls="lab-panel-' + id + '" aria-selected="' + String(activeTab === id) + '" tabindex="' + (activeTab === id ? '0' : '-1') + '" data-lab-tab="' + id + '">' + label + '<span>0' + (index + 1) + '</span></button>').join('') + '</div>'
-      + (window.detectionPipeline ? window.detectionPipeline.render() : '')
-      + '<section class="experiment-panel" role="tabpanel" id="lab-panel-iou" aria-labelledby="lab-tab-iou" data-lab-panel="iou"' + (activeTab === 'iou' ? '' : ' hidden') + '>' + iouMarkup + '<a class="lab-lesson-link" href="#lesson/iou">接着学习：交并比与检测评价 →</a></section>'
+      + pipelineWithTask
+      + '<section class="experiment-panel" role="tabpanel" id="lab-panel-iou" aria-labelledby="lab-tab-iou" data-lab-panel="iou"' + (activeTab === 'iou' ? '' : ' hidden') + '>' + renderLabTaskCard('iou') + iouMarkup + '<a class="lab-lesson-link" href="#lesson/iou">接着学习：交并比与检测评价 →</a></section>'
       + gradientPanel() + convolutionPanel() + augmentationPanel() + diagnosisPanel() + nmsPanel() + metricsPanel();
   }
 
@@ -1170,6 +1268,52 @@
   window.setActiveLabTab = setActiveTab;
 
   document.addEventListener('click', event => {
+    const taskAnswer = event.target.closest('[data-lab-task-answer]');
+    if (taskAnswer) {
+      const id = taskAnswer.dataset.labTaskAnswer;
+      const state = labTaskState[id];
+      const scenario = labTaskScenarios[id]?.[state?.scenario];
+      if (!state || !scenario) return;
+      state.answer = number(taskAnswer.dataset.answerIndex, -1);
+      const correct = state.answer === scenario.answer;
+      const card = taskAnswer.closest('[data-lab-task]');
+      card.querySelectorAll('[data-lab-task-answer]').forEach(button => {
+        const selected = Number(button.dataset.answerIndex) === state.answer;
+        button.setAttribute('aria-pressed', String(selected));
+        button.classList.toggle('is-correct', selected && correct);
+        button.classList.toggle('is-wrong', selected && !correct);
+      });
+      const feedback = card.querySelector('[data-lab-task-feedback]');
+      feedback.hidden = false;
+      feedback.classList.toggle('is-correct', correct);
+      feedback.classList.toggle('is-wrong', !correct);
+      feedback.textContent = (correct ? '判断正确。' : '再对照实验想一想；参考判断：' + scenario.options[scenario.answer] + '。') + scenario.explanation;
+      return;
+    }
+    const taskSwap = event.target.closest('[data-lab-task-swap]');
+    if (taskSwap) {
+      const id = taskSwap.dataset.labTaskSwap;
+      const state = labTaskState[id];
+      const scenarios = labTaskScenarios[id];
+      if (!state || !scenarios) return;
+      state.scenario = state.scenario === 0 ? 1 : 0;
+      state.answer = null;
+      scenarios[state.scenario].load();
+      state.observation = state.scenario === 1
+        ? '第二组条件已载入；观察画布和数值后，重新判断。'
+        : '已恢复起始条件；你可以重新操作或比较两组结果。';
+      const oldCard = taskSwap.closest('[data-lab-task]');
+      oldCard.outerHTML = renderLabTaskCard(id);
+      document.querySelector('[data-lab-task-swap="' + id + '"]')?.focus({ preventScroll: true });
+      return;
+    }
+    if (!event.target.closest('[data-lab-task]')) {
+      const panel = event.target.closest('[data-lab-panel]');
+      const observation = panel?.querySelector('[data-lab-task-observation]');
+      if (observation && event.target.closest('.pipeline-controls-card,.lab-control-card,.lab-canvas')) {
+        observation.textContent = '控件已更新；请对照画布和数值，检查预测。';
+      }
+    }
     const tab = event.target.closest('[data-lab-tab]');
     if (tab) { setActiveTab(tab.dataset.labTab); return; }
     const gradientPoint = event.target.closest('[data-gradient-step]');
@@ -1230,6 +1374,9 @@
   });
 
   document.addEventListener('input', event => {
+    const panel = event.target.closest('[data-lab-panel]');
+    const observation = panel?.querySelector('[data-lab-task-observation]');
+    if (observation && !event.target.closest('[data-lab-task]')) observation.textContent = '控件已更新；请对照画布和数值，检查预测。';
     if (event.target.id === 'gradient-lr' || event.target.id === 'gradient-steps') updateGradient();
     if (event.target.id === 'augmentation-mode' || event.target.id === 'augmentation-strength') updateAugmentation();
     if (event.target.id === 'diagnosis-iou') updateDiagnosis();

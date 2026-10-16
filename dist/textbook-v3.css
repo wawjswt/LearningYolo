@@ -927,3 +927,51 @@ footer{border-color:#e5e2d9}
 .gradient-method-playground .playground-footnote{margin-top:9px}
 .gradient-method-playground .playground-footnote a{color:#675993;text-decoration:underline;text-underline-offset:2px}
 @media(max-width:760px){.gradient-method-layout{grid-template-columns:1fr}.gradient-method-controls{grid-template-columns:1fr}.gradient-method-readouts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Compact lab navigation and guided prediction tasks. */
+main:has(.lab-page-intro){padding-top:26px}
+.lab-page-intro{max-width:1200px;margin-bottom:12px}
+.lab-page-intro h1{font-size:clamp(24px,2.4vw,34px);margin-bottom:5px}
+.lab-page-intro>p:last-child{max-width:760px;font-size:13px;line-height:1.7}
+.lab-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-width:1200px;margin-bottom:12px;padding:0 0 9px}
+.lab-tabs button{min-height:38px;padding:7px 10px;gap:8px;font-size:12px}
+.lab-task-card{max-width:1200px;margin:0 auto 13px;padding:13px 15px;border:1px solid #e5e0d7;border-left:3px solid #8b7ab9;border-radius:4px;background:linear-gradient(110deg,#f5f2f9 0%,#fffefa 72%)}
+.lab-task-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.lab-task-header .chapter-kicker{display:block;margin:0 0 2px;font-size:8px}
+.lab-task-header h3{margin:0;color:#35404d;font:600 16px/1.4 Georgia,"Noto Serif CJK SC","Songti SC",serif}
+.lab-task-counter{flex:none;padding:4px 8px;border:1px solid #e1dce9;border-radius:3px;color:#6a5b9b;font-size:10px;font-variant-numeric:tabular-nums}
+.lab-task-question{display:flex;align-items:baseline;gap:9px;margin:9px 0 8px;color:#364351;font-size:13px;font-weight:650;line-height:1.65}
+.lab-task-question>span{flex:none;color:#7564aa;font-size:10px;letter-spacing:.06em}
+.lab-task-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px}
+.lab-task-options button{min-height:35px;padding:7px 9px;border:1px solid #e5e1d8;border-radius:3px;background:#fffefa;color:#5c6875;font:inherit;font-size:11px;line-height:1.5;text-align:left;cursor:pointer}
+.lab-task-options button:hover,.lab-task-options button[aria-pressed=true]{border-color:#9a8bbe;background:#f0edf6;color:#4e427b}
+.lab-task-options button.is-correct,.lab-task-options button.is-correct:hover{border-color:#76a88e;background:#edf5ef;color:#37684c}
+.lab-task-options button.is-wrong,.lab-task-options button.is-wrong:hover{border-color:#d5a0a0;background:#faf0ef;color:#8a4b4d}
+.lab-task-options button:focus-visible,.lab-task-retry:focus-visible{outline:3px solid #7c6db2;outline-offset:2px}
+.lab-task-feedback{margin:8px 0 0;padding:8px 10px;border-left:2px solid #b89e69;background:#f7f2e9;color:#695533;font-size:11px;line-height:1.7}
+.lab-task-feedback.is-correct{border-color:#67a17d;background:#eef5ef;color:#456653}
+.lab-task-feedback.is-wrong{border-color:#c58b8d;background:#faf0ef;color:#815254}
+.lab-task-feedback[hidden]{display:none}
+.lab-task-footer{display:flex;align-items:center;justify-content:space-between;gap:13px;margin-top:7px;padding-top:6px;border-top:1px solid #ebe7df}
+.lab-task-footer>p{display:grid;gap:1px;margin:0;color:#707b86;font-size:9px;line-height:1.5}
+.lab-task-footer>p>b{color:#5f5385;font-size:9px}
+.lab-task-observation{color:#557764}
+.lab-task-retry{flex:none;min-height:33px;padding:6px 10px;border:1px solid #d8d1e4;border-radius:3px;background:#f7f5fa;color:#5f528e;font:inherit;font-size:10px;cursor:pointer}
+.lab-task-retry:hover{border-color:#9b8bbe;background:#eeeaf5}
+.pipeline-heading{margin-bottom:10px;padding-bottom:10px}
+.pipeline-heading h2{margin:2px 0 5px;font-size:clamp(20px,2.2vw,25px)}
+.pipeline-heading p{font-size:11px;line-height:1.65}
+.pipeline-progress-summary{display:grid;grid-template-columns:auto auto minmax(140px,1fr) minmax(100px,170px);align-items:center;gap:8px;margin:0 0 9px;color:#73808b;font-size:10px}
+.pipeline-progress-summary output{color:#6c5b9e;font-weight:700;font-variant-numeric:tabular-nums}
+.pipeline-progress-summary>strong{overflow:hidden;color:#465361;font-size:11px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+.pipeline-progress-track{height:4px;overflow:hidden;border-radius:8px;background:#eae7e1}
+.pipeline-progress-track i{display:block;width:14.3%;height:100%;border-radius:8px;background:#8272b0;transition:width .2s ease}
+.pipeline-stepper{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:6px;margin-bottom:12px;padding:0 0 7px}
+.pipeline-stepper li{min-width:0}
+.pipeline-stepper button{min-height:44px;align-items:center;gap:7px;padding:7px}
+.pipeline-stepper button>span{width:22px;height:22px}
+.pipeline-stepper button strong{font-size:10px;line-height:1.4}
+.pipeline-stepper button[aria-current=step]{border-color:#8b7ab9;background:#f1eef7;color:#4d407d;box-shadow:0 0 0 1px #8b7ab9}
+@media(max-width:760px){.lab-task-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){main:has(.lab-page-intro){padding-top:22px}.lab-page-intro{margin-bottom:10px}.lab-page-intro h1{font-size:27px}.lab-page-intro>p:last-child{font-size:12px}.lab-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-bottom:10px}.lab-tabs button{min-height:36px;padding:7px 8px;font-size:11px}.lab-task-card{margin-bottom:10px;padding:11px}.lab-task-question{align-items:flex-start;gap:7px;font-size:12px}.lab-task-options{grid-template-columns:1fr}.lab-task-footer{align-items:flex-start;flex-direction:column}.lab-task-retry{align-self:flex-end}.pipeline-progress-summary{grid-template-columns:auto auto minmax(0,1fr);gap:5px 8px}.pipeline-progress-track{grid-column:1/-1}.pipeline-stepper{display:flex;gap:6px;overflow-x:auto;margin-right:-10px;padding:0 10px 8px 0;scrollbar-width:thin}.pipeline-stepper li{flex:0 0 128px;min-width:0}.pipeline-stepper button{min-height:44px}.pipeline-navigation{margin-top:10px}}
+@media(prefers-reduced-motion:reduce){.pipeline-progress-track i{transition:none}}

@@ -347,6 +347,9 @@
     root.querySelector('[data-case-kicker]').textContent = steps[state.step].kicker;
     root.querySelector('[data-case-title]').textContent = steps[state.step].title;
     root.querySelector('[data-case-description]').textContent = stageDescription(state.step);
+    root.querySelector('[data-case-current-position]').textContent = '第 ' + (state.step + 1) + ' / ' + steps.length + ' 步';
+    root.querySelector('[data-case-current-title]').textContent = steps[state.step].title;
+    root.querySelector('[data-case-progress-fill]').style.width = ((state.step + 1) / steps.length * 100) + '%';
     root.querySelector('[data-case-lesson]').setAttribute('href', steps[state.step].lesson);
     root.querySelector('[data-case-lesson]').textContent = state.step === 5
       ? '继续学习：置信度、NMS 与评估指标 →'
@@ -380,6 +383,7 @@
   function render() {
     return '<section class="experiment-panel detection-pipeline" id="lab-panel-pipeline" aria-labelledby="lab-tab-pipeline" data-lab-panel="pipeline" data-detection-pipeline hidden>'
       + '<div class="pipeline-heading"><div><span class="chapter-kicker">ONE SCENE · SEVEN STEPS</span><h2>从一张图，走完一次目标检测</h2><p>同一组真实框与候选框，依次经过数据、训练、推理和评估。这里是可重复的合成教学数据，不是实际模型输出。</p></div><span class="pipeline-badge">教学样例</span></div>'
+      + '<div class="pipeline-progress-summary"><span>当前步骤</span><output data-case-current-position aria-live="polite"></output><strong data-case-current-title></strong><div class="pipeline-progress-track" aria-hidden="true"><i data-case-progress-fill></i></div></div>'
       + '<ol class="pipeline-stepper" aria-label="目标检测流程步骤">' + steps.map((step, index) => '<li><button type="button" data-case-step="' + index + '" aria-controls="pipeline-stage-content" aria-label="第 ' + (index + 1) + ' 步：' + step.title + '" aria-current="' + (index === state.step ? 'step' : 'false') + '"><span>' + String(index + 1).padStart(2, '0') + '</span><strong>' + step.title + '</strong></button></li>').join('') + '</ol>'
       + '<section class="pipeline-stage" id="pipeline-stage-content"><div class="pipeline-stage-intro"><span data-case-kicker></span><h3 data-case-title></h3><p data-case-description aria-live="polite"></p></div>'
       + '<div class="pipeline-layout"><figure class="pipeline-visual-card"><div data-case-scene></div><figcaption>绿色虚线表示真实标注；预测框颜色表示置信度筛选、NMS 或最终匹配结果。</figcaption></figure><aside class="pipeline-controls-card"><div data-case-controls></div><a class="lab-lesson-link" data-case-lesson href="#lesson/data-quality">回到相关课程：继续学这一环 →</a></aside></div>'
@@ -390,6 +394,14 @@
   function initialize() {
     const root = document.querySelector('[data-detection-pipeline]');
     if (root) update(root, true);
+  }
+
+  function setSplit(value) {
+    if (value !== 'group' && value !== 'random') return;
+    state.step = 0;
+    state.split = value;
+    state.flipped = false;
+    update(document.querySelector('[data-detection-pipeline]'), true);
   }
 
   document.addEventListener('click', event => {
@@ -453,5 +465,5 @@
     root.querySelector('[data-case-step="' + next + '"]').focus();
   });
 
-  window.detectionPipeline = { render, initialize };
+  window.detectionPipeline = { render, initialize, setSplit };
 })();

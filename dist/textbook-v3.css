@@ -1056,3 +1056,50 @@ main:has(.lab-page-intro){padding-top:26px}
 @media(max-width:980px){.textbook-page{max-width:960px}.chapter-layout{max-width:960px;grid-template-columns:minmax(128px,150px) minmax(0,1fr);gap:clamp(18px,2.5vw,27px)}.chapter-body{padding:clamp(22px,3vw,32px)}}
 @media(max-width:760px){.textbook-page{max-width:680px}.chapter-layout{max-width:680px;grid-template-columns:minmax(0,1fr);gap:12px}.chapter-body{padding:22px 20px}}
 @media(max-width:480px){.chapter-layout,.textbook-page{max-width:100%}.chapter-body{padding:18px 14px}.chapter-concept-figure{margin:18px -7px 25px;padding:10px 9px 11px}.chapter-concept-figure .figure-heading{flex-wrap:wrap;gap:5px 8px;font-size:10px}.chapter-concept-figure .figure-heading span:last-child{display:inline-flex;font-size:9px}.chapter-concept-figure svg{width:580px;max-width:none;min-height:0;max-height:none}.figure-guide{padding:10px}.figure-guide-steps li{grid-template-columns:38px minmax(0,1fr);gap:7px;padding:8px}.figure-guide-step-copy p{font-size:11px}.figure-guide-controls{gap:5px}.figure-guide-controls output{flex-basis:100%;margin:0 0 2px}.figure-guide-controls .worked-control-button{min-height:38px}}
+
+/* Interactive YOLO label example: keep the annotation and its numbers in one view. */
+.box-label-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(250px,.85fr);gap:16px;align-items:start}
+.box-label-preview,.box-label-editor{min-width:0}
+.box-label-preview-heading{display:flex;justify-content:space-between;gap:10px;margin:0 0 8px;color:#485765;font-size:11px}
+.box-label-preview-heading strong{color:#344252;font-size:12px}
+.box-label-preview-heading span{color:#718078;font-variant-numeric:tabular-nums}
+.box-label-scene{overflow:hidden;border:1px solid #e8e5dd;border-radius:5px;background:#edf1ed}
+.box-label-scene svg{display:block;width:100%;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.box-label-legend{display:flex;flex-wrap:wrap;gap:5px 15px;margin:7px 0 0;color:#64716f;font-size:10px;line-height:1.7}
+.box-label-legend span{display:inline-flex;align-items:center;gap:6px}
+.box-label-legend i{width:10px;height:8px;border:2px solid #bd7c38;border-radius:1px}
+.box-label-legend b{width:7px;height:7px;border:1px solid #fffefa;border-radius:50%;background:#bd7c38;box-shadow:0 0 0 1px #bd7c38}
+.box-label-editor{display:grid;gap:11px}
+.box-label-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.box-label-readout{display:grid;gap:6px;padding:10px 11px;border:1px solid #e7e2d8;border-left:3px solid #bd7c38;border-radius:4px;background:#fffefa}
+.box-label-readout>span{color:#737f84;font-size:9px;line-height:1.5}
+.box-label-readout code{display:block;overflow-wrap:anywhere;color:#44396b;font-size:13px;font-weight:700;line-height:1.7;font-variant-numeric:tabular-nums}
+.box-label-readout p{margin:0;color:#59686d;font-size:10px;line-height:1.7;font-variant-numeric:tabular-nums}
+.box-label-editor .playground-insight{margin:0}
+.box-label-playground>.playground-footnote{margin-top:10px}
+@media(max-width:700px){.box-label-layout{grid-template-columns:1fr;gap:13px}.box-label-sliders{gap:10px 14px}}
+@media(max-width:520px){.box-label-layout{gap:11px}.box-label-preview-heading{font-size:10px}.box-label-preview-heading strong{font-size:11px}.box-label-sliders{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.box-label-readout{padding:9px}.box-label-readout code{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.box-label-scene svg{scroll-behavior:auto}}
+
+/* Show why YOLOv5 keeps three feature-map strides. */
+.scale-explorer{margin-top:16px;padding:15px;border:1px solid #e7e2d8;border-radius:5px;background:#fffefa}
+.scale-explorer .playground-heading{margin-bottom:12px}
+.scale-explorer .playground-heading h3{margin:4px 0 6px;color:#344252;font-size:16px;font-weight:650}
+.scale-explorer .playground-heading p{max-width:650px;margin:0;color:#68767c;font-size:11px;line-height:1.7}
+.scale-target-choices{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 13px}
+.scale-target-choices button{min-height:34px;padding:6px 11px;border:1px solid #e3ded4;border-radius:4px;background:#faf8f2;color:#59686d;font:inherit;font-size:11px;cursor:pointer;transition:background .16s,border-color .16s,color .16s}
+.scale-target-choices button:hover{border-color:#bd7c38;color:#8b5b28}
+.scale-target-choices button[aria-pressed=true]{border-color:#bd7c38;background:#f4eee3;color:#805326;font-weight:700}
+.scale-map-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.scale-map-card{min-width:0;padding:10px;border-top:2px solid var(--scale-color);background:linear-gradient(180deg,var(--scale-soft),#fffefa 78%)}
+.scale-map-card header{display:flex;align-items:baseline;justify-content:space-between;gap:6px;height:auto;min-height:0;margin-bottom:7px;padding:0;border:0;background:transparent;color:#66727a;font-size:10px}
+.scale-map-card header strong{color:var(--scale-color);font-size:16px;font-weight:700}
+.scale-map-svg{display:block;width:min(100%,190px);height:auto;margin:0 auto 8px;border:1px solid #e4e2da;background:#eef1ed}
+.scale-map-readouts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.scale-map-readouts div{display:grid;gap:3px;min-width:0}
+.scale-map-readouts span{color:#7b8585;font-size:9px;line-height:1.4}
+.scale-map-readouts strong{color:#384a53;font-size:11px;font-variant-numeric:tabular-nums}
+.scale-map-card>p{margin:7px 0 0;color:var(--scale-color);font-size:9px;line-height:1.5}
+.scale-explorer .playground-insight{margin:10px 0 0}
+.scale-explorer>.playground-footnote{margin-top:8px}
+@media(max-width:520px){.scale-explorer{padding:11px}.scale-map-grid{grid-template-columns:1fr;gap:7px}.scale-map-card{display:grid;grid-template-columns:minmax(94px,34%) minmax(0,1fr);align-items:center;gap:4px 10px;padding:8px}.scale-map-card header{grid-column:1/-1;margin-bottom:2px}.scale-map-svg{grid-column:1;grid-row:2/span 2;width:100%;max-width:120px;margin:0}.scale-map-readouts{grid-column:2;grid-row:2;grid-template-columns:1fr 1fr;align-self:end}.scale-map-readouts strong{font-size:10px}.scale-map-card>p{grid-column:2;grid-row:3;align-self:start;margin:5px 0 0;font-size:9px}.scale-target-choices{gap:5px}.scale-target-choices button{flex:1;padding:6px 5px;font-size:10px}}

@@ -412,6 +412,84 @@
     root.querySelector('[data-anchor-hint]').textContent='目标 '+width+' × '+height+' px：当前 '+accepted+' / 9 个示意 Anchor 通过尺寸筛选。比较使用严格小于号，R 等于阈值时不通过。步幅越大，同一目标覆盖的网格单元越少；最终正样本还要经过中心位置和邻格分配。';
   }
 
+  const detectorScales=[
+    {id:'p3',name:'P3',stride:8,grid:80,role:'网格最密 · 细节较多',color:'#3e967c',soft:'#e5f1eb'},
+    {id:'p4',name:'P4',stride:16,grid:40,role:'中间尺度',color:'#4c88a6',soft:'#e7f0f4'},
+    {id:'p5',name:'P5',stride:32,grid:20,role:'网格较疏 · 范围较大',color:'#bd7c38',soft:'#f4eee3'}
+  ];
+  const detectorTargetSizes=[
+    {id:'small',name:'小目标',size:32},
+    {id:'medium',name:'中目标',size:96},
+    {id:'large',name:'大目标',size:192}
+  ];
+  function scaleMapSvg(scale,target){
+    const side=180,cell=side/scale.grid,extent=side*target.size/640,cx=side*.5,cy=side*.5;
+    const x=cx-extent/2,y=cy-extent/2,pattern='scale-grid-'+scale.id;
+    return '<svg class="scale-map-svg" viewBox="0 0 '+side+' '+side+'" role="img" aria-label="'+scale.name+' 步长 '+scale.stride+'，特征图 '+scale.grid+' 乘 '+scale.grid+'；'+target.size+' 像素目标的宽高约跨 '+(target.size/scale.stride).toFixed(1)+' 个网格">'
+      +'<defs><pattern id="'+pattern+'" width="'+cell.toFixed(3)+'" height="'+cell.toFixed(3)+'" patternUnits="userSpaceOnUse"><path d="M '+cell.toFixed(3)+' 0 H 0 V '+cell.toFixed(3)+'" fill="none" stroke="#9aa8a1" stroke-width=".55"/></pattern></defs>'
+      +'<rect width="180" height="180" rx="4" fill="#eef1ed"/><rect width="180" height="180" rx="4" fill="url(#'+pattern+')"/>'
+      +'<rect x="'+x.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+extent.toFixed(2)+'" height="'+extent.toFixed(2)+'" fill="'+scale.soft+'" fill-opacity=".8" stroke="'+scale.color+'" stroke-width="2"/><circle cx="'+cx+'" cy="'+cy+'" r="2.5" fill="'+scale.color+'" stroke="#fffefa" stroke-width="1"/>'
+      +'<text x="7" y="171" fill="#77837d" font-size="8">640 px 输入画布 · 网格为示意</text></svg>';
+  }
+  function scaleMapCard(scale,target){
+    const span=(target.size/scale.stride).toFixed(1).replace(/\.0$/,'');
+    return '<article class="scale-map-card" style="--scale-color:'+scale.color+';--scale-soft:'+scale.soft+'"><header><strong>'+scale.name+'</strong><span>步长 '+scale.stride+'</span></header>'
+      +scaleMapSvg(scale,target)+'<div class="scale-map-readouts"><div><span>特征图</span><strong>'+scale.grid+' × '+scale.grid+'</strong></div><div><span>'+target.size+' px 目标约跨</span><strong>'+span+' × '+span+' 格</strong></div></div><p>'+scale.role+'</p></article>';
+  }
+  function scaleExplorerMarkup(){
+    const target=detectorTargetSizes[0];
+    return '<section class="lesson-playground scale-explorer" data-scale-explorer data-scale-target="small" aria-labelledby="scale-explorer-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · YOLO 多尺度检测</span><h3 id="scale-explorer-title">同一目标，在 P3、P4、P5 上有多大？</h3><p>切换目标大小，观察 640 × 640 输入经过不同步长后，目标跨过多少网格。</p></div></div>'
+      +'<div class="scale-target-choices" role="group" aria-label="选择示意目标边长">'+detectorTargetSizes.map(item=>'<button type="button" data-scale-target="'+item.id+'" aria-pressed="'+String(item.id===target.id)+'">'+item.name+' · '+item.size+' px</button>').join('')+'</div>'
+      +'<div class="scale-map-grid" data-scale-map-grid>'+detectorScales.map(scale=>scaleMapCard(scale,target)).join('')+'</div>'
+      +'<p class="playground-insight" data-scale-explorer-hint role="status" aria-live="polite">小目标在 P3 上跨过更多网格宽度，因此较密的空间特征更有利于保留位置细节。</p>'
+      +'<p class="playground-footnote">这里把目标简化成正方形，只比较特征图的空间步长。跨过几个网格不等于这些格子都会成为正样本；真实 YOLOv5 还会按 Anchor、目标中心与邻格规则分配训练样本。</p></section>';
+  }
+  function updateScaleExplorer(root){
+    const target=detectorTargetSizes.find(item=>item.id===root.dataset.scaleTarget)||detectorTargetSizes[0];
+    root.querySelectorAll('[data-scale-target]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.scaleTarget===target.id)));
+    root.querySelector('[data-scale-map-grid]').innerHTML=detectorScales.map(scale=>scaleMapCard(scale,target)).join('');
+    root.querySelector('[data-scale-explorer-hint]').textContent=target.name+'（边长 '+target.size+' px）的宽高约对应 '+detectorScales.map(scale=>scale.name+' '+(target.size/scale.stride).toFixed(1).replace(/\.0$/,'')+' × '+(target.size/scale.stride).toFixed(1).replace(/\.0$/,'')).join('；')+' 个网格单元。较密的空间网格能保留更细的位置线索。';
+  }
+
+  const boxLabelDefaults={cx:0.50,cy:0.40,w:0.20,h:0.16};
+  function boxLabelMarkup(){
+    const controls=[['cx','中心 x',0.20,0.80,0.50],['cy','中心 y',0.20,0.80,0.40],['w','框宽 w',0.10,0.38,0.20],['h','框高 h',0.10,0.38,0.16]];
+    return '<section class="lesson-playground box-label-playground" data-box-label-playground aria-labelledby="box-label-playground-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · YOLO 标签</span><h3 id="box-label-playground-title">拖动标注框，读出标签这一行</h3><p>移动中心、调整框的大小；图像坐标和 YOLO 标签会一起更新。</p></div><button type="button" class="playground-reset" data-box-label-reset>恢复例题</button></div>'
+      +'<div class="box-label-layout"><div class="box-label-preview"><div class="box-label-preview-heading"><strong>目标：车辆</strong><span>原图 1000 × 500 px</span></div><div class="box-label-scene" data-box-label-scene></div><p class="box-label-legend"><span><i></i>橙框：当前标注</span><span><b></b>圆点：框中心</span><span>车辆保持不动</span></p></div>'
+      +'<div class="box-label-editor"><div class="box-label-sliders">'+controls.map(control=>'<label class="playground-range"><span>'+control[1]+' <output data-box-label-value="'+control[0]+'">'+control[4].toFixed(2)+'</output></span><input type="range" min="'+control[2]+'" max="'+control[3]+'" step="0.01" value="'+control[4]+'" data-box-label-coordinate="'+control[0]+'" aria-label="'+control[1]+'"></label>').join('')+'</div>'
+      +'<div class="box-label-readout"><span>YOLO 标签行 · class x_center y_center width height</span><code data-box-label-row>0 0.50 0.40 0.20 0.16</code><p data-box-label-pixels>像素值：中心 (500, 200) · 宽高 200 × 80 px</p></div>'
+      +'<p class="playground-insight" data-box-label-hint role="status" aria-live="polite">橙框基本贴合车辆。x 和框宽除以图像宽；y 和框高除以图像高。坐标归一化后，换分辨率也能表示相同比例的位置。</p></div></div>'
+      +'<p class="playground-footnote">例题图像为 1000 × 500 像素。标签写入中心点与宽高，顺序是 class、x_center、y_center、width、height；不是左上角坐标。</p></section>';
+  }
+  function boxLabelScene(values){
+    const W=640,H=320,cx=values.cx,cy=values.cy,width=values.w,height=values.h;
+    const bw=width*W,bh=height*H,bx=(cx-width/2)*W,by=(cy-height/2)*H,centerX=cx*W,centerY=cy*H;
+    let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="车辆图像上的 YOLO 标注框，中心 '+cx.toFixed(2)+'、'+cy.toFixed(2)+'，宽 '+width.toFixed(2)+'、高 '+height.toFixed(2)+'">';
+    svg+='<rect width="640" height="320" fill="#edf1ed"/>';
+    for(let i=1;i<5;i++){svg+='<line x1="'+(i*128)+'" y1="0" x2="'+(i*128)+'" y2="320" stroke="#fffefa" stroke-width="1.5"/><line x1="0" y1="'+(i*64)+'" x2="640" y2="'+(i*64)+'" stroke="#fffefa" stroke-width="1.5"/>'}
+    svg+='<text x="14" y="22" fill="#687687" font-size="11" font-weight="600">0001.jpg</text><line x1="0" y1="'+centerY.toFixed(1)+'" x2="'+centerX.toFixed(1)+'" y2="'+centerY.toFixed(1)+'" stroke="#b17c31" stroke-width="1.3" stroke-dasharray="4 4" opacity=".72"/><line x1="'+centerX.toFixed(1)+'" y1="'+centerY.toFixed(1)+'" x2="'+centerX.toFixed(1)+'" y2="320" stroke="#b17c31" stroke-width="1.3" stroke-dasharray="4 4" opacity=".72"/>';
+    const targetW=boxLabelDefaults.w*W,targetH=boxLabelDefaults.h*H,targetX=(boxLabelDefaults.cx-boxLabelDefaults.w/2)*W,targetY=(boxLabelDefaults.cy-boxLabelDefaults.h/2)*H;
+    svg+='<g transform="translate('+targetX.toFixed(1)+' '+targetY.toFixed(1)+') scale('+(targetW/100).toFixed(3)+' '+(targetH/50).toFixed(3)+')"><path d="M7 31 L14 29 L23 18 Q26 15 33 15 H65 Q72 16 78 27 L91 30 Q95 31 96 36 V42 H5 V35 Q5 32 7 31Z" fill="#75649f"/><path d="M28 19 L35 19 H63 Q67 20 71 27 H23Z" fill="#e7e5ef"/><circle cx="27" cy="41" r="7" fill="#344252"/><circle cx="27" cy="41" r="3" fill="#edf1ed"/><circle cx="75" cy="41" r="7" fill="#344252"/><circle cx="75" cy="41" r="3" fill="#edf1ed"/></g>';
+    svg+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2" fill="#c17a45" fill-opacity=".05" stroke="#bd7c38" stroke-width="2.5"/><circle cx="'+centerX.toFixed(1)+'" cy="'+centerY.toFixed(1)+'" r="4.2" fill="#bd7c38" stroke="#fffefa" stroke-width="1.5"/><text x="'+Math.max(8,bx).toFixed(1)+'" y="'+Math.max(14,by-7).toFixed(1)+'" fill="#8b5b28" font-size="10" font-weight="700">class 0</text>';
+    svg+='<text x="8" y="310" fill="#758078" font-size="9">0%</text><text x="320" y="310" text-anchor="middle" fill="#758078" font-size="9">50%</text><text x="632" y="310" text-anchor="end" fill="#758078" font-size="9">100%</text></svg>';
+    return svg;
+  }
+  function updateBoxLabel(root){
+    const values={};
+    root.querySelectorAll('[data-box-label-coordinate]').forEach(input=>{
+      const key=input.dataset.boxLabelCoordinate,value=Number(input.value);values[key]=value;
+      root.querySelector('[data-box-label-value="'+key+'"]').textContent=value.toFixed(2);
+    });
+    root.querySelector('[data-box-label-scene]').innerHTML=boxLabelScene(values);
+    root.querySelector('[data-box-label-row]').textContent='0 '+[values.cx,values.cy,values.w,values.h].map(value=>value.toFixed(2)).join(' ');
+    root.querySelector('[data-box-label-pixels]').textContent='像素值：中心 ('+Math.round(values.cx*1000)+', '+Math.round(values.cy*500)+') · 宽高 '+Math.round(values.w*1000)+' × '+Math.round(values.h*500)+' px';
+    const overlaps=Math.abs(values.cx-boxLabelDefaults.cx)*2<values.w+boxLabelDefaults.w-0.001&&Math.abs(values.cy-boxLabelDefaults.cy)*2<values.h+boxLabelDefaults.h-0.001;
+    const aligned=Math.abs(values.cx-boxLabelDefaults.cx)<0.03&&Math.abs(values.cy-boxLabelDefaults.cy)<0.03&&Math.abs(values.w-boxLabelDefaults.w)<0.04&&Math.abs(values.h-boxLabelDefaults.h)<0.04;
+    root.querySelector('[data-box-label-hint]').textContent=aligned?'当前框基本贴合车辆。x 和框宽除以图像宽；y 和框高除以图像高，换分辨率也能表示相同比例的位置。':overlaps?'车辆保持不动；当前框仍覆盖目标，但中心或宽高不够贴合。可以继续调整，再观察标签数值。':'车辆保持不动；当前框已偏离目标。错误框会把错误位置教给模型。';
+  }
+
   const yoloLossScenarios={
     localization:{name:'定位偏差',base:{box:0.86,obj:0.18,cls:0.08},hint:'目标类别与存在性已识别，但预测框的位置或大小不准。先检查 box 相关监督和框标签。'},
     objectness:{name:'背景误检',base:{box:0,obj:0.82,cls:0},hint:'这里单看一个未匹配目标的背景候选：它收到 objectness 监督，不计算正样本的 box / classification 损失。真实一批图像仍可能有其他目标贡献后两项。'},
@@ -469,6 +547,8 @@
   }
 
   function render(lessonId,sectionIndex){
+    if(lessonId==='dataset'&&sectionIndex===0)return boxLabelMarkup();
+    if(lessonId==='architecture'&&sectionIndex===1)return scaleExplorerMarkup();
     if(lessonId==='network'&&sectionIndex===1)return activationMarkup();
     if(lessonId==='losses'&&sectionIndex===1)return lossMarkup();
     if(lessonId==='losses'&&sectionIndex===3)return multiclassMarkup();
@@ -482,6 +562,8 @@
     return '';
   }
   function initialize(){
+    document.querySelectorAll('[data-box-label-playground]').forEach(updateBoxLabel);
+    document.querySelectorAll('[data-scale-explorer]').forEach(updateScaleExplorer);
     document.querySelectorAll('[data-activation-playground]').forEach(updateActivation);
     document.querySelectorAll('[data-loss-playground]').forEach(updateLoss);
     document.querySelectorAll('[data-multiclass-playground]').forEach(updateMulticlass);
@@ -497,6 +579,7 @@
 
   document.addEventListener('input',event=>{
     const target=event.target;
+    const boxLabelControl=target.closest('[data-box-label-coordinate]');if(boxLabelControl){updateBoxLabel(boxLabelControl.closest('[data-box-label-playground]'));return}
     const activation=target.closest('[data-activation-x]');if(activation){updateActivation(activation.closest('[data-activation-playground]'));return}
     const loss=target.closest('[data-loss-error],[data-loss-delta]');if(loss){updateLoss(loss.closest('[data-loss-playground]'));return}
     const multiclassLogit=target.closest('[data-multiclass-logit]');if(multiclassLogit){updateMulticlass(multiclassLogit.closest('[data-multiclass-playground]'));return}
@@ -509,6 +592,10 @@
     const yoloLossControl=target.closest('[data-yolo-loss-gain]');if(yoloLossControl){updateYoloLoss(yoloLossControl.closest('[data-yolo-loss-playground]'));return}
   });
   document.addEventListener('click',event=>{
+    const scaleTarget=event.target.closest('[data-scale-target]');
+    if(scaleTarget){const root=scaleTarget.closest('[data-scale-explorer]');root.dataset.scaleTarget=scaleTarget.dataset.scaleTarget;updateScaleExplorer(root);return}
+    const boxLabelReset=event.target.closest('[data-box-label-reset]');
+    if(boxLabelReset){const root=boxLabelReset.closest('[data-box-label-playground]');root.querySelectorAll('[data-box-label-coordinate]').forEach(input=>{input.value=String(boxLabelDefaults[input.dataset.boxLabelCoordinate])});updateBoxLabel(root);return}
     const activationChoice=event.target.closest('[data-activation-choose]');
     if(activationChoice){const root=activationChoice.closest('[data-activation-playground]');root.dataset.function=activationChoice.dataset.activationChoose;updateActivation(root);return}
     const activationReset=event.target.closest('[data-activation-reset]');

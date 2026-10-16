@@ -26,7 +26,7 @@ const sectionExerciseBank = {
   ],
   gradient: [
     exercise('在线性模型 ŷ=wx+b 中，训练时通常调整哪些量？', ['参数 w 和 b', '输入样本 x 和真实标签 y', '验证集的图片顺序', '预测结果 ŷ 本身'], 0, '训练通过损失对参数求梯度并更新 w、b；训练数据提供输入和监督信号。'),
-    exercise('某点上损失对 w 的导数为正。按梯度下降规则，下一步应怎样调整 w？', ['减小 w', '增大 w', '固定 w 并修改标签', '把学习率设为负无穷'], 0, '更新式是 w ← w − 学习率 × 梯度；正梯度对应减小参数以降低附近的损失。'),
+    exercise('每次更新时，用全部训练样本、单个随机样本、或一个随机小批次估计梯度，依次对应哪些方法？', ['Batch GD、SGD、小批量 SGD', 'SGD、Batch GD、只用验证集', '小批量 SGD、Batch GD、SGD', 'Adam、ReLU、Softmax'], 0, 'Batch GD 每步使用全部训练样本；SGD 通常指单样本更新；小批量 SGD 对一组样本的梯度求平均。深度学习语境中的 SGD 有时也泛指小批量更新。'),
     exercise('反向传播为什么能训练由许多层组成的网络？', ['利用链式法则把损失对各层参数的影响逐层传回', '每层都独立猜一个最终标签', '只计算最后一层的输出形状', '把所有参数替换成随机标签'], 0, '链式法则把复合函数的导数拆成局部导数的连乘，梯度因而可以从损失传到前面的参数。'),
     exercise('一次常见 PyTorch 更新中，清梯度、反向传播和参数更新的顺序是什么？', ['zero_grad → backward → optimizer.step', 'optimizer.step → zero_grad → backward', 'backward → optimizer.step → zero_grad', 'zero_grad → optimizer.step → backward'], 0, '先清掉上一步累积的梯度，再计算本批次梯度，最后让优化器用这些梯度更新参数。'),
   ],

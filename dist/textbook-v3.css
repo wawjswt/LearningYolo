@@ -583,6 +583,55 @@ footer{border-color:#e5e2d9}
 @media(max-width:700px){.pooling-controls{grid-template-columns:1fr 1fr}.pooling-stride-switch{grid-column:1/-1}.training-controls{grid-template-columns:1fr}.training-controls>.secondary{justify-self:start}}
 @media(max-width:520px){.pooling-controls{grid-template-columns:1fr}.pooling-stride-switch{grid-column:auto}.pooling-readouts,.training-readouts{gap:5px}.pooling-readouts>div,.training-readouts>div{padding:7px}.pooling-readouts strong,.training-readouts strong{font-size:10px}.task-readouts{grid-template-columns:1fr 1fr;gap:5px}.task-readouts>div{padding:8px}.task-readouts strong{font-size:10px}}
 
+/* Training batch visualizer: sample groups, update steps, and epoch counts. */
+.training-batch-explorer{margin:22px 0;padding:18px;border:1px solid #e7e3d9;border-radius:5px;background:#faf9f5;color:#394651}
+.training-batch-explorer .playground-heading{margin-bottom:16px}
+.training-batch-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+.training-batch-controls>label{display:grid;gap:6px;min-width:0;padding:10px 11px;border:1px solid #e8e5dd;border-radius:4px;background:#fffefa;color:#596570;font-size:11px}
+.training-batch-controls select{width:100%;min-height:34px;padding:6px 8px;border:1px solid #dedbd2;border-radius:3px;background:#fff;color:#394651;font:inherit}
+.training-batch-epochs{grid-template-columns:1fr auto!important;align-items:center}
+.training-batch-epochs input{grid-column:1/-1;width:100%;accent-color:#76649d}
+.training-batch-epochs output{color:#66578c;font-weight:700;font-variant-numeric:tabular-nums}
+.training-batch-controls>.training-batch-drop{display:flex;grid-column:1/-1;align-items:center;gap:8px;padding:8px 10px}
+.training-batch-drop input{accent-color:#76649d}
+.training-batch-flow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1.25fr) auto minmax(0,1fr);gap:9px;align-items:center;margin:16px 0;padding:14px;border:1px solid #e9e6df;border-radius:4px;background:#fffefa}
+.training-batch-flow-card{display:grid;gap:6px;min-width:0}
+.training-batch-flow-card span{color:#879098;font-size:9px;line-height:1.5}
+.training-batch-flow-card strong{color:#45535e;font-size:11px;line-height:1.45}
+.training-batch-flow-card.training-batch-update strong{color:#567d69}
+.training-batch-arrow{color:#aaa3b2;font-size:17px}
+.training-batch-lower{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:11px;margin:12px 0}
+.training-batch-map,.training-batch-totals>div{min-width:0;padding:12px;border:1px solid #e8e5dd;border-radius:4px;background:#fffefa}
+.training-batch-card-heading{display:flex;justify-content:space-between;gap:8px;align-items:start;margin-bottom:12px}
+.training-batch-card-heading>div{display:grid;gap:4px}
+.training-batch-card-heading strong{font-size:12px}
+.training-batch-card-heading span{color:#7b858d;font-size:9px;line-height:1.5}
+.training-batch-tiles{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:62px}
+.training-batch-tile{display:grid;gap:5px;min-width:82px;padding:8px 9px;border:1px solid #e6e1d8;border-radius:3px;background:#fbfaf7;color:#69737d;text-align:left;font:inherit;cursor:pointer}
+.training-batch-tile span{font-size:9px}
+.training-batch-tile strong{font-size:10px;font-weight:650;font-variant-numeric:tabular-nums}
+.training-batch-tile.is-current{border-color:#8a79ad;background:#f0edf6;color:#54447c;box-shadow:inset 0 0 0 1px #8a79ad}
+.training-batch-tile:focus-visible,.training-batch-controls select:focus-visible,.training-batch-slider input:focus-visible{outline:2px solid #8a79ad;outline-offset:2px}
+.training-batch-ellipsis{padding:0 2px;color:#96939a;font-size:12px}
+.training-batch-slider{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:12px;color:#65717c;font-size:10px}
+.training-batch-slider output{color:#5c4b87;font-weight:700;font-variant-numeric:tabular-nums}
+.training-batch-slider input{grid-column:1/-1;width:100%;accent-color:#76649d}
+.training-batch-sample-range{min-height:30px;margin:8px 0 0;color:#596570;font-size:10px;line-height:1.6}
+.training-batch-totals{display:grid;gap:7px}
+.training-batch-totals>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:baseline}
+.training-batch-totals span{color:#77818a;font-size:9px}
+.training-batch-totals strong{color:#45535e;font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.training-batch-totals small{grid-column:1/-1;color:#8a9298;font-size:9px;line-height:1.5}
+.training-batch-epoch-note,.training-batch-verdict{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;margin:10px 0;padding:11px 12px;border-left:3px solid #73917f;background:#f0f4ef;color:#58655d;font-size:10px;line-height:1.7}
+.training-batch-epoch-note strong,.training-batch-verdict strong{white-space:nowrap;color:#4e6d5a;font-size:10px}
+.training-batch-epoch-note span{min-width:0}
+.training-batch-verdict{border-left-color:#9a84b6;background:#f3f0f7;color:#60586b}
+.training-batch-verdict strong{color:#685481}
+.training-batch-verdict p{grid-column:2;margin:0}
+.training-batch-explorer>.playground-footnote{margin:10px 0 0}
+@media(max-width:680px){.training-batch-flow{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px}.training-batch-flow-card:nth-of-type(3){grid-column:1}.training-batch-flow-card:nth-of-type(4){grid-column:3}.training-batch-flow>.training-batch-arrow:nth-of-type(3){display:none}.training-batch-lower{grid-template-columns:1fr}}
+@media(max-width:460px){.training-batch-explorer{padding:12px}.training-batch-controls{grid-template-columns:1fr}.training-batch-controls>.training-batch-drop{grid-column:auto}.training-batch-flow{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);padding:10px}.training-batch-flow-card strong{font-size:10px}.training-batch-arrow{font-size:14px}.training-batch-card-heading{display:grid}.training-batch-tile{min-width:76px;padding:7px}}
+
 /* Course visualizations: augmentation labels, anchor scales, and detector losses. */
 .lesson-augmentation-modes button:focus-visible,.augmentation-sync-toggle:focus-visible,.yolo-loss-modes button:focus-visible{outline:2px solid #7867aa;outline-offset:2px}
 .augmentation-lesson-layout{display:grid;grid-template-columns:minmax(190px,.78fr) minmax(0,1.22fr);gap:10px;margin-top:12px;align-items:stretch}

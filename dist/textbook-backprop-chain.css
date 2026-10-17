@@ -1,0 +1,46 @@
+/* Chain-rule walkthrough embedded in the gradient and backpropagation lesson. */
+.backprop-playground{border-top:2px solid #7969a5;background:linear-gradient(145deg,#faf9f5,#f4f1f8)}
+.bp-flow{overflow:hidden;border:1px solid #e8e4dc;border-radius:6px;background:#fffefa}
+.bp-flow svg{display:block;width:100%;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.bp-flow-label{fill:#78679f;font-size:12px;font-weight:700}
+.bp-flow-back-label{fill:#43846c}
+.bp-edge{fill:none;stroke-width:3;stroke-linecap:round;opacity:.16;transition:opacity .2s,stroke-width .2s}
+.bp-forward{stroke:#8d7bb2}
+.bp-backward{stroke:#4b997b;stroke-dasharray:6 4}
+.bp-edge.is-active{opacity:1;stroke-width:4}
+.bp-node rect{fill:#faf9f5;stroke:#dfdcd4;stroke-width:1.4;transition:fill .2s,stroke .2s,filter .2s}
+.bp-node.is-active rect{fill:#f1edf8;stroke:#9785bb;filter:drop-shadow(0 3px 5px #8070ad20)}
+.bp-node-loss.is-active rect{fill:#fbf1e5;stroke:#c49a63}
+.bp-node-param.is-active rect{fill:#edf5ef;stroke:#77a58b}
+.bp-node-kicker{fill:#7d8790;font-size:10px}
+.bp-node-formula{fill:#75649f;font-size:12px;font-weight:650}
+.bp-node-value{fill:#354351;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.bp-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:13px 0;padding:13px;border:1px solid #e8e4dc;border-radius:5px;background:#fffefa}
+.bp-controls .playground-range{min-width:0}
+.bp-stage-switch{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.bp-stage-switch button{min-height:35px;padding:7px 11px;border:1px solid #e4e0d7;border-radius:4px;background:#fffefa;color:#626e79;font:inherit;font-size:10px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.bp-stage-switch button:hover,.bp-stage-switch button[aria-pressed="true"]{border-color:#9d8cbe;background:#f0edf6;color:#54477c}
+.bp-stage-switch button:focus-visible,.bp-step-nav button:focus-visible,.bp-answer-options button:focus-visible{outline:3px solid #8170ad;outline-offset:2px}
+.bp-explanation{padding:14px;border:1px solid #e7e2d9;border-radius:5px;background:#fffefa}
+.bp-explanation-title{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:10px;color:#394653;font-size:14px;font-weight:750}
+.bp-explanation-title small{color:#8a8f91;font-size:10px;font-weight:500}
+.bp-equations{display:grid;gap:7px}
+.bp-equations>div{display:grid;grid-template-columns:minmax(130px,.6fr) minmax(0,1.4fr);gap:10px;align-items:center;padding:9px 10px;border-radius:4px;background:#f7f5f0}
+.bp-equations span{color:#68737d;font-size:10px;line-height:1.55}
+.bp-equations code{overflow-wrap:anywhere;color:#514477;font-size:11px;font-variant-numeric:tabular-nums}
+.bp-stage-note{margin:10px 0 0;color:#68737d;font-size:11px;line-height:1.8}
+.bp-step-nav{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
+.bp-step-nav button:disabled{opacity:.45;cursor:not-allowed}
+.bp-practice{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;margin-top:14px;padding:14px;border:1px solid #e5e0d7;border-left:3px solid #8b7ab9;border-radius:5px;background:#f8f6fb}
+.bp-practice>div:first-child{display:grid;gap:5px}
+.bp-practice strong{color:#3b4653;font-size:12px;line-height:1.65}
+.bp-practice p{margin:0;color:#78818a;font-size:10px;line-height:1.7}
+.bp-answer-options{display:flex;flex-wrap:wrap;gap:6px}
+.bp-answer-options button{min-height:33px;padding:6px 9px;border:1px solid #e3dfd7;border-radius:4px;background:#fffefa;color:#5f6b77;font:inherit;font-size:10px;cursor:pointer}
+.bp-answer-options button:hover,.bp-answer-options button[aria-pressed="true"]{border-color:#9787b7;background:#efecf6;color:#57497e}
+.bp-answer-feedback{grid-column:1/-1!important;color:#486d59!important;font-size:10px!important}
+.backprop-playground>.playground-insight{border-left-color:#6d9a81;background:#eff5f0}
+.backprop-playground .playground-footnote a{color:#66558f;text-decoration:underline;text-underline-offset:2px}
+@media(max-width:760px){.bp-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-practice{grid-template-columns:1fr}.bp-answer-options{justify-content:flex-start}}
+@media(max-width:520px){.bp-flow{overflow-x:auto}.bp-flow svg{width:680px;max-width:none}.bp-controls{grid-template-columns:1fr}.bp-stage-switch{gap:5px}.bp-stage-switch button{flex:1 1 42%;padding:7px 6px;font-size:9px}.bp-equations>div{grid-template-columns:1fr;gap:4px}.bp-explanation-title{font-size:12px}.bp-explanation{padding:11px}.bp-practice{padding:11px}}
+@media(prefers-reduced-motion:reduce){.bp-edge,.bp-node rect,.bp-stage-switch button{transition:none}}

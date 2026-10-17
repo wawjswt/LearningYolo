@@ -310,6 +310,78 @@
     root.querySelector('[data-training-hint]').textContent=hint;
   }
 
+  const yoloReadinessItems=[
+    {id:'coverage',title:'图像覆盖真实场景',detail:'光照、背景、角度、目标大小尽量贴近实际使用情况。',hint:'先补足真实应用里容易漏掉的光照、背景、角度和目标大小。'},
+    {id:'labels',title:'标注框与类别准确',detail:'抽查是否漏框、错类、框偏位；一个框对应一个目标。',hint:'把标注框画回图像，检查漏标、错类和框偏位。'},
+    {id:'classes',title:'类别编号与名称一致',detail:'从 0 开始的类号必须对应 YAML names 中相同顺序。',hint:'核对类别 ID 与 names 的顺序，避免框对了却教错类别。'},
+    {id:'splits',title:'相似来源分到同一组',detail:'按视频、场景或采集批次划分，避免近重复图像泄漏。',hint:'先按视频、场景或采集批次分组，再划分训练、验证和测试。'},
+    {id:'config',title:'路径与配置读对了',detail:'核对 train / val 路径、类别数和标签图；先做短程检查。',hint:'检查 YAML 路径和类别映射，再抽看程序实际读取的标签图。'}
+  ];
+  function yoloReadinessMarkup(){
+    return '<section class="lesson-playground yolo-readiness-playground" data-yolo-readiness aria-labelledby="yolo-readiness-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动清单 · 开训前的数据体检</span><h3 id="yolo-readiness-title">这五项都核对过了吗？</h3><p>逐项点击，给已完成的检查打勾。训练能启动，只说明程序开始运行，不代表数据已经正确。</p></div><button type="button" class="playground-reset" data-yolo-readiness-reset>清空勾选</button></div>'
+      +'<div class="yolo-readiness-rail" role="img" aria-label="从真实场景图像、准确标注、统一类别、合理划分到正确配置的检查链路">'+yoloReadinessItems.map((item,index)=>'<div class="yolo-readiness-node"><span>'+(index+1)+'</span><strong>'+item.title.replace('图像覆盖真实场景','图像覆盖').replace('标注框与类别准确','框标准确').replace('类别编号与名称一致','类号统一').replace('相似来源分到同一组','分组划分').replace('路径与配置读对了','配置读对')+'</strong></div>').join('')+'</div>'
+      +'<div class="yolo-readiness-grid" role="group" aria-label="开训前五项检查">'+yoloReadinessItems.map(item=>'<button type="button" class="yolo-readiness-check" data-yolo-readiness-check="'+item.id+'" aria-pressed="false"><span class="yolo-readiness-mark" data-readiness-mark aria-hidden="true">○</span><span><strong>'+item.title+'</strong><small>'+item.detail+'</small></span><em data-readiness-state>待检查</em></button>').join('')+'</div>'
+      +'<div class="yolo-readiness-result"><div class="yolo-readiness-progress" role="progressbar" aria-label="已完成的开训前检查" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"><span data-yolo-readiness-fill></span></div><strong data-yolo-readiness-count>0 / 5 项已核对</strong></div>'
+      +'<p class="playground-insight" data-yolo-readiness-hint role="status" aria-live="polite">'+yoloReadinessItems[0].hint+'</p><p class="playground-footnote">勾选只是提醒自己完成了检查；如实核验标签图、数据路径和独立验证结果，才是判断依据。</p></section>';
+  }
+  function updateYoloReadiness(root){
+    const checked=new Set();
+    root.querySelectorAll('[data-yolo-readiness-check]').forEach(button=>{
+      const ready=button.getAttribute('aria-pressed')==='true';
+      if(ready)checked.add(button.dataset.yoloReadinessCheck);
+      button.querySelector('[data-readiness-mark]').textContent=ready?'✓':'○';
+      button.querySelector('[data-readiness-state]').textContent=ready?'已核对':'待检查';
+    });
+    const count=checked.size,percent=count/yoloReadinessItems.length*100;
+    const progress=root.querySelector('[role="progressbar"]');
+    progress.setAttribute('aria-valuenow',String(count));
+    root.querySelector('[data-yolo-readiness-fill]').style.width=percent+'%';
+    root.querySelector('[data-yolo-readiness-count]').textContent=count+' / '+yoloReadinessItems.length+' 项已核对';
+    const next=yoloReadinessItems.find(item=>!checked.has(item.id));
+    root.querySelector('[data-yolo-readiness-hint]').textContent=count===yoloReadinessItems.length
+      ?'五项都已核对。先做短程训练，确认标签图、损失和验证预测，再启动正式实验。'
+      :next.hint;
+  }
+
+  const yoloLogFields={
+    epoch:{group:'训练进度',title:'epoch · 完整遍历几轮',sample:'epoch 50 / 100',description:'一个 epoch 通常表示训练集被完整遍历一次。它不是一次参数更新；每轮包含多少 batch 取决于数据量与 batch size。',caution:'跑更多轮不保证验证效果更好。'},
+    imgsz:{group:'训练设置',title:'imgsz · 输入图像尺寸',sample:'imgsz 640',description:'常见训练配置会把图像缩放到指定尺寸。更高分辨率可能保留小目标细节，也会增加显存、计算量和耗时。',caution:'需要结合目标大小、显存与固定验证方案比较。'},
+    batch:{group:'训练设置',title:'batch · 每批图像数',sample:'batch 16',description:'模型每次用一小批图像和标签计算损失。batch size 会影响显存、吞吐和梯度估计。',caution:'它不是类别数，也没有适合所有设备的单一最佳值。'},
+    lr:{group:'训练设置',title:'lr · 学习率',sample:'lr 0.001',description:'学习率控制优化器每次更新参数的步幅。日志可能显示当前学习率或不同参数组的学习率。',caution:'学习率需要结合优化器、训练阶段和损失变化判断。'},
+    box_loss:{group:'YOLOv5 训练损失',title:'box_loss · 框定位误差',sample:'box_loss 0.72',description:'衡量预测框与真实框的位置差异。当前 YOLOv5 实现以 CIoU 误差形成框项，再按训练配置加权。',caution:'不同数据、模型和配置下的原始损失数值不能直接当作统一排行榜。'},
+    obj_loss:{group:'YOLOv5 训练损失',title:'obj_loss · 目标性误差',sample:'obj_loss 0.48',description:'学习候选位置是否包含目标。检测器会同时处理正样本与大量背景位置，并按尺度和配置汇总。',caution:'它不是最终 Precision，也不是置信度阈值。'},
+    cls_loss:{group:'YOLOv5 训练损失',title:'cls_loss · 类别误差',sample:'cls_loss 0.31',description:'学习已匹配目标属于哪个类别；多类别检测中会监督类别分数。类别数为 1 时，当前 YOLOv5 实现会跳过分类损失项。',caution:'标签类号、类别顺序错了，损失曲线下降也可能是在学错映射。'},
+    dfl_loss:{group:'部分较新检测头',title:'dfl_loss · 分布焦点损失',sample:'dfl_loss 0.93',description:'Distribution Focal Loss，用离散分布监督边界框距离的回归。部分较新的检测头会使用这一项。',caution:'它不是“置信度损失”，也不是标准 YOLOv5 ComputeLoss 的第四项；看到它时先核对模型与仓库版本。'},
+    precision:{group:'验证集指标',title:'Precision · 查准率',sample:'Precision 0.84',description:'在被模型报出来的目标中，有多少与真实目标匹配。误报越多，Precision 通常越容易下降。',caution:'检测指标受置信度和 IoU 匹配口径影响，应连同阈值与类别看。'},
+    recall:{group:'验证集指标',title:'Recall · 查全率',sample:'Recall 0.76',description:'真实目标中，有多少被模型成功找出。漏检越多，Recall 通常越容易下降。',caution:'为了提高 Recall 而降低置信度，可能同时带来更多误报。'},
+    map50:{group:'验证集指标',title:'mAP@0.5 · 一个 IoU 门槛下的平均精度',sample:'mAP@0.5 0.81',description:'按 IoU=0.5 的匹配门槛计算各类别 AP，再对类别求平均。',caution:'不能脱离数据集、类别构成和评估口径比较不同实验。'},
+    map5095:{group:'验证集指标',title:'mAP@0.5:0.95 · 多个 IoU 门槛的平均精度',sample:'mAP@0.5:0.95 0.56',description:'在 IoU 0.50 到 0.95、间隔 0.05 的多个门槛分别计算 AP 后取平均；对框定位更严格。',caution:'示例数字仅用于识别字段，不是通用达标线。'}
+  };
+  const yoloLogGroups=[
+    {title:'先看训练条件',fields:['epoch','imgsz','batch','lr']},
+    {title:'YOLOv5 常见训练损失',fields:['box_loss','obj_loss','cls_loss']},
+    {title:'验证集看检测效果',fields:['precision','recall','map50','map5095']},
+    {title:'版本差异提示',fields:['dfl_loss']}
+  ];
+  function yoloTrainingLogMarkup(){
+    return '<section class="lesson-playground yolo-log-playground" data-yolo-log data-yolo-log-field="box_loss" aria-labelledby="yolo-log-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动读数 · YOLO 训练日志</span><h3 id="yolo-log-title">一行日志里，哪些是“在学”，哪些是“学得好不好”？</h3><p>训练集用来更新参数；验证集用来检查模型遇到未见图像时的表现。点击字段看它在回答什么问题。</p></div></div>'
+      +'<div class="yolo-log-flow" aria-label="训练阶段更新参数，验证阶段计算检测指标"><div class="yolo-log-lane"><strong>训练集 · 更新参数</strong><div><span>图像 + 标签</span><b aria-hidden="true">→</b><span>前向预测</span><b aria-hidden="true">→</b><span>计算损失</span><b aria-hidden="true">→</b><span>反向传播与更新</span></div></div><div class="yolo-log-lane validation"><strong>验证集 · 检查泛化</strong><div><span>未用于更新的图像</span><b aria-hidden="true">→</b><span>预测并匹配真实框</span><b aria-hidden="true">→</b><span>Precision / Recall / mAP</span></div></div></div>'
+      +'<div class="yolo-log-groups">'+yoloLogGroups.map(group=>'<section class="yolo-log-group"><h4>'+group.title+'</h4><div role="group" aria-label="'+group.title+'">'+group.fields.map(id=>'<button type="button" data-yolo-log-field-choice="'+id+'" aria-pressed="'+String(id==='box_loss')+'">'+id+'</button>').join('')+'</div></section>').join('')+'</div>'
+      +'<div class="yolo-log-detail" aria-live="polite"><div><span data-yolo-log-group>YOLOv5 训练损失</span><h4 data-yolo-log-field-title>box_loss · 框定位误差</h4><p data-yolo-log-description></p><p class="yolo-log-caution" data-yolo-log-caution></p></div><div class="yolo-log-example"><small>演示字段值</small><strong data-yolo-log-sample>box_loss 0.72</strong><span>只用于读懂名称，不代表训练结果或达标线</span></div></div>'
+      +'<p class="playground-footnote">同一实验里，损失趋势要和验证指标、类别分布及预测图一起判断。不同模型、任务和版本可能使用不同损失项；比较时也要保持数据与评估口径一致。</p></section>';
+  }
+  function updateYoloTrainingLog(root){
+    const id=root.dataset.yoloLogField||'box_loss',field=yoloLogFields[id]||yoloLogFields.box_loss;
+    root.querySelectorAll('[data-yolo-log-field-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.yoloLogFieldChoice===id)));
+    root.querySelector('[data-yolo-log-group]').textContent=field.group;
+    root.querySelector('[data-yolo-log-field-title]').textContent=field.title;
+    root.querySelector('[data-yolo-log-description]').textContent=field.description;
+    root.querySelector('[data-yolo-log-caution]').textContent=field.caution;
+    root.querySelector('[data-yolo-log-sample]').textContent=field.sample;
+  }
+
   const taskSpecs={
     classification:{name:'图像分类',question:'整张图里有什么？',label:'每张图一个或多个类别',output:'图像级类别分数',metric:'准确率 / Top-k',cost:'标注通常较轻',summary:'适合判断是否出现某类物体。若一张图可同时属于多个类别，要采用多标签定义。'},
     detection:{name:'目标检测',question:'每个物体在哪里？',label:'每个实例一个类别和边界框',output:'框坐标 + 类别 + 分数',metric:'按类 AP / mAP',cost:'需逐个框出物体',summary:'适合计数、定位和逐目标告警；框包含部分背景，轮廓并不精确。'},
@@ -621,6 +693,8 @@
 
   function render(lessonId,sectionIndex){
     if(lessonId==='dataset'&&sectionIndex===0)return boxLabelMarkup();
+    if(lessonId==='dataset'&&sectionIndex===4)return yoloReadinessMarkup();
+    if(lessonId==='train-yolo'&&sectionIndex===2)return yoloTrainingLogMarkup();
     if(lessonId==='architecture'&&sectionIndex===1)return scaleExplorerMarkup();
     if(lessonId==='network'&&sectionIndex===1)return activationMarkup();
     if(lessonId==='losses'&&sectionIndex===1)return lossMarkup();
@@ -648,6 +722,8 @@
     document.querySelectorAll('[data-optimizer-playground]').forEach(updateOptimizer);
     document.querySelectorAll('[data-pooling-playground]').forEach(updatePooling);
     document.querySelectorAll('[data-training-playground]').forEach(updateTraining);
+    document.querySelectorAll('[data-yolo-readiness]').forEach(updateYoloReadiness);
+    document.querySelectorAll('[data-yolo-log]').forEach(updateYoloTrainingLog);
     document.querySelectorAll('[data-tasks-playground]').forEach(updateTasks);
     document.querySelectorAll('[data-lesson-augmentation]').forEach(updateAugmentationLesson);
     document.querySelectorAll('[data-anchor-playground]').forEach(updateAnchors);
@@ -710,6 +786,12 @@
     if(trainingBest){const root=trainingBest.closest('[data-training-playground]');root.querySelector('[data-training-epoch]').value=String(bestTrainingEpoch);updateTraining(root);return}
     const trainingReset=event.target.closest('[data-training-reset]');
     if(trainingReset){const root=trainingReset.closest('[data-training-playground]');root.querySelector('[data-training-epoch]').value='20';updateTraining(root);return}
+    const yoloReadinessCheck=event.target.closest('[data-yolo-readiness-check]');
+    if(yoloReadinessCheck){yoloReadinessCheck.setAttribute('aria-pressed',String(yoloReadinessCheck.getAttribute('aria-pressed')!=='true'));updateYoloReadiness(yoloReadinessCheck.closest('[data-yolo-readiness]'));return}
+    const yoloReadinessReset=event.target.closest('[data-yolo-readiness-reset]');
+    if(yoloReadinessReset){const root=yoloReadinessReset.closest('[data-yolo-readiness]');root.querySelectorAll('[data-yolo-readiness-check]').forEach(button=>button.setAttribute('aria-pressed','false'));updateYoloReadiness(root);return}
+    const yoloLogField=event.target.closest('[data-yolo-log-field-choice]');
+    if(yoloLogField){const root=yoloLogField.closest('[data-yolo-log]');root.dataset.yoloLogField=yoloLogField.dataset.yoloLogFieldChoice;updateYoloTrainingLog(root);return}
     const taskChoice=event.target.closest('[data-task-choice]');
     if(taskChoice){const root=taskChoice.closest('[data-tasks-playground]');root.dataset.taskMode=taskChoice.dataset.taskChoice;updateTasks(root);return}
     const taskReset=event.target.closest('[data-task-reset]');

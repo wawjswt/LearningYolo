@@ -295,6 +295,45 @@ for(const [id,supplement] of Object.entries(yoloAlgorithmSupplement)){
   if(supplement.keypoints) lesson.keypoints=[...(lesson.keypoints||[]),...supplement.keypoints];
 }
 
+const trainingLearningAdditions={
+  dataset:{
+    sections:[{
+      title:'5. 开训前的五项体检',
+      paragraphs:[
+        '把准备工作看成五个相互衔接的检查：图像是否覆盖真实场景；每个目标的框与类别是否准确完整；类别编号与 YAML 中的 names 是否一一对应；训练、验证和测试是否按视频、场景或采集批次分开；配置中的路径、类别数和标签能否被程序正确读到。检查顺序不是硬性规定，关键是五类问题都要有证据，而不是只看训练命令有没有跑起来。',
+        '开训前先抽看不同类别、目标大小和场景的标注图，并跑一个很短的管线检查，确认样本数、类别映射、框位置和损失都合理。正式训练以后再读验证表现与失败样例。损失下降只能说明优化目标在训练过程中变化，不能替代独立数据上的泛化检查。'
+      ],
+      exercise:{q:'相邻视频帧几乎一模一样。为了更可信地估计新场景效果，应该怎样划分？',options:['把帧随机打散到训练集和验证集','按完整视频或采集批次分组后再划分','把所有相邻帧放进验证集，训练时用同一段视频的其他帧'],answer:1,why:'按来源分组可减少近重复图像跨集合造成的数据泄漏；验证集才更接近未见过的场景。'}
+    }],
+    keypoints:['开训前检查图像覆盖、框与类别、类别映射、数据划分、配置路径五件事。','程序能启动不代表监督信号正确；先看标签叠图和数据统计。','验证集用于训练期间比较方案，测试集应尽量留作最终独立评估。'],
+    sources:[
+      {url:'https://docs.ultralytics.com/yolov5/tutorials/train-custom-data',label:'YOLOv5 自定义数据集训练指南'},
+      {url:'https://docs.ultralytics.com/datasets/detect',label:'目标检测数据集格式与 YOLO 标签规范'},
+      {url:'https://docs.ultralytics.com/guides/steps-of-a-cv-project',label:'计算机视觉项目的数据划分与评估流程'}
+    ]
+  },
+  'train-yolo':{
+    paragraphs:{2:[
+      '先确认日志属于哪个模型和仓库版本。当前 YOLOv5 常见训练分项是 `box_loss`、`obj_loss`、`cls_loss`；验证还会报告 Precision、Recall、mAP@0.5、mAP@0.5:0.95 等指标。部分较新的检测头还会出现 `dfl_loss`，它表示 Distribution Focal Loss，用分布形式监督边界框距离；它不是“置信度损失”，也不是当前标准 YOLOv5 `ComputeLoss` 的第四项。分项名称和数量会随模型、任务及代码版本变化。',
+      '看日志时把“训练目标”和“验证效果”分开：训练损失整体下降是有用信号，但要与验证集指标、按类别结果和预测图一起看。mAP@0.5:0.95 在一组更严格的 IoU 阈值上取平均，通常比只看 mAP@0.5 更全面；单次演示数值不是通用达标线。若训练损失继续降低、验证结果停滞或变差，先检查划分、标签、类别分布和失败样例，不要只靠增加 epoch。'
+    ]},
+    keypoints:['对照模型版本辨认训练日志；YOLOv5 的 box / obj / cls 与部分新模型的 DFL 不能混为一谈。','训练损失描述优化目标；Precision、Recall 和 mAP 描述验证检测表现，含义不同。','用验证集、按类指标和可视化失败案例共同判断是否值得继续训练。'],
+    sources:[
+      {url:'https://github.com/ultralytics/yolov5/blob/master/train.py',label:'YOLOv5 训练日志与验证指标实现'},
+      {url:'https://github.com/ultralytics/yolov5/blob/master/utils/loss.py',label:'YOLOv5 box、objectness 与分类损失实现'},
+      {url:'https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/loss.py',label:'较新 Ultralytics 检测头的 DFL 实现'}
+    ]
+  }
+};
+for(const [id,supplement] of Object.entries(trainingLearningAdditions)){
+  const lesson=lessons.find(item=>item.id===id);
+  if(!lesson) continue;
+  if(supplement.sections) lesson.sections.push(...supplement.sections);
+  for(const [sectionIndex,paragraphs] of Object.entries(supplement.paragraphs||{})) lesson.sections[Number(sectionIndex)].paragraphs.push(...paragraphs);
+  if(supplement.keypoints) lesson.keypoints=[...(lesson.keypoints||[]),...supplement.keypoints];
+  if(supplement.sources) lesson.sources=[...(lesson.sources||[]),...supplement.sources];
+}
+
 const guidedWorkedExamples={
   architecture:{
     title:'例题：从零 logits 解码一个边界框',

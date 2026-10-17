@@ -1171,3 +1171,53 @@ main:has(.lab-page-intro){padding-top:26px}
 @media(max-width:760px){.information-layout{grid-template-columns:1fr}.entropy-distributions{grid-template-columns:1fr}.entropy-score-grid{grid-template-columns:1fr 1fr}.entropy-score-grid>div:last-child{grid-column:1/-1}.entropy-identity{grid-template-columns:1fr;gap:4px}}
 @media(max-width:520px){.information-layout{gap:9px}.information-chart{padding:5px}.information-controls{padding:10px}.information-result>strong{font-size:16px}.entropy-scenarios{display:grid;grid-template-columns:1fr}.entropy-scenarios button{text-align:left}.entropy-distribution{padding:10px}.entropy-logits{gap:6px}.entropy-logits .playground-range>span{font-size:8px}.entropy-logits .playground-range output{font-size:9px}.entropy-score-grid{gap:6px}.entropy-score-grid>div{padding:8px}.entropy-score-grid strong{font-size:14px}.loss-training-flow{align-items:stretch;flex-direction:column;overflow:visible}.loss-training-flow>i{align-self:center;transform:rotate(90deg);font-size:13px}.loss-training-flow>div{flex:none;width:100%;min-width:0;padding:9px}.loss-training-notes{grid-template-columns:1fr}.loss-training-code{padding:9px}.loss-training-code code{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.information-chart svg *,.entropy-bar-track i{transition:none}}
+
+/* YOLO 数据准备与训练日志学习卡 */
+.yolo-readiness-rail{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:16px 0 13px}
+.yolo-readiness-node{position:relative;display:grid;justify-items:center;gap:7px;min-width:0;padding:10px 7px;border:1px solid #e8e4da;border-radius:5px;background:#fffefa;text-align:center}
+.yolo-readiness-node:not(:last-child)::after{position:absolute;top:16px;right:-10px;z-index:1;content:'›';color:#a59b88;font-size:17px;line-height:1}
+.yolo-readiness-node>span{display:grid;width:24px;height:24px;place-items:center;border:1px solid #d9d1bf;border-radius:50%;background:#f4f1e9;color:#7e715b;font-size:10px;font-weight:700}
+.yolo-readiness-node strong{color:#43525b;font-size:10px;line-height:1.5}
+.yolo-readiness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.yolo-readiness-check{display:grid;grid-template-columns:23px minmax(0,1fr) auto;gap:9px;align-items:center;min-width:0;padding:11px 10px;border:1px solid #e8e4da;border-radius:5px;background:#fffefa;color:#43515b;text-align:left;cursor:pointer;transition:background-color .16s,border-color .16s}
+.yolo-readiness-check:hover{border-color:#cfc5b0;background:#fcfbf7}
+.yolo-readiness-check[aria-pressed="true"]{border-color:#9ebdaa;background:#eef5f0}
+.yolo-readiness-check:focus-visible,.yolo-log-group button:focus-visible,.yolo-readiness-playground button:focus-visible{outline:2px solid #7867aa;outline-offset:2px}
+.yolo-readiness-mark{display:grid;width:22px;height:22px;place-items:center;border:1px solid #d9d7cf;border-radius:50%;color:#929897;font-size:12px}
+.yolo-readiness-check[aria-pressed="true"] .yolo-readiness-mark{border-color:#4c9071;background:#4c9071;color:white;font-weight:700}
+.yolo-readiness-check>span:nth-child(2){display:grid;gap:3px;min-width:0}
+.yolo-readiness-check strong{font-size:11px;line-height:1.5}
+.yolo-readiness-check small{color:#737e81;font-size:9px;line-height:1.6}
+.yolo-readiness-check em{color:#858d8b;font-size:9px;font-style:normal;white-space:nowrap}
+.yolo-readiness-check[aria-pressed="true"] em{color:#34775f}
+.yolo-readiness-result{display:grid;grid-template-columns:minmax(80px,1fr) auto;gap:10px;align-items:center;margin-top:12px}
+.yolo-readiness-result>strong{color:#58666c;font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.yolo-readiness-progress{height:7px;overflow:hidden;border-radius:99px;background:#e9e7df}
+.yolo-readiness-progress span{display:block;width:0;height:100%;border-radius:inherit;background:#4c9071;transition:width .18s ease}
+.yolo-readiness-playground>.playground-insight{margin-top:11px}
+.yolo-log-flow{display:grid;gap:8px;margin:15px 0}
+.yolo-log-lane{display:grid;grid-template-columns:145px minmax(0,1fr);gap:10px;align-items:center;padding:10px 11px;border:1px solid #e7e3da;border-left:3px solid #668db4;border-radius:5px;background:#fffefa}
+.yolo-log-lane.validation{border-left-color:#3e967c}
+.yolo-log-lane>strong{color:#485761;font-size:10px;line-height:1.55}
+.yolo-log-lane>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.yolo-log-lane>div span{padding:5px 7px;border:1px solid #ebe8e0;border-radius:4px;background:#f8f7f3;color:#5f6d75;font-size:9px;line-height:1.45}
+.yolo-log-lane>div b{color:#9b917f;font-size:11px}
+.yolo-log-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.yolo-log-group{min-width:0;padding:10px;border:1px solid #e8e4db;border-radius:5px;background:#fffefa}
+.yolo-log-group h4{margin:0 0 8px;color:#637078;font-size:9px;font-weight:650;line-height:1.5}
+.yolo-log-group>div{display:flex;flex-wrap:wrap;gap:5px}
+.yolo-log-group button{padding:6px 8px;border:1px solid #e5e1d8;border-radius:4px;background:#faf9f5;color:#5d6870;font:10px/1.35 Consolas,"Cascadia Code","Microsoft YaHei",sans-serif;cursor:pointer}
+.yolo-log-group button:hover{border-color:#cbc3b4;background:#f4f2ec}
+.yolo-log-group button[aria-pressed="true"]{border-color:#8273ad;background:#f1eff6;color:#554779}
+.yolo-log-detail{display:grid;grid-template-columns:minmax(0,1fr) 165px;gap:13px;align-items:stretch;margin-top:10px;padding:13px;border:1px solid #e4e0d8;border-left:3px solid #8273ad;border-radius:5px;background:#f7f6fa}
+.yolo-log-detail>div:first-child>span{color:#76679d;font-size:9px;font-weight:650}
+.yolo-log-detail h4{margin:4px 0 6px;color:#354450;font-size:14px;line-height:1.55}
+.yolo-log-detail p{margin:5px 0;color:#5f6b74;font-size:10px;line-height:1.75}
+.yolo-log-detail p.yolo-log-caution{color:#86683c}
+.yolo-log-example{display:grid;align-content:center;gap:5px;padding:10px;border:1px solid #e8e4db;border-radius:4px;background:#fffefa}
+.yolo-log-example small,.yolo-log-example span{color:#798388;font-size:8px;line-height:1.5}
+.yolo-log-example strong{color:#544779;font:12px/1.5 Consolas,"Cascadia Code",monospace;overflow-wrap:anywhere}
+.yolo-log-playground>.playground-footnote{margin-top:9px}
+@media(max-width:760px){.yolo-readiness-rail{grid-template-columns:repeat(3,minmax(0,1fr))}.yolo-readiness-node:nth-child(3)::after{display:none}.yolo-log-lane{grid-template-columns:1fr;gap:6px}}
+@media(max-width:520px){.yolo-readiness-rail{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.yolo-readiness-node:nth-child(2n)::after{display:none}.yolo-readiness-node strong{font-size:9px}.yolo-readiness-grid,.yolo-log-groups{grid-template-columns:1fr}.yolo-readiness-check{grid-template-columns:22px minmax(0,1fr) auto;padding:9px 8px}.yolo-readiness-check small{font-size:8px}.yolo-log-detail{grid-template-columns:1fr;gap:8px;padding:10px}.yolo-log-example{grid-template-columns:auto 1fr;align-items:center}.yolo-log-example span{grid-column:1/-1}.yolo-log-lane>div{gap:4px}.yolo-log-lane>div span{font-size:8px}.yolo-readiness-result{grid-template-columns:minmax(70px,1fr) auto}}
+@media(prefers-reduced-motion:reduce){.yolo-readiness-check,.yolo-readiness-progress span{transition:none}}

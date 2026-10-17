@@ -1221,3 +1221,23 @@ main:has(.lab-page-intro){padding-top:26px}
 @media(max-width:760px){.yolo-readiness-rail{grid-template-columns:repeat(3,minmax(0,1fr))}.yolo-readiness-node:nth-child(3)::after{display:none}.yolo-log-lane{grid-template-columns:1fr;gap:6px}}
 @media(max-width:520px){.yolo-readiness-rail{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.yolo-readiness-node:nth-child(2n)::after{display:none}.yolo-readiness-node strong{font-size:9px}.yolo-readiness-grid,.yolo-log-groups{grid-template-columns:1fr}.yolo-readiness-check{grid-template-columns:22px minmax(0,1fr) auto;padding:9px 8px}.yolo-readiness-check small{font-size:8px}.yolo-log-detail{grid-template-columns:1fr;gap:8px;padding:10px}.yolo-log-example{grid-template-columns:auto 1fr;align-items:center}.yolo-log-example span{grid-column:1/-1}.yolo-log-lane>div{gap:4px}.yolo-log-lane>div span{font-size:8px}.yolo-readiness-result{grid-template-columns:minmax(70px,1fr) auto}}
 @media(prefers-reduced-motion:reduce){.yolo-readiness-check,.yolo-readiness-progress span{transition:none}}
+
+.quaternion-playground{border-color:#e1dfd7;background:#fbfaf6}
+.quaternion-stage{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(250px,.95fr);gap:16px;align-items:start}
+.quaternion-visual{min-width:0;border:1px solid #e7e5dc;border-radius:7px;background:#fffefa;overflow:hidden}
+.quaternion-visual svg{display:block;width:100%;height:auto;min-height:210px}
+.quaternion-controls{display:grid;gap:10px;min-width:0}
+.quaternion-control{display:grid;gap:4px;padding:8px 10px;border:1px solid #e8e5dc;border-radius:5px;background:#fffefa}
+.quaternion-control label{display:flex;justify-content:space-between;gap:10px;color:#52606c;font-size:10px;font-weight:650}
+.quaternion-control output{color:#66569a;font-family:Consolas,"Cascadia Code",monospace;font-variant-numeric:tabular-nums}
+.quaternion-control input[type=range]{width:100%;height:16px;margin:0;accent-color:#7867a8;cursor:pointer}
+.quaternion-control input[type=range]:focus-visible{outline:2px solid #7867a8;outline-offset:3px}
+.quaternion-readout{display:grid;gap:6px;padding:10px;border:1px solid #e3e0d8;border-left:3px solid #8170b8;border-radius:5px;background:#f7f6fa}
+.quaternion-readout>div{display:grid;gap:3px;min-width:0}
+.quaternion-readout small{color:#78818b;font-size:9px}
+.quaternion-readout strong{overflow-wrap:anywhere;color:#504579;font:12px/1.55 Consolas,"Cascadia Code",monospace;font-variant-numeric:tabular-nums}
+.quaternion-hint{margin:0;padding:8px 10px;border-radius:4px;background:#edf5f0;color:#456d5c;font-size:10px;line-height:1.65}
+.quaternion-playground .playground-footnote{margin-top:10px}
+@media(max-width:760px){.quaternion-stage{grid-template-columns:1fr}.quaternion-visual svg{min-height:0}}
+@media(max-width:520px){.quaternion-controls{gap:7px}.quaternion-control{padding:8px}}
+@media(prefers-reduced-motion:reduce){.quaternion-playground *{scroll-behavior:auto}}

@@ -691,6 +691,86 @@
     root.querySelector('[data-yolo-loss-hint]').textContent=spec.hint+(single?' 当前 nc=1：分类项被跳过，所以 cls=0；这不能说明检测已经完美。':'')+' 上方使用教学值，不是直接由图中的框计算出的实际训练损失。';
   }
 
+  function quaternionMarkup(){
+    return '<section class="lesson-playground quaternion-playground" data-quaternion-playground aria-labelledby="quaternion-playground-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">INTERACTIVE · 3D ROTATION</span><h3 id="quaternion-playground-title">转动这根空间箭头</h3><p>改变旋转轴和角度，观察向量、四元数分量与结果之间的对应关系。</p></div><button type="button" class="playground-reset" data-quaternion-reset>恢复示例</button></div>'
+      +'<div class="quaternion-stage"><div class="quaternion-visual" data-quaternion-visual></div><div class="quaternion-controls">'
+      +'<div class="quaternion-control"><label for="quaternion-axis-x">旋转轴 x <output data-quaternion-axis-value="x">0.0</output></label><input id="quaternion-axis-x" type="range" min="-1" max="1" step="0.1" value="0" data-quaternion-axis="x"></div>'
+      +'<div class="quaternion-control"><label for="quaternion-axis-y">旋转轴 y <output data-quaternion-axis-value="y">0.0</output></label><input id="quaternion-axis-y" type="range" min="-1" max="1" step="0.1" value="0" data-quaternion-axis="y"></div>'
+      +'<div class="quaternion-control"><label for="quaternion-axis-z">旋转轴 z <output data-quaternion-axis-value="z">1.0</output></label><input id="quaternion-axis-z" type="range" min="-1" max="1" step="0.1" value="1" data-quaternion-axis="z"></div>'
+      +'<div class="quaternion-control"><label for="quaternion-angle">旋转角 θ <output data-quaternion-angle-value>90°</output></label><input id="quaternion-angle" type="range" min="0" max="360" step="1" value="90" data-quaternion-angle></div>'
+      +'<div class="quaternion-readout"><div><small>归一化旋转轴 n</small><strong data-quaternion-axis-normalized>(0.00, 0.00, 1.00)</strong></div><div><small>单位四元数 q = (w, x, y, z)</small><strong data-quaternion-components>(0.7071, 0.0000, 0.0000, 0.7071)</strong></div><div><small>向量 v′ = q · v · q*</small><strong data-quaternion-vector>(0.0000, 1.0000, 0.0000)</strong></div></div>'
+      +'<p class="quaternion-hint" data-quaternion-hint aria-live="polite">默认把 (1,0,0) 绕 z 轴转 90°，结果约为 (0,1,0)。</p>'
+      +'</div></div><p class="playground-footnote">图中是三维方向的二维投影，数值读数才是精确分量。数学式采用标量在前 (w,x,y,z)；软件接口可能使用不同顺序。</p></section>';
+  }
+  function quaternionMultiply(a,b){
+    const av=a.slice(1),bv=b.slice(1);
+    const cross=[av[1]*bv[2]-av[2]*bv[1],av[2]*bv[0]-av[0]*bv[2],av[0]*bv[1]-av[1]*bv[0]];
+    return [a[0]*b[0]-av[0]*bv[0]-av[1]*bv[1]-av[2]*bv[2],
+      a[0]*bv[0]+b[0]*av[0]+cross[0],
+      a[0]*bv[1]+b[0]*av[1]+cross[1],
+      a[0]*bv[2]+b[0]*av[2]+cross[2]];
+  }
+  function quaternionVectorSvg(axis,rotated){
+    const W=520,H=300,cx=255,cy=164,scale=100;
+    const project=v=>[cx+scale*(v[0]-.42*v[1]),cy-scale*(v[2]+.38*v[1])];
+    const arrow=(v,color,width=3,dash='')=>{
+      const end=project(v),dx=end[0]-cx,dy=end[1]-cy,len=Math.hypot(dx,dy)||1,head=9;
+      const bx=end[0]-head*dx/len,by=end[1]-head*dy/len,px=-dy/len*4,py=dx/len*4;
+      return '<line x1="'+cx+'" y1="'+cy+'" x2="'+end[0].toFixed(1)+'" y2="'+end[1].toFixed(1)+'" stroke="'+color+'" stroke-width="'+width+'" stroke-linecap="round"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/><polygon points="'+end[0].toFixed(1)+','+end[1].toFixed(1)+' '+(bx+px).toFixed(1)+','+(by+py).toFixed(1)+' '+(bx-px).toFixed(1)+','+(by-py).toFixed(1)+'" fill="'+color+'"/>';
+    };
+    let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="空间坐标轴、当前旋转轴、旋转前后向量的二维投影">'
+      +'<rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" rx="8" fill="#fffefa"/>'
+      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+(project([.72,0,0])[0]).toFixed(1)+'" y2="'+cy+'" stroke="#d5d4ce" stroke-width="1.5"/>'
+      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+project([0,.72,0])[0].toFixed(1)+'" y2="'+project([0,.72,0])[1].toFixed(1)+'" stroke="#d5d4ce" stroke-width="1.5"/>'
+      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+cx+'" y2="'+project([0,0,.72])[1].toFixed(1)+'" stroke="#d5d4ce" stroke-width="1.5"/>'
+      +'<text x="'+(project([.72,0,0])[0]+9).toFixed(1)+'" y="'+(cy+4)+'" fill="#74808b" font-size="11">X</text>'
+      +'<text x="'+(project([0,.72,0])[0]-5).toFixed(1)+'" y="'+(project([0,.72,0])[1]-7).toFixed(1)+'" fill="#74808b" font-size="11">Y</text>'
+      +'<text x="'+(cx+7)+'" y="'+(project([0,0,.72])[1]-6).toFixed(1)+'" fill="#74808b" font-size="11">Z</text>';
+    out+=arrow(axis.map(v=>v*.72),'#c38b3b',2.5,'5 4');
+    out+=arrow([1,0,0],'#4c88a6',3.3);
+    out+=arrow(rotated,'#458d73',4);
+    out+='<circle cx="'+cx+'" cy="'+cy+'" r="4" fill="#46535d"/><text x="17" y="28" fill="#4c88a6" font-size="11">原向量 v=(1,0,0)</text><text x="17" y="47" fill="#458d73" font-size="11">旋转后 v′</text><text x="17" y="66" fill="#ad7a32" font-size="11">旋转轴 n</text></svg>';
+    return out;
+  }
+  function updateQuaternion(root){
+    const raw=['x','y','z'].map(axis=>Number(root.querySelector('[data-quaternion-axis="'+axis+'"]').value));
+    ['x','y','z'].forEach((axis,index)=>{root.querySelector('[data-quaternion-axis-value="'+axis+'"]').textContent=raw[index].toFixed(1)});
+    const magnitude=Math.hypot(raw[0],raw[1],raw[2]),hint=root.querySelector('[data-quaternion-hint]');
+    if(magnitude<1e-8){
+      root.querySelector('[data-quaternion-components]').textContent='—';
+      root.querySelector('[data-quaternion-vector]').textContent='—';
+      root.querySelector('[data-quaternion-axis-normalized]').textContent='无法归一化';
+      hint.textContent='当前旋转轴是零向量。请至少把 x、y、z 中一个分量调离 0。';
+      root.querySelector('[data-quaternion-visual]').innerHTML=quaternionVectorSvg([0,0,0],[1,0,0]);
+      return;
+    }
+    const axis=raw.map(v=>v/magnitude),degrees=Number(root.querySelector('[data-quaternion-angle]').value),half=degrees*Math.PI/360;
+    const q=[Math.cos(half),axis[0]*Math.sin(half),axis[1]*Math.sin(half),axis[2]*Math.sin(half)];
+    const vector=[0,1,0,0],conjugate=[q[0],-q[1],-q[2],-q[3]];
+    const rotated=quaternionMultiply(quaternionMultiply(q,vector),conjugate).slice(1).map(v=>Math.abs(v)<1e-10?0:v);
+    const fmt=(v,digits=4)=>{const clean=Math.abs(v)<1e-10?0:v;return clean.toFixed(digits)};
+    root.querySelector('[data-quaternion-angle-value]').textContent=degrees+'°';
+    root.querySelector('[data-quaternion-axis-normalized]').textContent='('+axis.map(v=>fmt(v,2)).join(', ')+')';
+    root.querySelector('[data-quaternion-components]').textContent='('+q.map(v=>fmt(v)).join(', ')+')';
+    root.querySelector('[data-quaternion-vector]').textContent='('+rotated.map(v=>fmt(v)).join(', ')+')';
+    root.querySelector('[data-quaternion-visual]').innerHTML=quaternionVectorSvg(axis,rotated);
+    hint.textContent='已归一化旋转轴；按右手坐标系主动旋转计算，当前向量结果为 ('+rotated.map(v=>fmt(v,3)).join(', ')+')。';
+  }
+  document.addEventListener('input',event=>{
+    const control=event.target.closest('[data-quaternion-angle],[data-quaternion-axis]');
+    if(control)updateQuaternion(control.closest('[data-quaternion-playground]'));
+  });
+  document.addEventListener('click',event=>{
+    const reset=event.target.closest('[data-quaternion-reset]');
+    if(!reset)return;
+    const root=reset.closest('[data-quaternion-playground]');
+    root.querySelector('[data-quaternion-axis="x"]').value='0';
+    root.querySelector('[data-quaternion-axis="y"]').value='0';
+    root.querySelector('[data-quaternion-axis="z"]').value='1';
+    root.querySelector('[data-quaternion-angle]').value='90';
+    updateQuaternion(root);
+  });
   function render(lessonId,sectionIndex){
     if(lessonId==='dataset'&&sectionIndex===0)return boxLabelMarkup();
     if(lessonId==='dataset'&&sectionIndex===4)return yoloReadinessMarkup();
@@ -709,6 +789,7 @@
     if(lessonId==='augmentation'&&sectionIndex===0)return augmentationMarkup();
     if(lessonId==='anchors'&&sectionIndex===1)return anchorMarkup();
     if(lessonId==='yolo-loss'&&sectionIndex===3)return yoloLossMarkup();
+    if(lessonId==='quaternion'&&sectionIndex===1)return quaternionMarkup();
     return '';
   }
   function initialize(){
@@ -728,6 +809,7 @@
     document.querySelectorAll('[data-lesson-augmentation]').forEach(updateAugmentationLesson);
     document.querySelectorAll('[data-anchor-playground]').forEach(updateAnchors);
     document.querySelectorAll('[data-yolo-loss-playground]').forEach(updateYoloLoss);
+    document.querySelectorAll('[data-quaternion-playground]').forEach(updateQuaternion);
   }
   window.lessonPlaygrounds={render,initialize};
 

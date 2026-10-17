@@ -1241,3 +1241,47 @@ main:has(.lab-page-intro){padding-top:26px}
 @media(max-width:760px){.quaternion-stage{grid-template-columns:1fr}.quaternion-visual svg{min-height:0}}
 @media(max-width:520px){.quaternion-controls{gap:7px}.quaternion-control{padding:8px}}
 @media(prefers-reduced-motion:reduce){.quaternion-playground *{scroll-behavior:auto}}
+
+.euler-rotation-playground,.euler-gimbal-playground,.euler-comparison{border-color:#e1dfd7;background:#fbfaf6}
+.euler-control-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+.euler-angle-control{display:grid;gap:4px;padding:8px 10px;border:1px solid #e8e5dc;border-radius:5px;background:#fffefa}
+.euler-angle-control label,.gimbal-controls>label{display:flex;justify-content:space-between;gap:8px;color:#52606c;font-size:10px;font-weight:650}
+.euler-angle-control output,.gimbal-controls output{color:#66569a;font-family:Consolas,"Cascadia Code",monospace;font-variant-numeric:tabular-nums}
+.euler-angle-control input[type=range],.gimbal-controls input[type=range]{width:100%;height:16px;margin:0;accent-color:#7867a8;cursor:pointer}
+.euler-angle-control input[type=range]:focus-visible,.gimbal-controls input[type=range]:focus-visible{outline:2px solid #7867a8;outline-offset:3px}
+.euler-result-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.euler-result-card{min-width:0;padding:10px;border:1px solid #e7e4dc;border-radius:6px;background:#fffefa}
+.euler-result-card>header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+.euler-result-card>header span{color:#7c858c;font-size:9px}
+.euler-result-card>header h4{margin:2px 0 0;color:#36414b;font-size:14px}
+.euler-order-mark{display:grid;width:34px;height:34px;place-items:center;border-radius:50%;font:700 10px/1 Consolas,"Cascadia Code",monospace}
+.euler-order-mark.xyz{background:#f0edf7;color:#675790}
+.euler-order-mark.zyx{background:#f7f0e4;color:#a77836}
+.euler-result-visual{overflow:hidden;border:1px solid #eeece5;border-radius:5px;background:#fffefa}
+.euler-result-visual svg{display:block;width:100%;height:auto}
+.euler-step-list{display:grid;gap:3px;margin:7px 0;padding:0;list-style:none}
+.euler-step-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px;border-radius:3px;background:#f6f5f0;color:#68727a;font-size:9px}
+.euler-step-list code{color:#4f5962;font-size:9px;font-variant-numeric:tabular-nums}
+.euler-final-vector{margin:5px 0 0;color:#68727a;font-size:9px}
+.euler-final-vector strong{margin-left:4px;color:#514779;font:700 11px/1.4 Consolas,"Cascadia Code",monospace}
+.euler-demo-note,.gimbal-hint{margin:9px 0 0;padding:8px 10px;border-left:3px solid #8170b8;border-radius:4px;background:#f2f0f7;color:#58516e;font-size:10px;line-height:1.65}
+.gimbal-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(180px,.9fr);gap:14px;align-items:center}
+.gimbal-visual{overflow:hidden;border:1px solid #e7e4dc;border-radius:6px;background:#fffefa}
+.gimbal-visual svg{display:block;width:100%;height:auto}
+.gimbal-controls{display:grid;gap:8px;padding:12px;border:1px solid #e8e5dc;border-radius:6px;background:#fffefa}
+.gimbal-legend{display:grid;gap:6px;color:#68727a;font-size:10px}
+.gimbal-legend span{display:flex;align-items:center;gap:7px}
+.gimbal-legend i{width:9px;height:9px;border-radius:50%}
+.gimbal-legend .yaw-axis{background:#bf8a3e}
+.gimbal-legend .roll-axis{background:#7565a8}
+.rotation-table-scroll{overflow-x:auto;border:1px solid #e7e4dc;border-radius:6px;background:#fffefa;overscroll-behavior-inline:contain}
+.rotation-method-table{width:100%;min-width:660px;border-collapse:collapse;color:#505d68;font-size:10px;line-height:1.6}
+.rotation-method-table th,.rotation-method-table td{padding:9px 10px;border-bottom:1px solid #eeece5;text-align:left;vertical-align:top}
+.rotation-method-table thead th{background:#f0edf7;color:#554a78;font-weight:700}
+.rotation-method-table tbody th{width:95px;color:#48545e;font-weight:650;white-space:nowrap}
+.rotation-method-table tr:last-child th,.rotation-method-table tr:last-child td{border-bottom:0}
+.rotation-choice-note{margin:10px 0 0;padding:10px 12px;border-radius:5px;background:#f2f0e9;color:#5b6267;font-size:10px;line-height:1.7}
+.rotation-choice-note strong{color:#504579}
+@media(max-width:760px){.euler-result-pair{gap:8px}.euler-result-card{padding:8px}.gimbal-layout{grid-template-columns:1fr}.gimbal-controls{grid-template-columns:minmax(0,1fr) 1fr;align-items:center}.gimbal-controls>.gimbal-legend,.gimbal-controls>.gimbal-hint{grid-column:1/-1}}
+@media(max-width:520px){.euler-control-row{grid-template-columns:1fr;gap:6px}.euler-result-pair{grid-template-columns:1fr}.euler-result-card{padding:10px}.gimbal-controls{grid-template-columns:1fr}.gimbal-controls>.gimbal-legend,.gimbal-controls>.gimbal-hint{grid-column:auto}.rotation-method-table{min-width:620px}}
+@media(prefers-reduced-motion:reduce){.euler-rotation-playground *,.euler-gimbal-playground *{scroll-behavior:auto}}

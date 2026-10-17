@@ -445,6 +445,42 @@ const guidedWorkedExamples={
     figureKey:'worked-debugging'
   }
 };
+const eulerLesson=authored.find(lesson=>lesson.id==='quaternion');
+if(eulerLesson){
+  eulerLesson.desc='从欧拉角、四元数和旋转矩阵理解三维姿态，动手观察旋转顺序与万向节锁。';
+  eulerLesson.time=45;
+  eulerLesson.sections[4]={title:'5. 欧拉角：三个角必须配上旋转顺序',paragraphs:[
+    '欧拉角用三个角描述一个空间朝向，例如绕 X、Y、Z 轴的角度 (α, β, γ)。但“三个角”还不够：还要说明按什么顺序转、绕固定的世界轴还是跟着物体转的局部轴，以及角度用度还是弧度。少了这些约定，同一组数字可能代表不同姿态。',
+    '先用固定世界轴的主动旋转来理解：依次执行 X→Y→Z，列向量写法是 v′=Rz(γ)·Ry(β)·Rx(α)·v。矩阵从右往左作用，所以文字上的“先 X 后 Y 后 Z”会写成 Rx、Ry、Rz 依次作用。改成 Z→Y→X，即使三个角数值相同，结果通常也不同。',
+    '把 v=(1,0,0)，α=90°、β=0°、γ=90° 代入：先 X 再 Z，第一步绕着箭头自身转，向量仍是 (1,0,0)，最后得到 (0,1,0)；反过来先 Z 再 X，向量先到 (0,1,0)，再绕 X 转到 (0,0,1)。下方图解可以改动三个角，直接比较两种顺序的中间步骤和最终方向。',
+    '另一个常见约定是内禀旋转：每次绕当前物体自己的轴转。内禀 ZYX（偏航、俯仰、翻滚）与固定轴外禀 XYZ 可以描述同一类姿态组合，但角度和顺序的对应关系必须按同一套定义核对。不要只看 XYZ 字母就猜软件行为。'
+  ],exercise:{q:'固定世界轴依次执行 X→Y→Z，v=(1,0,0)，角度为 (90°,0°,90°)。最终向量约为？',options:['(0,1,0)','(0,0,1)','(1,0,0)'],answer:0,why:'先绕 X 转动时，向量沿 X 轴，所以方向不变；Y 角为 0；最后绕 Z 转 90°，X 方向转到 Y 方向。'}};
+  eulerLesson.sections[5].title='8. 写代码时核对旋转约定';
+  eulerLesson.sections[5].paragraphs.push('欧拉角还要核对内禀／外禀、旋转顺序与度／弧度。SciPy 的 `Rotation.from_euler` 用小写轴字母表示固定坐标系的外禀旋转，用大写表示随物体移动的内禀旋转；默认 `degrees=False`，输入为弧度。Three.js 的 `Euler(x,y,z,order)` 也要求明确顺序，角度以弧度给出。不同库的主动／被动约定和向量乘法方向也可能不同，最好用一个 90° 的简单向量例子对结果。');
+  eulerLesson.sections.splice(5,0,
+    {title:'6. 万向节锁：两个转轴对齐了',paragraphs:[
+      '以常见的内禀 ZYX（偏航、俯仰、翻滚）为例，当中间的俯仰角到 +90° 或 −90° 时，偏航轴与翻滚轴会落在同一条直线上。原来可以分别改变的两个角，这时只能产生相同或相反方向上的有效转动；欧拉角参数化因此少了一个独立自由度。',
+      '这叫万向节锁。丢失的是这组角度坐标区分朝向的能力，不是物体真的卡住，也不是旋转本身失效。同一个真实朝向依然可以由旋转矩阵或单位四元数表示；但把它再换回欧拉角时，第一角和第三角可能无法唯一确定，数值也会突然跳变。',
+      '拖动下面的俯仰角，观察偏航轴和随物体转动的翻滚轴如何从互相垂直变成共线。四元数作为内部旋转表示可避开欧拉角这处坐标奇异点；若最后仍转换成欧拉角显示，奇异点的歧义依然存在。'
+    ],exercise:{q:'在内禀 ZYX（偏航、俯仰、翻滚）中，俯仰角接近 90° 时，万向节锁的含义是什么？',options:['物体不能再转动','偏航轴与翻滚轴对齐，欧拉角失去一个独立自由度','四元数长度变成 0'],answer:1,why:'奇异性发生在欧拉角的坐标参数化中；真实朝向仍然有效，也仍可由矩阵或四元数表达。'}},
+    {title:'7. 欧拉角、四元数、旋转矩阵怎样选',paragraphs:[
+      '三种表示都能描述同一个刚体旋转，只是把“姿态”存成不同的数学对象。欧拉角适合人直接读写；四元数紧凑，适合连续组合和插值；旋转矩阵更适合一次作用到许多向量，也方便和其他线性变换结合。',
+      '不要把“哪个表示最正确”当成选择问题。先看你是在编辑器里让人输入姿态、让摄像机或物体连续转动，还是要把坐标系里的点批量变换；再明确坐标系、顺序、插值方式和库接口。项目里常见的做法是内部用四元数计算、界面用欧拉角显示。'
+    ]}
+  );
+  eulerLesson.keypoints.push('欧拉角必须连同旋转顺序、固定轴／局部轴和单位一起说明。','旋转不满足交换律；同一组三个角换顺序通常得到不同朝向。','万向节锁是欧拉角参数化的奇异点，不是物体真的停止转动。','欧拉角利于人读写，四元数适合平滑旋转组合，矩阵适合变换向量；按任务选表示。');
+  eulerLesson.chapterExercises.push(
+    {q:'固定世界轴上绕 X 和 Z 各旋转 90°，先后顺序会不会改变一般向量的最终方向？',options:['不会，旋转总能交换','会，三维旋转通常不满足交换律','只有用四元数时才会'],answer:1,why:'先绕 X 再绕 Z 与先绕 Z 再绕 X 通常是不同的复合旋转；应始终声明顺序与坐标系约定。'},
+    {q:'把四元数转换成欧拉角后，为什么仍可能遇到万向节锁？',options:['转换结果又使用了欧拉角参数化','四元数一定没有归一化','旋转矩阵只有两个维度'],answer:0,why:'四元数能避开欧拉角内部表示的奇异点，但输出欧拉角时仍回到了有奇异点的参数化。'}
+  );
+  eulerLesson.sources.push(
+    {url:'https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.from_euler.html',label:'SciPy Rotation.from_euler：内禀与外禀旋转约定'},
+    {url:'https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.as_euler.html',label:'SciPy Rotation.as_euler：欧拉角与万向节锁'},
+    {url:'https://threejs.org/docs/pages/Euler.html',label:'Three.js Euler：角度与旋转顺序'}
+  );
+  eulerLesson.code='import numpy as np\nfrom scipy.spatial.transform import Rotation as R\n\nv = np.array([1.0, 0.0, 0.0])\nangles = [90.0, 0.0, 90.0]\n\n# 小写 xyz / zyx：按固定世界轴执行外禀旋转，角度为度\nr_xyz = R.from_euler("xyz", angles, degrees=True)\nr_zyx = R.from_euler("zyx", angles, degrees=True)\nprint(r_xyz.apply(v))  # 约 [0, 1, 0]\nprint(r_zyx.apply(v))  # 约 [0, 0, 1]\n\n# 同一旋转也可用四元数保存；SciPy 默认返回 [x, y, z, w]\nq_xyzw = r_xyz.as_quat()\nprint(q_xyzw)';
+}
+
 for(const lesson of authored){
   const worked=guidedWorkedExamples[lesson.id];
   if(worked) lesson.worked={...(lesson.worked||{}),...worked};

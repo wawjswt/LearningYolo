@@ -691,6 +691,78 @@
     root.querySelector('[data-yolo-loss-hint]').textContent=spec.hint+(single?' 当前 nc=1：分类项被跳过，所以 cls=0；这不能说明检测已经完美。':'')+' 上方使用教学值，不是直接由图中的框计算出的实际训练损失。';
   }
 
+  function eulerCompareMarkup(){
+    return '<section class="lesson-playground euler-rotation-playground" data-euler-compare aria-labelledby="euler-compare-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">旋转顺序实验 · 固定世界轴</span><h3 id="euler-compare-title">同一组角，换个顺序会怎样？</h3><p>从向量 (1,0,0) 出发，改变 α、β、γ；左右同时对照 X→Y→Z 与 Z→Y→X。</p></div><button type="button" class="playground-reset" data-euler-reset>恢复示例</button></div>'
+      +'<div class="euler-control-row">'
+      +'<div class="euler-angle-control"><label for="euler-angle-x">绕 X · α <output data-euler-value="x">90°</output></label><input id="euler-angle-x" type="range" min="-180" max="180" step="5" value="90" data-euler-angle="x"></div>'
+      +'<div class="euler-angle-control"><label for="euler-angle-y">绕 Y · β <output data-euler-value="y">0°</output></label><input id="euler-angle-y" type="range" min="-180" max="180" step="5" value="0" data-euler-angle="y"></div>'
+      +'<div class="euler-angle-control"><label for="euler-angle-z">绕 Z · γ <output data-euler-value="z">90°</output></label><input id="euler-angle-z" type="range" min="-180" max="180" step="5" value="90" data-euler-angle="z"></div></div>'
+      +'<div class="euler-result-pair"><article class="euler-result-card" data-euler-panel="XYZ"><header><div><span>固定轴 · 先后顺序</span><h4>X → Y → Z</h4></div><b class="euler-order-mark xyz">XYZ</b></header><div class="euler-result-visual" data-euler-svg></div><ol class="euler-step-list" data-euler-steps aria-label="每一步旋转后的向量"></ol><p class="euler-final-vector">最终向量 <strong data-euler-vector></strong></p></article>'
+      +'<article class="euler-result-card" data-euler-panel="ZYX"><header><div><span>固定轴 · 先后顺序</span><h4>Z → Y → X</h4></div><b class="euler-order-mark zyx">ZYX</b></header><div class="euler-result-visual" data-euler-svg></div><ol class="euler-step-list" data-euler-steps aria-label="每一步旋转后的向量"></ol><p class="euler-final-vector">最终向量 <strong data-euler-vector></strong></p></article></div>'
+      +'<p class="euler-demo-note" data-euler-note aria-live="polite">默认例子：X、Z 各转 90°。先 X 后 Z 得到 Y；反过来先 Z 后 X 得到 Z。真实应用还要说清固定轴／局部轴约定。</p>'
+      +'<p class="playground-footnote">每一步都绕固定世界轴按右手定则转动；角度单位为度。图示是三维方向的二维投影，读数给出精确分量。键盘方向键也可调节滑杆。</p></section>';
+  }
+  function rotateEulerVector(vector,axis,degrees){
+    const angle=degrees*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle),[x,y,z]=vector;
+    if(axis==='X')return [x,y*c-z*s,y*s+z*c];
+    if(axis==='Y')return [x*c+z*s,y,-x*s+z*c];
+    return [x*c-y*s,x*s+y*c,z];
+  }
+  function eulerVectorSvg(vector,order,color){
+    const W=320,H=190,cx=158,cy=122,scale=67;
+    const project=v=>[cx+scale*(v[0]-.38*v[1]),cy-scale*(v[2]+.32*v[1])];
+    const arrow=(v,stroke,width,dash)=>{
+      const [ex,ey]=project(v),dx=ex-cx,dy=ey-cy,length=Math.hypot(dx,dy)||1,head=8,bx=ex-head*dx/length,by=ey-head*dy/length,px=-dy/length*3.5,py=dx/length*3.5;
+      return '<line x1="'+cx+'" y1="'+cy+'" x2="'+ex.toFixed(1)+'" y2="'+ey.toFixed(1)+'" stroke="'+stroke+'" stroke-width="'+width+'" stroke-linecap="round"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>'
+        +(!dash?'<polygon points="'+ex.toFixed(1)+','+ey.toFixed(1)+' '+(bx+px).toFixed(1)+','+(by+py).toFixed(1)+' '+(bx-px).toFixed(1)+','+(by-py).toFixed(1)+'" fill="'+stroke+'"/>':'');
+    };
+    let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+order+' 顺序的三维旋转向量二维投影"><rect width="100%" height="100%" rx="7" fill="#fffefa"/>';
+    [['X',[.76,0,0]],['Y',[0,.76,0]],['Z',[0,0,.76]]].forEach(([label,axis])=>{const [x,y]=project(axis);svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#d7d7d1" stroke-width="1.3"/><text x="'+(x+(label==='Y'?-8:7)).toFixed(1)+'" y="'+(y-5).toFixed(1)+'" fill="#7a838b" font-size="10">'+label+'</text>';});
+    svg+=arrow([1,0,0],'#7890a0',2,'4 4')+arrow(vector,color,3.8,'')+'<circle cx="'+cx+'" cy="'+cy+'" r="3.5" fill="#46535d"/><text x="14" y="21" fill="#71808b" font-size="9">虚线：起始向量 X</text><text x="14" y="37" fill="'+color+'" font-size="9">实线：旋转后向量</text></svg>';
+    return svg;
+  }
+  function updateEulerCompare(root){
+    const angles={};
+    ['x','y','z'].forEach(axis=>{angles[axis]=Number(root.querySelector('[data-euler-angle="'+axis+'"]').value);root.querySelector('[data-euler-value="'+axis+'"]').textContent=angles[axis]+'°';});
+    const clean=n=>Math.abs(n)<1e-8?0:n;
+    const format=vector=>'('+vector.map(v=>clean(v).toFixed(2)).join(', ')+')';
+    [['XYZ','#7565a8'],['ZYX','#bf8a3e']].forEach(([order,color])=>{
+      const panel=root.querySelector('[data-euler-panel="'+order+'"]');let vector=[1,0,0];
+      const steps=order.split('').map(axis=>{vector=rotateEulerVector(vector,axis,angles[axis.toLowerCase()]).map(clean);return {axis,angle:angles[axis.toLowerCase()],vector:vector.slice()};});
+      panel.querySelector('[data-euler-svg]').innerHTML=eulerVectorSvg(vector,order,color);
+      panel.querySelector('[data-euler-vector]').textContent=format(vector);
+      panel.querySelector('[data-euler-steps]').innerHTML=steps.map((step,index)=>'<li><span>'+index+'→'+(index+1)+'　绕 '+step.axis+' '+step.angle+'°</span><code>'+format(step.vector)+'</code></li>').join('');
+    });
+    const xyz=root.querySelector('[data-euler-panel="XYZ"] [data-euler-vector]').textContent,zyx=root.querySelector('[data-euler-panel="ZYX"] [data-euler-vector]').textContent;
+    root.querySelector('[data-euler-note]').textContent=xyz===zyx?'当前设置下两个顺序得到相同结果；例如某些角为 0° 或旋转彼此可合并时会这样。一般改变顺序会改变最终朝向。':'同一组三个角得到不同结果：XYZ '+xyz+'，ZYX '+zyx+'。顺序是姿态定义的一部分。';
+  }
+  function eulerGimbalMarkup(){
+    return '<section class="lesson-playground euler-gimbal-playground" data-euler-gimbal aria-labelledby="euler-gimbal-title"><div class="playground-heading"><div><span class="playground-kicker">角度奇异点 · 内禀 ZYX</span><h3 id="euler-gimbal-title">拖动俯仰角，让两个轴对齐</h3><p>对照偏航轴 Z 与随物体转动的翻滚轴 X′。这里只画出两条关键轴的 XZ 平面投影。</p></div></div>'
+      +'<div class="gimbal-layout"><div class="gimbal-visual" data-gimbal-visual></div><div class="gimbal-controls"><label for="gimbal-pitch-angle">俯仰角 β <output data-gimbal-value>0°</output></label><input id="gimbal-pitch-angle" type="range" min="-90" max="90" step="1" value="0" data-gimbal-pitch><div class="gimbal-legend"><span><i class="yaw-axis"></i>偏航轴 Z（世界轴）</span><span><i class="roll-axis"></i>翻滚轴 X′（机体轴）</span></div><p class="gimbal-hint" data-gimbal-hint aria-live="polite">在 0° 时两轴垂直；继续调节俯仰角，观察两条轴之间的夹角。</p></div></div><p class="playground-footnote">简化的 XZ 平面示意：内禀 ZYX 的中间俯仰角接近 ±90° 时，首尾两次旋转所绕的轴共线。共线表示轴线重合，方向可能相反。</p></section>';
+  }
+  function eulerGimbalSvg(pitch){
+    const W=420,H=250,cx=210,cy=123,len=76,radians=pitch*Math.PI/180,roll=[Math.cos(radians),Math.sin(radians)],yaw=[0,-1];
+    const endpoint=(axis,multiplier=1)=>[cx+axis[0]*len*multiplier,cy+axis[1]*len*multiplier];
+    const arrow=(axis,color,label)=>{const [x,y]=endpoint(axis),dx=x-cx,dy=y-cy,mag=Math.hypot(dx,dy)||1,bx=x-9*dx/mag,by=y-9*dy/mag,px=-dy/mag*4,py=dx/mag*4;return '<line x1="'+cx+'" y1="'+cy+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+color+'" stroke-width="4" stroke-linecap="round"/><polygon points="'+x.toFixed(1)+','+y.toFixed(1)+' '+(bx+px).toFixed(1)+','+(by+py).toFixed(1)+' '+(bx-px).toFixed(1)+','+(by-py).toFixed(1)+'" fill="'+color+'"/><text x="'+(x+(axis[0]>0?9:-28)).toFixed(1)+'" y="'+(y+(axis[1]>0?18:-8)).toFixed(1)+'" fill="'+color+'" font-size="13" font-weight="700">'+label+'</text>';};
+    let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="内禀 ZYX 偏航轴与翻滚轴随俯仰角变化的二维示意"><rect width="100%" height="100%" rx="7" fill="#fffefa"/><line x1="90" y1="'+cy+'" x2="330" y2="'+cy+'" stroke="#e5e3dc"/><line x1="'+cx+'" y1="42" x2="'+cx+'" y2="210" stroke="#e5e3dc"/><line x1="'+endpoint(roll,-1)[0].toFixed(1)+'" y1="'+endpoint(roll,-1)[1].toFixed(1)+'" x2="'+endpoint(roll)[0].toFixed(1)+'" y2="'+endpoint(roll)[1].toFixed(1)+'" stroke="#7565a8" stroke-width="1.5" stroke-dasharray="4 4" opacity=".55"/><line x1="'+endpoint(yaw,-1)[0]+'" y1="'+endpoint(yaw,-1)[1]+'" x2="'+endpoint(yaw)[0]+'" y2="'+endpoint(yaw)[1]+'" stroke="#bf8a3e" stroke-width="1.5" stroke-dasharray="4 4" opacity=".55"/>';
+    svg+=arrow(yaw,'#bf8a3e','Z')+arrow(roll,'#7565a8','X′')+'<circle cx="'+cx+'" cy="'+cy+'" r="4" fill="#46535d"/><text x="18" y="24" fill="#75808a" font-size="10">俯仰 β = '+pitch+'°</text></svg>';
+    return svg;
+  }
+  function updateEulerGimbal(root){
+    const pitch=Number(root.querySelector('[data-gimbal-pitch]').value),aligned=Math.abs(pitch)>=89.5;
+    root.querySelector('[data-gimbal-value]').textContent=pitch+'°';
+    root.querySelector('[data-gimbal-visual]').innerHTML=eulerGimbalSvg(pitch);
+    root.querySelector('[data-gimbal-hint]').textContent=aligned?'俯仰为 '+pitch+'°：偏航轴 Z 与翻滚轴 X′ 共线。此时两个角无法再独立指定姿态，欧拉角参数化少了一个自由度。':'当前两轴的最小夹角约为 '+(90-Math.abs(pitch))+'°；接近 ±90° 时它会缩到 0°，两角的作用变得重合。';
+  }
+  function eulerComparisonMarkup(){
+    return '<section class="lesson-playground euler-comparison" aria-labelledby="rotation-methods-title"><div class="playground-heading"><div><span class="playground-kicker">表示法对照 · 按任务选择</span><h3 id="rotation-methods-title">三种写法，描述同一种转动</h3><p>它们不是三种不同的旋转，而是姿态的三种表示方式。</p></div></div><div class="rotation-table-scroll" tabindex="0" aria-label="可横向滚动的旋转表示方式对照表"><table class="rotation-method-table"><thead><tr><th scope="col">比较角度</th><th scope="col">欧拉角</th><th scope="col">四元数</th><th scope="col">旋转矩阵</th></tr></thead><tbody>'
+      +'<tr><th scope="row">怎么存</th><td>3 个角 + 轴序列和坐标系约定</td><td>4 个分量，需满足单位长度；q 和 −q 等价</td><td>3×3 矩阵，9 个数受正交约束</td></tr>'
+      +'<tr><th scope="row">读写感受</th><td>像偏航、俯仰、翻滚，容易人工输入</td><td>分量不直观，但组合和插值方便</td><td>直接乘向量，结构清楚但数值较多</td></tr>'
+      +'<tr><th scope="row">要留心</th><td>顺序依赖；在特定姿态会万向节锁</td><td>分量顺序、归一化与乘法约定</td><td>连续计算后注意正交性和数值误差</td></tr>'
+      +'<tr><th scope="row">常见用途</th><td>界面调角、姿态标注、简单配置</td><td>动画姿态、方向插值、连续旋转更新</td><td>批量变换点、坐标系与线性代数计算</td></tr>'
+      +'</tbody></table></div><p class="rotation-choice-note"><strong>实用记法：</strong>让人编辑时用欧拉角，程序内部连续组合或插值时常用四元数，需要变换大量点时常用旋转矩阵。三者可以互相转换，但转换结果仍受各自约定与奇异点影响。</p></section>';
+  }
   function quaternionMarkup(){
     return '<section class="lesson-playground quaternion-playground" data-quaternion-playground aria-labelledby="quaternion-playground-title">'
       +'<div class="playground-heading"><div><span class="playground-kicker">INTERACTIVE · 3D ROTATION</span><h3 id="quaternion-playground-title">转动这根空间箭头</h3><p>改变旋转轴和角度，观察向量、四元数分量与结果之间的对应关系。</p></div><button type="button" class="playground-reset" data-quaternion-reset>恢复示例</button></div>'
@@ -771,6 +843,21 @@
     root.querySelector('[data-quaternion-angle]').value='90';
     updateQuaternion(root);
   });
+  document.addEventListener('input',event=>{
+    const euler=event.target.closest('[data-euler-angle]');
+    if(euler)updateEulerCompare(euler.closest('[data-euler-compare]'));
+    const pitch=event.target.closest('[data-gimbal-pitch]');
+    if(pitch)updateEulerGimbal(pitch.closest('[data-euler-gimbal]'));
+  });
+  document.addEventListener('click',event=>{
+    const reset=event.target.closest('[data-euler-reset]');
+    if(!reset)return;
+    const root=reset.closest('[data-euler-compare]');
+    root.querySelector('[data-euler-angle="x"]').value='90';
+    root.querySelector('[data-euler-angle="y"]').value='0';
+    root.querySelector('[data-euler-angle="z"]').value='90';
+    updateEulerCompare(root);
+  });
   function render(lessonId,sectionIndex){
     if(lessonId==='dataset'&&sectionIndex===0)return boxLabelMarkup();
     if(lessonId==='dataset'&&sectionIndex===4)return yoloReadinessMarkup();
@@ -790,6 +877,9 @@
     if(lessonId==='anchors'&&sectionIndex===1)return anchorMarkup();
     if(lessonId==='yolo-loss'&&sectionIndex===3)return yoloLossMarkup();
     if(lessonId==='quaternion'&&sectionIndex===1)return quaternionMarkup();
+    if(lessonId==='quaternion'&&sectionIndex===4)return eulerCompareMarkup();
+    if(lessonId==='quaternion'&&sectionIndex===5)return eulerGimbalMarkup();
+    if(lessonId==='quaternion'&&sectionIndex===6)return eulerComparisonMarkup();
     return '';
   }
   function initialize(){
@@ -810,6 +900,8 @@
     document.querySelectorAll('[data-anchor-playground]').forEach(updateAnchors);
     document.querySelectorAll('[data-yolo-loss-playground]').forEach(updateYoloLoss);
     document.querySelectorAll('[data-quaternion-playground]').forEach(updateQuaternion);
+    document.querySelectorAll('[data-euler-compare]').forEach(updateEulerCompare);
+    document.querySelectorAll('[data-euler-gimbal]').forEach(updateEulerGimbal);
   }
   window.lessonPlaygrounds={render,initialize};
 

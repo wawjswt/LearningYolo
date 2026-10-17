@@ -42,6 +42,8 @@
     const gradB = prediction - data.target;
     const nextK = data.k - data.rate * gradK;
     const nextB = data.b - data.rate * gradB;
+    const displayedPrediction = stage === 4 ? nextK * data.x + nextB : prediction;
+    const displayedLoss = 0.5 * (displayedPrediction - data.target) ** 2;
     const active = number => stage >= number ? ' is-active' : '';
     const arrow = (path, className, marker, activeAt) => '<path class="bp-edge ' + className + (stage >= activeAt ? ' is-active' : '') + '" d="' + path + '" marker-end="' + marker + '"></path>';
     return '<svg viewBox="0 0 760 278" role="img" aria-label="前向计算从输入到损失，反向传播再把梯度传回权重和偏置"><defs><marker id="bp-arrow-forward" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#8d7bb2"></path></marker><marker id="bp-arrow-backward" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#4b997b"></path></marker></defs>'
@@ -52,8 +54,8 @@
       + arrow('M425 130C441 157 462 166 475 192', 'bp-backward', 'url(#bp-arrow-backward)', 3)
       + '<text class="bp-flow-label bp-flow-back-label" x="30" y="253">反向求导 · 链式法则把梯度传回每个参数</text>'
       + '<g class="bp-node bp-node-input' + active(1) + '"><rect x="30" y="55" width="162" height="80" rx="9"></rect><text class="bp-node-kicker" x="111" y="79" text-anchor="middle">输入</text><text class="bp-node-value" x="111" y="110" text-anchor="middle">x = ' + fmt(data.x) + '</text></g>'
-      + '<g class="bp-node bp-node-prediction' + active(1) + '"><rect x="286" y="55" width="202" height="80" rx="9"></rect><text class="bp-node-kicker" x="387" y="79" text-anchor="middle">模型预测</text><text class="bp-node-formula" x="387" y="100" text-anchor="middle">ŷ = kx + b</text><text class="bp-node-value" x="387" y="121" text-anchor="middle">ŷ = ' + fmt(prediction) + '</text></g>'
-      + '<g class="bp-node bp-node-loss' + active(2) + '"><rect x="590" y="55" width="140" height="80" rx="9"></rect><text class="bp-node-kicker" x="660" y="79" text-anchor="middle">损失</text><text class="bp-node-formula" x="660" y="101" text-anchor="middle">½(ŷ−y)²</text><text class="bp-node-value" x="660" y="122" text-anchor="middle">L = ' + fmt(loss) + '</text></g>'
+      + '<g class="bp-node bp-node-prediction' + active(1) + '"><rect x="286" y="55" width="202" height="80" rx="9"></rect><text class="bp-node-kicker" x="387" y="79" text-anchor="middle">' + (stage === 4 ? '更新后预测' : '模型预测') + '</text><text class="bp-node-formula" x="387" y="100" text-anchor="middle">ŷ = kx + b</text><text class="bp-node-value" x="387" y="121" text-anchor="middle">ŷ = ' + fmt(displayedPrediction) + '</text></g>'
+      + '<g class="bp-node bp-node-loss' + active(2) + '"><rect x="590" y="55" width="140" height="80" rx="9"></rect><text class="bp-node-kicker" x="660" y="79" text-anchor="middle">' + (stage === 4 ? '更新后损失' : '损失') + '</text><text class="bp-node-formula" x="660" y="101" text-anchor="middle">½(ŷ−y)²</text><text class="bp-node-value" x="660" y="122" text-anchor="middle">L = ' + fmt(displayedLoss) + '</text></g>'
       + '<g class="bp-node bp-node-param' + active(3) + '"><rect x="298" y="190" width="128" height="46" rx="8"></rect><text class="bp-node-value" x="362" y="219" text-anchor="middle">权重 k = ' + fmt(stage === 4 ? nextK : data.k) + '</text></g>'
       + '<g class="bp-node bp-node-param' + active(3) + '"><rect x="436" y="190" width="128" height="46" rx="8"></rect><text class="bp-node-value" x="500" y="219" text-anchor="middle">偏置 b = ' + fmt(stage === 4 ? nextB : data.b) + '</text></g></svg>';
   }

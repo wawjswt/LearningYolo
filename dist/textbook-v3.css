@@ -1103,3 +1103,71 @@ main:has(.lab-page-intro){padding-top:26px}
 .scale-explorer .playground-insight{margin:10px 0 0}
 .scale-explorer>.playground-footnote{margin-top:8px}
 @media(max-width:520px){.scale-explorer{padding:11px}.scale-map-grid{grid-template-columns:1fr;gap:7px}.scale-map-card{display:grid;grid-template-columns:minmax(94px,34%) minmax(0,1fr);align-items:center;gap:4px 10px;padding:8px}.scale-map-card header{grid-column:1/-1;margin-bottom:2px}.scale-map-svg{grid-column:1;grid-row:2/span 2;width:100%;max-width:120px;margin:0}.scale-map-readouts{grid-column:2;grid-row:2;grid-template-columns:1fr 1fr;align-self:end}.scale-map-readouts strong{font-size:10px}.scale-map-card>p{grid-column:2;grid-row:3;align-self:start;margin:5px 0 0;font-size:9px}.scale-target-choices{gap:5px}.scale-target-choices button{flex:1;padding:6px 5px;font-size:10px}}
+
+/* Information theory bridge for the classification-loss lesson. */
+.information-units,.information-presets,.entropy-scenarios{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 11px}
+.information-units button,.information-presets button,.entropy-scenarios button{min-height:33px;padding:6px 10px;border:1px solid #e3ded4;border-radius:4px;background:#fffefa;color:#5f6c75;font:inherit;font-size:10px;cursor:pointer;transition:background .16s,border-color .16s,color .16s}
+.information-units button:hover,.information-presets button:hover,.entropy-scenarios button:hover{border-color:#9584bb;color:#574b78}
+.information-units button[aria-pressed=true],.entropy-scenarios button[aria-pressed=true]{border-color:#8b78b4;background:#f0edf7;color:#514478;font-weight:700}
+.information-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(220px,.75fr);gap:13px;align-items:stretch}
+.information-chart{min-width:0;overflow-x:auto;padding:8px 10px 4px;border:1px solid #ece9e1;border-radius:5px;background:#fffefa}
+.information-chart svg{display:block;width:100%;min-width:500px;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.information-controls{display:grid;align-content:start;gap:11px;padding:13px;border:1px solid #e9e5db;border-radius:5px;background:#fffefa}
+.information-controls .playground-range{gap:6px}
+.information-result{display:grid;grid-template-columns:1fr auto;gap:5px 10px;align-items:center;padding:11px;border-left:3px solid #bd7c38;background:#f8f4ed}
+.information-result>span{color:#707b7d;font-size:10px}
+.information-result>strong{color:#79532e;font-size:18px;font-variant-numeric:tabular-nums}
+.information-result>code{grid-column:1/-1;color:#62547f;font-size:11px}
+.information-presets{margin:0}
+.information-presets button{flex:1;padding-inline:6px;font-size:9px}
+.information-controls .playground-insight{margin:0}
+.information-playground .playground-footnote{margin-top:10px}
+.entropy-scenarios{margin-bottom:12px}
+.entropy-distributions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.entropy-distribution{min-width:0;padding:12px;border:1px solid #e8e4da;border-radius:5px;background:#fffefa}
+.entropy-distribution>header{display:grid;gap:3px;margin:0 0 11px;padding:0;border:0;background:transparent;color:#66727c}
+.entropy-distribution>header strong{color:#3d4b57;font-size:12px}
+.entropy-distribution>header span{color:#7a8589;font-size:9px;line-height:1.6}
+.entropy-logits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 11px}
+.entropy-logits .playground-range{gap:5px}
+.entropy-logits .playground-range>span{display:grid;gap:2px;color:#68747c;font-size:9px}
+.entropy-logits .playground-range output{justify-self:start;color:#514478;font-size:10px}
+.entropy-logits .playground-range input{min-width:0}
+.entropy-distribution [role=img]{display:grid;gap:8px}
+.entropy-bar-row{display:grid;gap:4px}
+.entropy-bar-label{display:flex;align-items:baseline;gap:7px;min-width:0;color:#728087;font-size:9px}
+.entropy-bar-label strong{color:#40505a;font-size:10px}
+.entropy-bar-label span{flex:1}
+.entropy-bar-label b{color:#404d56;font-size:10px;font-variant-numeric:tabular-nums}
+.entropy-bar-track{height:10px;overflow:hidden;border-radius:8px;background:#eeeae2}
+.entropy-bar-track i{display:block;height:100%;border-radius:8px;transition:width .2s ease}
+.entropy-bar-track i.is-truth{background:#bd7c38}
+.entropy-bar-track i.is-prediction{background:#7d6aab}
+.entropy-score-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:11px}
+.entropy-score-grid>div{display:grid;gap:4px;min-width:0;padding:10px;border:1px solid #e9e5db;border-radius:4px;background:#fffefa}
+.entropy-score-grid>div>span{color:#727e83;font-size:9px}
+.entropy-score-grid strong{color:#554779;font-size:16px;font-variant-numeric:tabular-nums}
+.entropy-score-grid small{color:#7b858a;font-size:9px;line-height:1.55}
+.entropy-identity{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:9px;margin-top:9px;padding:10px 12px;border-left:3px solid #3e967c;background:#eef5f0}
+.entropy-identity strong{color:#34775f;font-size:11px}
+.entropy-identity code{color:#3e6656;font-size:10px}
+.entropy-identity span{color:#61786c;font-size:9px;line-height:1.6}
+.entropy-playground .playground-insight{margin-top:10px}
+.entropy-playground>.playground-footnote{margin-top:9px}
+.loss-training-flow{display:flex;align-items:center;gap:8px;overflow-x:auto;padding:2px 0 7px}
+.loss-training-flow>div{display:grid;flex:1 0 125px;gap:5px;min-width:0;padding:12px 10px;border:1px solid #e5e1d8;border-top:3px solid #8b78b4;border-radius:4px;background:#fffefa;text-align:center}
+.loss-training-flow>div:nth-of-type(2){border-top-color:#bd7c38}
+.loss-training-flow>div:nth-of-type(3){border-top-color:#4c88a6}
+.loss-training-flow>div:nth-of-type(4){border-top-color:#3e967c}
+.loss-training-flow>div span{color:#78838a;font-size:9px}
+.loss-training-flow>div strong{color:#354553;font-size:13px;line-height:1.5}
+.loss-training-flow>i{flex:none;color:#938c80;font-size:16px;font-style:normal}
+.loss-training-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:9px}
+.loss-training-notes>div{padding:11px;border:1px solid #e8e4db;border-radius:4px;background:#fffefa}
+.loss-training-notes strong{color:#544779;font-size:10px}
+.loss-training-notes p{margin:5px 0 0;color:#606e76;font-size:10px;line-height:1.75}
+.loss-training-code{overflow-x:auto;margin:10px 0 0;padding:12px;border:1px solid #e6e2d9;border-radius:4px;background:#f1f0ec;color:#3d4b57;line-height:1.75}
+.loss-training-code code{font:10px/1.75 Consolas,"Cascadia Code",monospace;white-space:pre}
+@media(max-width:760px){.information-layout{grid-template-columns:1fr}.entropy-distributions{grid-template-columns:1fr}.entropy-score-grid{grid-template-columns:1fr 1fr}.entropy-score-grid>div:last-child{grid-column:1/-1}.entropy-identity{grid-template-columns:1fr;gap:4px}}
+@media(max-width:520px){.information-layout{gap:9px}.information-chart{padding:5px}.information-controls{padding:10px}.information-result>strong{font-size:16px}.entropy-scenarios{display:grid;grid-template-columns:1fr}.entropy-scenarios button{text-align:left}.entropy-distribution{padding:10px}.entropy-logits{gap:6px}.entropy-logits .playground-range>span{font-size:8px}.entropy-logits .playground-range output{font-size:9px}.entropy-score-grid{gap:6px}.entropy-score-grid>div{padding:8px}.entropy-score-grid strong{font-size:14px}.loss-training-flow{align-items:stretch;flex-direction:column;overflow:visible}.loss-training-flow>i{align-self:center;transform:rotate(90deg);font-size:13px}.loss-training-flow>div{flex:none;width:100%;min-width:0;padding:9px}.loss-training-notes{grid-template-columns:1fr}.loss-training-code{padding:9px}.loss-training-code code{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.information-chart svg *,.entropy-bar-track i{transition:none}}

@@ -109,6 +109,79 @@
     root.querySelector('[data-multiclass-hint]').textContent=predicted===target?'当前最高概率命中真实类。真实类概率越高，交叉熵越小；其他类别分数仍会通过 Softmax 影响梯度。':'当前模型把 '+multiclassLabels[predicted]+' 排在最高，却应预测 '+multiclassLabels[target]+'。真实类概率只有 '+fmt(trueProbability*100,1)+'%，因此交叉熵惩罚较大。';
   }
 
+  function informationMarkup(){
+    return '<section class="lesson-playground information-playground" data-information-playground data-base="nat" aria-labelledby="information-playground-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · 信息量</span><h3 id="information-playground-title">一个结果越少见，带来的信息越多</h3><p>拖动事件概率。看看概率降低时，信息量 −log(p) 怎样快速上升。</p></div><button type="button" class="playground-reset" data-information-reset>恢复默认</button></div>'
+      +'<div class="information-units" role="group" aria-label="选择信息量单位"><button type="button" data-information-base="nat" aria-pressed="true">自然对数 · nat</button><button type="button" data-information-base="bit" aria-pressed="false">以 2 为底 · bit</button></div>'
+      +'<div class="information-layout"><div class="information-chart" data-information-chart></div><div class="information-controls"><label class="playground-range"><span>结果发生概率 p <output data-information-probability-value>0.90</output></span><input type="range" min="0.01" max="1" step="0.01" value="0.9" data-information-probability aria-label="结果发生概率"></label>'
+      +'<div class="information-result"><span>自信息量</span><strong data-information-value>0.105 nat</strong><code>I(p) = −log(p)</code></div>'
+      +'<div class="information-presets" role="group" aria-label="快速试试不同概率"><button type="button" data-information-preset="0.9">常见 · 90%</button><button type="button" data-information-preset="0.5">一半 · 50%</button><button type="button" data-information-preset="0.1">少见 · 10%</button></div>'
+      +'<p class="playground-insight" data-information-hint role="status" aria-live="polite"></p></div></div>'
+      +'<p class="playground-footnote">概率为 1 的确定结果没有意外信息；概率越接近 0，负对数惩罚越大。p=0 的理想化信息量趋于无穷，实际训练通常通过有限 logits 与稳定的 log-softmax 计算。</p></section>';
+  }
+  function informationChart(base,probability){
+    const W=720,H=270,L=58,R=20,T=18,B=220,pmin=.01,pmax=1,log=value=>base==='bit'?Math.log2(value):Math.log(value),ymax=-log(pmin),pw=W-L-R,ph=B-T;
+    const X=value=>L+(value-pmin)/(pmax-pmin)*pw,Y=value=>B+log(value)/ymax*ph;
+    let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="事件概率越低，自信息量越高的对数曲线">';
+    [0,.25,.5,.75,1].forEach(t=>{const p=pmin+(pmax-pmin)*t;out+='<line x1="'+X(p)+'" y1="'+T+'" x2="'+X(p)+'" y2="'+B+'" stroke="#efede7"/>'+svgText(X(p),B+19,p.toFixed(2),10)});
+    const maxTick=Math.ceil(ymax);for(let tick=0;tick<=maxTick;tick++){const value=tick;if(value<=ymax){out+='<line x1="'+L+'" y1="'+Y(Math.pow(base==='bit'?2:Math.E,-value))+'" x2="'+(W-R)+'" y2="'+Y(Math.pow(base==='bit'?2:Math.E,-value))+'" stroke="#ebe8e1"/>'+svgText(L-9,Y(Math.pow(base==='bit'?2:Math.E,-value))+4,String(tick),10,'end')}}
+    let path='';for(let i=0;i<=120;i++){const p=pmin+(pmax-pmin)*i/120;path+=(i?'L':'M')+X(p).toFixed(1)+','+Y(p).toFixed(1)}
+    out+='<path d="'+path+'" fill="none" stroke="#75649f" stroke-width="3.5" stroke-linecap="round"/><line x1="'+X(probability)+'" y1="'+T+'" x2="'+X(probability)+'" y2="'+B+'" stroke="#bd7c38" stroke-width="1.5" stroke-dasharray="5 4"/><circle cx="'+X(probability)+'" cy="'+Y(probability)+'" r="6" fill="#bd7c38" stroke="#fffefa" stroke-width="2"/>';
+    out+=svgText(L,B+43,'事件概率 p',11,'start','#626e79')+svgText(15,T+5,base==='bit'?'信息量（bit）':'信息量（nat）',10,'start','#626e79');
+    out+=svgText(X(.16),T+18,'罕见 · 惊喜多',10,'middle','#8a6741')+svgText(X(.82),Y(.82)-10,'常见 · 惊喜少',10,'middle','#6c7780');
+    return out+'</svg>';
+  }
+  function updateInformation(root){
+    const probability=Number(root.querySelector('[data-information-probability]').value),base=root.dataset.base||'nat',value=-(base==='bit'?Math.log2(probability):Math.log(probability)),unit=base==='bit'?'bit':'nat';
+    root.querySelector('[data-information-probability-value]').textContent=(probability*100).toFixed(0)+'%';
+    root.querySelector('[data-information-value]').textContent=fmt(value,3)+' '+unit;
+    root.querySelector('[data-information-chart]').innerHTML=informationChart(base,probability);
+    root.querySelectorAll('[data-information-base]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.informationBase===base)));
+    root.querySelector('[data-information-hint]').textContent=probability>.75?'结果很常见：发生后带来的新信息较少。':probability>.25?'结果有一定不确定性，信息量也处于中间。':'结果比较少见：一旦发生，会带来更多信息；负对数也会给它更大的损失权重。';
+  }
+
+  const entropyScenarios={
+    uniform:{name:'类别出现得差不多',values:[1/3,1/3,1/3]},
+    skew:{name:'猫更常见，兔子较少',values:[.6,.3,.1]},
+    certain:{name:'结果总是猫',values:[1,0,0]}
+  };
+  function entropyMarkup(){
+    return '<section class="lesson-playground entropy-playground" data-entropy-playground data-scenario="skew" aria-labelledby="entropy-playground-title">'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · 熵 / 交叉熵 / KL</span><h3 id="entropy-playground-title">把“数据本身的不确定”与“模型猜错的代价”分开</h3><p>选择真实分布 P，拖动模型 logits。系统实时计算 H(P)、H(P,Q) 和 KL(P∥Q)。</p></div><button type="button" class="playground-reset" data-entropy-reset>恢复默认</button></div>'
+      +'<div class="entropy-scenarios" role="group" aria-label="选择真实数据分布">'+Object.entries(entropyScenarios).map(([id,spec])=>'<button type="button" data-entropy-scenario="'+id+'" aria-pressed="'+String(id==='skew')+'">'+spec.name+'</button>').join('')+'</div>'
+      +'<div class="entropy-distributions"><section class="entropy-distribution entropy-truth"><header><strong>真实分布 P(y)</strong><span>数据里各类别实际出现的比例</span></header><div data-entropy-truth-bars role="img" aria-label="真实类别分布"></div></section>'
+      +'<section class="entropy-distribution entropy-prediction"><header><strong>模型分布 Q(y)</strong><span>Softmax(logits) 转成的预测概率</span></header><div class="entropy-logits">'+multiclassLabels.map((label,i)=>'<label class="playground-range"><span>'+label+' 的 logit z<sub>'+i+'</sub><output data-entropy-logit-value="'+i+'">'+[-1.6,-1.2,-.7][i].toFixed(2)+'</output></span><input type="range" min="-4" max="4" step="0.1" value="'+[-1.6,-1.2,-.7][i]+'" data-entropy-logit="'+i+'" aria-label="'+label+' 预测 logit"></label>').join('')+'</div><div data-entropy-prediction-bars role="img" aria-label="模型预测类别分布"></div></section></div>'
+      +'<div class="entropy-score-grid"><div><span>数据本身的熵</span><strong data-entropy-h>0.898 nat</strong><small>H(P)：标签分布有多不确定</small></div><div><span>模型的交叉熵</span><strong data-entropy-ce>1.389 nat</strong><small>H(P,Q)：真实结果在模型眼中有多意外</small></div><div><span>多出来的代价</span><strong data-entropy-kl>0.492 nat</strong><small>KL(P∥Q)：模型分布与真实分布的差异</small></div></div>'
+      +'<div class="entropy-identity"><strong>交叉熵 = 熵 + KL</strong><code>H(P,Q) = H(P) + KL(P∥Q)</code><span data-entropy-scenario-hint></span></div>'
+      +'<p class="playground-insight" data-entropy-hint role="status" aria-live="polite"></p>'
+      +'<p class="playground-footnote">固定 P 时，H(P) 不随模型变化；训练降低的是 H(P,Q)，也就是把模型分布 Q 往 P 靠近。KL 与交叉熵都依赖方向，交换 P、Q 后通常会变。单个独热标签是 P=[1,0,0] 的特例，交叉熵就只剩 −ln Q(真实类)。</p></section>';
+  }
+  function entropyBars(values,kind){
+    const label=kind==='truth'?'真实 P':'模型 Q';
+    return values.map((value,i)=>'<div class="entropy-bar-row"><div class="entropy-bar-label"><strong>'+multiclassLabels[i]+'</strong><span>'+label+'</span><b>'+fmt(value*100,1)+'%</b></div><div class="entropy-bar-track"><i class="'+(kind==='truth'?'is-truth':'is-prediction')+'" style="width:'+(value*100).toFixed(2)+'%"></i></div></div>').join('');
+  }
+  function updateEntropy(root){
+    const scenario=root.dataset.scenario||'skew',truth=entropyScenarios[scenario].values,inputs=[...root.querySelectorAll('[data-entropy-logit]')],logits=inputs.map(input=>Number(input.value)),maximum=Math.max(...logits),exp=logits.map(value=>Math.exp(value-maximum)),sum=exp.reduce((a,b)=>a+b,0),prediction=exp.map(value=>value/sum);
+    const entropy=-truth.reduce((total,p)=>total+(p>0?p*Math.log(p):0),0),cross=-truth.reduce((total,p,i)=>total+(p>0?p*Math.log(prediction[i]):0),0),kl=Math.max(0,cross-entropy);
+    inputs.forEach((input,i)=>{root.querySelector('[data-entropy-logit-value="'+i+'"]').textContent=fmt(logits[i])});
+    root.querySelector('[data-entropy-truth-bars]').innerHTML=entropyBars(truth,'truth');
+    root.querySelector('[data-entropy-prediction-bars]').innerHTML=entropyBars(prediction,'prediction');
+    root.querySelector('[data-entropy-h]').textContent=fmt(entropy,3)+' nat';
+    root.querySelector('[data-entropy-ce]').textContent=fmt(cross,3)+' nat';
+    root.querySelector('[data-entropy-kl]').textContent=fmt(kl,3)+' nat';
+    root.querySelector('[data-entropy-scenario-hint]').textContent=entropyScenarios[scenario].name+'；选择“结果总是猫”时 H(P)=0，交叉熵直接等于猫这一类的 −ln Q(猫)。';
+    root.querySelectorAll('[data-entropy-scenario]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.entropyScenario===scenario)));
+    const predicted=prediction.indexOf(Math.max(...prediction));
+    root.querySelector('[data-entropy-hint]').textContent='模型目前把 '+multiclassLabels[predicted]+' 排在第一。真实分布中各类仍按 P 加权计分，因此只看最高概率类别或准确率，无法看出交叉熵的完整惩罚。';
+  }
+  function lossTrainingMarkup(){
+    return '<section class="lesson-playground loss-training-card" aria-labelledby="loss-training-title"><div class="playground-heading"><div><span class="playground-kicker">训练流程 · 从分数到更新</span><h3 id="loss-training-title">模型不是“看见答案”，而是收到一条可微的误差信号</h3><p>交叉熵把真实类别概率转换成损失；反向传播再把这条信号传回网络参数。</p></div></div>'
+      +'<div class="loss-training-flow" role="img" aria-label="logits 经 CrossEntropyLoss 计算损失，反向传播并更新参数的训练流程"><div><span>神经网络输出</span><strong>logits z</strong></div><i>→</i><div><span>稳定地计算</span><strong>交叉熵 L</strong></div><i>→</i><div><span>反向传播</span><strong>∇W L</strong></div><i>→</i><div><span>优化器更新</span><strong>W ← W − η∇W L</strong></div></div>'
+      +'<div class="loss-training-notes"><div><strong>训练时</strong><p>把原始 logits 直接交给损失函数。log-sum-exp 技巧避免巨大分数导致指数溢出，融合的 log-softmax 计算也避免先得到极小概率再取对数。</p></div><div><strong>推理展示时</strong><p>想看每类概率，再对 logits 做 softmax。只取 argmax 可以得到类别，但会丢掉置信度，也不能拿来训练交叉熵。</p></div></div>'
+      +'<pre class="loss-training-code"><code>logits = model(images)                  # [N, K]，原始分数\nloss = nn.CrossEntropyLoss()(logits, labels)  # labels: [N] 类别编号\noptimizer.zero_grad()\nloss.backward()\noptimizer.step()</code></pre>'
+      +'<p class="playground-footnote">对普通、未加权的单标签多分类，单个样本对 logits 的梯度为 softmax(z)−y。真实类的预测越低，修正信号通常越大；类别权重或标签平滑会改变该表达式。损失是训练目标，不等于准确率、泛化能力或概率校准。</p></section>';
+  }
+
   const optimizerSpecs={
     sgd:{name:'SGD',color:'#8b70bd',hint:'SGD 对每个方向使用同一个学习率。这里 y 方向曲率更大、坡更陡，x 方向会相对缓慢地靠近谷底。'},
     momentum:{name:'动量 SGD',color:'#4c88a6',hint:'动量累计近期梯度方向；在较平缓的 x 方向上可能加快前进，也会让陡峭方向出现惯性和来回摆动。'},
@@ -551,7 +624,10 @@
     if(lessonId==='architecture'&&sectionIndex===1)return scaleExplorerMarkup();
     if(lessonId==='network'&&sectionIndex===1)return activationMarkup();
     if(lessonId==='losses'&&sectionIndex===1)return lossMarkup();
-    if(lessonId==='losses'&&sectionIndex===3)return multiclassMarkup();
+    if(lessonId==='losses'&&sectionIndex===3)return informationMarkup();
+    if(lessonId==='losses'&&sectionIndex===4)return entropyMarkup();
+    if(lessonId==='losses'&&sectionIndex===5)return multiclassMarkup();
+    if(lessonId==='losses'&&sectionIndex===8)return lossTrainingMarkup();
     if(lessonId==='optimizer'&&sectionIndex===0)return optimizerMarkup();
     if(lessonId==='pooling'&&sectionIndex===0)return poolingMarkup();
     if(lessonId==='training'&&sectionIndex===3)return trainingMarkup();
@@ -567,6 +643,8 @@
     document.querySelectorAll('[data-activation-playground]').forEach(updateActivation);
     document.querySelectorAll('[data-loss-playground]').forEach(updateLoss);
     document.querySelectorAll('[data-multiclass-playground]').forEach(updateMulticlass);
+    document.querySelectorAll('[data-information-playground]').forEach(updateInformation);
+    document.querySelectorAll('[data-entropy-playground]').forEach(updateEntropy);
     document.querySelectorAll('[data-optimizer-playground]').forEach(updateOptimizer);
     document.querySelectorAll('[data-pooling-playground]').forEach(updatePooling);
     document.querySelectorAll('[data-training-playground]').forEach(updateTraining);
@@ -583,6 +661,8 @@
     const activation=target.closest('[data-activation-x]');if(activation){updateActivation(activation.closest('[data-activation-playground]'));return}
     const loss=target.closest('[data-loss-error],[data-loss-delta]');if(loss){updateLoss(loss.closest('[data-loss-playground]'));return}
     const multiclassLogit=target.closest('[data-multiclass-logit]');if(multiclassLogit){updateMulticlass(multiclassLogit.closest('[data-multiclass-playground]'));return}
+    const informationProbability=target.closest('[data-information-probability]');if(informationProbability){updateInformation(informationProbability.closest('[data-information-playground]'));return}
+    const entropyLogit=target.closest('[data-entropy-logit]');if(entropyLogit){updateEntropy(entropyLogit.closest('[data-entropy-playground]'));return}
     const optimizer=target.closest('[data-optimizer-rate],[data-optimizer-step]');if(optimizer)updateOptimizer(optimizer.closest('[data-optimizer-playground]'));
     const poolControl=target.closest('[data-pool-row],[data-pool-col]');if(poolControl){updatePooling(poolControl.closest('[data-pooling-playground]'));return}
     const trainingControl=target.closest('[data-training-epoch]');if(trainingControl){updateTraining(trainingControl.closest('[data-training-playground]'));return}
@@ -592,6 +672,16 @@
     const yoloLossControl=target.closest('[data-yolo-loss-gain]');if(yoloLossControl){updateYoloLoss(yoloLossControl.closest('[data-yolo-loss-playground]'));return}
   });
   document.addEventListener('click',event=>{
+    const informationBase=event.target.closest('[data-information-base]');
+    if(informationBase){const root=informationBase.closest('[data-information-playground]');root.dataset.base=informationBase.dataset.informationBase;updateInformation(root);return}
+    const informationPreset=event.target.closest('[data-information-preset]');
+    if(informationPreset){const root=informationPreset.closest('[data-information-playground]');root.querySelector('[data-information-probability]').value=informationPreset.dataset.informationPreset;updateInformation(root);return}
+    const informationReset=event.target.closest('[data-information-reset]');
+    if(informationReset){const root=informationReset.closest('[data-information-playground]');root.dataset.base='nat';root.querySelector('[data-information-probability]').value='0.9';updateInformation(root);return}
+    const entropyScenario=event.target.closest('[data-entropy-scenario]');
+    if(entropyScenario){const root=entropyScenario.closest('[data-entropy-playground]');root.dataset.scenario=entropyScenario.dataset.entropyScenario;updateEntropy(root);return}
+    const entropyReset=event.target.closest('[data-entropy-reset]');
+    if(entropyReset){const root=entropyReset.closest('[data-entropy-playground]');root.dataset.scenario='skew';root.querySelectorAll('[data-entropy-logit]').forEach((input,i)=>input.value=[-1.6,-1.2,-.7][i]);updateEntropy(root);return}
     const scaleTarget=event.target.closest('[data-scale-target]');
     if(scaleTarget){const root=scaleTarget.closest('[data-scale-explorer]');root.dataset.scaleTarget=scaleTarget.dataset.scaleTarget;updateScaleExplorer(root);return}
     const boxLabelReset=event.target.closest('[data-box-label-reset]');

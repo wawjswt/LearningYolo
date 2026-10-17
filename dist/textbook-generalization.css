@@ -1,0 +1,67 @@
+/* Generalization learning playground: clear curves, restrained ink, visible focus. */
+.generalization-playground{border-top:2px solid #6d8c82;background:linear-gradient(145deg,#faf9f5,#f1f5f1)}
+.generalization-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0;padding:15px;border:1px solid #e2e7df;border-radius:6px;background:#fffefa}
+.generalization-controls .playground-range{min-width:0}
+.generalization-controls .playground-range span{display:flex;align-items:baseline;gap:8px}
+.generalization-controls .playground-range output{color:#3c806b;font-size:16px;font-weight:750;font-variant-numeric:tabular-nums}
+.generalization-controls .playground-range small{margin-left:auto;color:#8b9290;font-size:10px;font-weight:400}
+.generalization-chart-wrap{overflow:hidden;border:1px solid #e2e7df;border-radius:6px;background:#fffefa}
+.generalization-chart{display:block;width:100%;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.gen-grid-line{stroke:#e9ece8;stroke-width:1}
+.gen-axis-line{stroke:#aeb7b0;stroke-width:1.2}
+.gen-axis-label{fill:#8b9290;font-size:10px}
+.gen-axis-title{fill:#697570;font-size:11px;font-weight:650}
+.gen-current-line{stroke:#9280b1;stroke-width:1.5;stroke-dasharray:4 4}
+.gen-train-curve,.gen-valid-curve{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.gen-train-curve{stroke:#5287a5}
+.gen-valid-curve{stroke:#d1815e}
+.gen-current-train{fill:#fffefa;stroke:#5287a5;stroke-width:3}
+.gen-current-valid{fill:#fffefa;stroke:#d1815e;stroke-width:3}
+.generalization-legend{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;padding:0 12px 12px;color:#66716c;font-size:11px}
+.generalization-legend span{display:inline-flex;align-items:center;gap:7px}
+.generalization-legend i{width:14px;height:3px;border-radius:2px}
+.gen-legend-train{background:#5287a5}
+.gen-legend-valid{background:#d1815e}
+.gen-legend-current{height:12px!important;width:2px!important;background:#9280b1}
+.generalization-reading{margin-top:13px;padding:15px;border:1px solid #e2e7df;border-radius:6px;background:#fffefa}
+.gen-reading-heading{display:flex;align-items:center;gap:9px}
+.gen-reading-badge{padding:4px 8px;border-radius:4px;background:#edf2ee;color:#577c68;font-size:10px;font-weight:700}
+.gen-reading-heading strong{color:#34434a;font-size:13px}
+.generalization-reading>p{margin:9px 0;color:#66716c;font-size:12px;line-height:1.75}
+.gen-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.gen-metrics>div{display:flex;justify-content:space-between;gap:7px;padding:8px 10px;border-radius:4px;background:#f5f6f2;color:#77817b;font-size:10px}
+.gen-metrics strong{color:#35434a;font-size:12px;font-variant-numeric:tabular-nums}
+.gen-concept-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.gen-concept-grid article{display:flex;align-items:flex-start;gap:10px;padding:13px;border:1px solid #e5e6df;border-radius:5px;background:#fffefa}
+.gen-concept-mark{display:grid;flex:0 0 28px;width:28px;height:28px;place-items:center;border-radius:50%;font-size:13px;font-weight:750}
+.gen-mark-under{background:#f6edda;color:#a27a2e}
+.gen-mark-over{background:#f7e9e3;color:#b06c50}
+.gen-mark-fit{background:#e7f1ec;color:#51816e}
+.gen-concept-grid h4,.gen-split-panel h4,.gen-check h4{margin:0 0 6px;color:#35434a;font-size:12px}
+.gen-concept-grid p,.gen-split-panel p{margin:0;color:#6e7974;font-size:10px;line-height:1.7}
+.gen-split-panel{display:grid;grid-template-columns:minmax(0,1fr) 1.15fr;gap:18px;align-items:center;margin:13px 0;padding:15px;border:1px solid #e2e7df;border-radius:6px;background:#fffefa}
+.gen-split-panel .playground-kicker{color:#668a7d}
+.gen-split-panel h4{margin-top:4px;font-size:13px}
+.gen-split-flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:7px}
+.gen-split-flow>div{display:flex;min-height:58px;flex-direction:column;justify-content:center;gap:5px;padding:8px;border:1px solid #e3e7e0;border-radius:5px;background:#f7f8f4;text-align:center}
+.gen-split-flow strong{color:#3c5049;font-size:10px}
+.gen-split-flow span{color:#818b85;font-size:9px}
+.gen-split-flow>b{color:#9aa49e;font-size:13px}
+.gen-correction{margin:12px 0;padding:13px 15px;border-left:3px solid #c49a63;border-radius:0 5px 5px 0;background:#f8f3e9;color:#66716c;font-size:11px;line-height:1.8}
+.gen-correction strong{color:#8a6b37}
+.gen-correction code{padding:1px 4px;border-radius:3px;background:#eee8db;color:#755e35;font-size:10px}
+.gen-check{margin:14px 0;padding:15px;border:1px solid #e4e2d9;border-radius:6px;background:#f6f4ee}
+.gen-check .playground-kicker{color:#8b7b5a}
+.gen-check h4{margin-top:4px;font-size:13px}
+.gen-check-options{display:grid;gap:7px;margin-top:10px}
+.gen-check-options button{padding:9px 11px;border:1px solid #e3e0d7;border-radius:4px;background:#fffefa;color:#5c6864;text-align:left;font:inherit;font-size:11px;line-height:1.5;cursor:pointer}
+.gen-check-options button:hover,.gen-check-options button[aria-pressed="true"]{border-color:#9d8ab9;background:#f7f4fb}
+.gen-check-options button.is-correct{border-color:#7da38e;background:#edf5ef;color:#476f5c}
+.gen-check-options button.is-wrong{border-color:#d6a18e;background:#fbf1ec;color:#9e624d}
+.gen-check-options button:focus-visible,.generalization-controls input:focus-visible,.generalization-playground button:focus-visible{outline:3px solid #9180b5;outline-offset:2px}
+.gen-check-feedback{min-height:1.5em;margin:9px 0 0;color:#60726a;font-size:10px;line-height:1.7}
+.gen-sources{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding-top:8px;color:#87918c;font-size:10px}
+.gen-sources>a{color:#618476;text-decoration:underline;text-underline-offset:3px}
+.gen-sources>a:hover{color:#365e50}
+@media(max-width:700px){.generalization-controls{grid-template-columns:1fr}.gen-concept-grid{grid-template-columns:1fr}.gen-split-panel{grid-template-columns:1fr}.gen-metrics{grid-template-columns:1fr}.gen-metrics>div{padding:7px 9px}.generalization-legend{gap:12px}.gen-split-flow{gap:4px}.gen-split-flow>div{padding:7px 3px}.gen-split-flow strong{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.generalization-playground *{scroll-behavior:auto!important;transition:none!important}}

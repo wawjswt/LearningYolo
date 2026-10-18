@@ -7,10 +7,12 @@
     '说明 flatten 保留像素值与顺序，但全连接层没有显式利用局部邻域和共享权重。',
     '估算图像全连接层和卷积层的参数量，并区分参数量、计算量与速度。',
     '区分卷积的平移等变与分类结果的平移不变。',
-    '拆解局部连接和权值共享各自带来的参数约束。'
+    '拆解局部连接和权值共享各自带来的参数约束。',
+    '逐项计算卷积窗口与卷积核的乘积，理解一个特征图数值从哪里来。',
+    '说明卷积核由损失梯度和优化器在训练中更新，并识别深度学习卷积与严格数学卷积的术语差异。'
   );
-  lesson.desc='从通道、滤波器与特征图继续深入：对照全连接与卷积的空间结构，计算参数量，观察平移等变与位置不变的区别。';
-  lesson.time=75;
+  lesson.desc='从卷积核逐格乘加到特征图，再对照全连接与卷积的结构，计算参数量并观察空间特征如何逐层组合。';
+  lesson.time=90;
   lesson.sections.push(
     {title:'8. 展平没有抹掉位置：全连接缺少的是空间先验',paragraphs:[
       '把一张 H×W 的图像展平成向量，只是按约定把二维坐标排成一列。例如灰度图按行展开时，像素 (r,c) 的索引是 `r×W+c`；在 PyTorch 的 NCHW 张量中，单张图展平后索引为 `channel×H×W+r×W+c`。给定展平顺序和索引，原来的行、列仍然能找回来，所以不能说 flatten 把像素值或坐标信息彻底删除。',
@@ -38,26 +40,42 @@
       '层层组合后，深层单元能汇合更大范围的信息，形成从边缘、纹理到更复杂模式的表征；具体学到什么由数据与训练决定，不能把某个通道硬说成固定语义。权值共享让局部响应随目标位置一起移动（平移等变）；它本身不会保证最终类别分数完全不变。下面用同一张小图、同一输出网格，分开比较这两种约束各自节省了多少参数。'
     ]}
   );
+  lesson.sections[4].paragraphs.push('为了把空间窗口的乘加先看清，可以先在下方用单通道小图逐项计算；再接着用已有的三通道计算器，观察 R、G、B 三份局部贡献怎样合成一个输出值。');
   lesson.keypoints.push(
     'Flatten 以确定顺序重排像素；坐标可以从索引恢复。',
     '全连接为每个绝对坐标分别学习权重；卷积利用局部连接和空间共享。',
     '全连接参数为 D×h+h；带偏置的普通二维卷积参数为 Cout×Cin×k²+Cout。',
     '参数量不等于运算量、速度或泛化表现；卷积不保证任何任务上都更准确。',
     '步幅 1 卷积主要呈现平移等变；平移不变通常需要后续汇聚或训练设计。',
-    '局部连接减少每个位置要看的输入范围；权值共享让不同位置重复使用同一组滤波器参数。'
+    '局部连接减少每个位置要看的输入范围；权值共享让不同位置重复使用同一组滤波器参数。',
+    '单通道卷积输出的每一格是局部点积加偏置；多通道时还要累加所有输入通道的贡献。',
+    'stride=1、padding=0、5×5 输入和 2×2 核会产生 4×4 输出；步幅与填充共同决定尺寸。',
+    '损失梯度经反向传播传回权重，优化器负责更新参数；卷积核不会脱离训练目标自行“识别”特征。',
+    'PyTorch Conv2d 使用互相关计算；严格数学卷积会先翻转核，深度学习中仍习惯称为卷积。'
   );
   lesson.sources=[
     {url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html',label:'PyTorch Linear：全连接层的输入输出与权重形状'},
     {url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html',label:'PyTorch Conv2d：卷积核形状、groups 与参数定义'},
     {url:'https://bottou.org/papers/lecun-98h',label:'LeCun 等：局部感受野、权重共享与文档识别'},
     {url:'https://proceedings.mlr.press/v48/cohenc16.pdf',label:'Group Equivariant CNNs：卷积与等变性'},
-    {url:'https://openreview.net/forum?id=YicbFdNTTy',label:'Vision Transformer：图像 patch 与纯 Transformer 视觉模型'}
+    {url:'https://openreview.net/forum?id=YicbFdNTTy',label:'Vision Transformer：图像 patch 与纯 Transformer 视觉模型'},
+    {url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.modules.conv.Conv2d.html',label:'PyTorch Conv2d：互相关定义、权重形状与输出尺寸'},
+    {url:'https://docs.pytorch.org/tutorials/beginner/introyt/autogradyt_tutorial.html',label:'PyTorch 自动微分教程：loss.backward 与 optimizer.step'}
   ];
 
   const base=window.lessonPlaygrounds;
   const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const section8=7,section9=8,section10=9,section11=10,section12=11;
+  const section8=7,section9=8,section10=9,section11=10,section12=11,section5=4;
   const pixels=[0,0,0,0,0, 0,1,1,0,0, 0,1,0,0,0, 0,0,0,1,0, 0,0,1,1,1];
+  const convInput=[0,0,1,4,4, 0,0,1,4,4, 0,0,1,4,4, 0,0,1,4,4, 0,0,1,4,4];
+  const convKernels={
+    vertical:{label:'竖直边缘',hint:'左右亮度变化',weights:[-1,1,-1,1]},
+    horizontal:{label:'水平边缘',hint:'上下亮度变化',weights:[-1,-1,1,1]},
+    smooth:{label:'邻域平滑',hint:'局部平均亮度',weights:[.25,.25,.25,.25]}
+  };
+  const convNumber=value=>String(Number(value.toFixed(2)));
+  function convValue(weights,row,col,bias=0){let value=bias;for(let r=0;r<2;r++)for(let c=0;c<2;c++)value+=convInput[(row+r)*5+col+c]*weights[r*2+c];return Number(value.toFixed(2))}
+  function convMap(weights,bias=0){return Array.from({length:16},(_,i)=>convValue(weights,Math.floor(i/4),i%4,bias))}
   const claims=[
     {text:'“展平后坐标信息全没了，所以全连接层从原理上无法识别图案。”',answer:'fix',why:'需要修正。flatten 保留有序像素值，可按索引还原坐标。问题是全连接层没有显式利用局部邻接与跨位置共享；它理论上能学，只是学习偏置不同。'},
     {text:'“224×224 的 RGB 输入连到 64 个全连接单元，含偏置共 9,633,856 个参数。”',answer:'ok',why:'基本准确。输入数 D=224×224×3=150,528，参数 D×64+64=9,633,856。它只是在计算该全连接层参数，不代表整网总量。'},
@@ -103,6 +121,19 @@
       +'<div class="cnn-share-viz"><div class="cnn-share-card"><div class="cnn-card-title"><strong>输入特征图</strong><span data-cnn-share-input-shape>5 × 5 × 3</span></div><div class="cnn-share-grid cnn-share-input-grid" data-cnn-share-input-grid role="img" aria-label="输入特征图中的局部 3 乘 3 感受野">'+pixels+'</div><p class="cnn-share-caption">紫色区域：当前输出位置读取的局部感受野</p></div><div class="cnn-share-arrow" aria-hidden="true">同一<br>滤波器<br>⟶</div><div class="cnn-share-card"><div class="cnn-card-title"><strong>输出特征图</strong><span data-cnn-share-output-shape>3 × 3 × 8</span></div><div class="cnn-share-grid cnn-share-output-grid" data-cnn-share-output-grid role="group" aria-label="选择输出特征图位置">'+positions+'</div><p class="cnn-share-caption" data-cnn-share-readout aria-live="polite">位置 (2,2) 读取输入第 2–4 行、第 2–4 列；所有位置调用同一组核参数。</p></div></div>'
       +'<div class="cnn-sharing-counts"><article class="cnn-share-count"><span>全连接 · 每个输出看整张图</span><strong data-cnn-share-dense>5,472</strong><small data-cnn-share-dense-detail>9 × 8 × (5×5×3 + 1)</small></article><article class="cnn-share-count"><span>局部连接 · 每个位置各有一套核</span><strong data-cnn-share-local>2,016</strong><small data-cnn-share-local-detail>9 × 8 × (3×3×3 + 1)</small></article><article class="cnn-share-count is-shared"><span>卷积 · 局部核在位置间共享</span><strong data-cnn-share-conv>224</strong><small data-cnn-share-conv-detail>8 × (3×3×3 + 1)</small></article></div><p class="cnn-share-summary" data-cnn-share-summary role="status" aria-live="polite"></p><p class="cnn-play-note">公平对照：三种结构输出同样大小的特征图，核都是 3×3，偏置按对应输出单元计；输入边长 = 输出边长 + 2，采用 stride=1、无填充。参数量不等于 FLOPs 或实测速度；卷积核跨通道的权重形状为 (Cout, Cin, 3, 3)。</p></section>';
   }
+  function convolutionMarkup(){
+    const kernel=convKernels.vertical,values=convMap(kernel.weights),row=0,col=2,term=0;
+    const inputCells=convInput.map((value,index)=>{const r=Math.floor(index/5),c=index%5,inside=r>=row&&r<row+2&&c>=col&&c<col+2,active=inside&&r===row+Math.floor(term/2)&&c===col+term%2;return '<span class="cnn-conv-input-cell'+(inside?' is-in-window':'')+(active?' is-current-product':'')+'" data-cnn-conv-cell="'+r+','+c+'" aria-label="输入第 '+(r+1)+' 行第 '+(c+1)+' 列，数值 '+value+'">'+value+'</span>'}).join('');
+    const kernelCells=kernel.weights.map((value,index)=>'<span class="cnn-conv-kernel-cell'+(index===term?' is-current-product':'')+'" data-cnn-conv-weight="'+index+'" aria-label="卷积核第 '+(Math.floor(index/2)+1)+' 行第 '+(index%2+1)+' 列，权重 '+convNumber(value)+'">'+convNumber(value)+'</span>').join('');
+    const outputCells=values.map((value,index)=>{const r=Math.floor(index/4),c=index%4;return '<button type="button" class="cnn-conv-output-cell" data-cnn-conv-pos="'+r+','+c+'" aria-label="特征图第 '+(r+1)+' 行第 '+(c+1)+' 列，响应 '+convNumber(value)+'" aria-pressed="'+String(r===row&&c===col)+'"><span>'+convNumber(value)+'</span></button>'}).join('');
+    const termRows=kernel.weights.map((weight,index)=>{const r=Math.floor(index/2),c=index%2,input=convInput[(row+r)*5+col+c],product=input*weight;return '<div class="cnn-conv-term" data-cnn-conv-term="'+index+'" role="listitem"><span class="cnn-conv-term-index">'+(index+1)+'</span><span>'+input+' × ('+convNumber(weight)+')</span><b>= '+convNumber(product)+'</b></div>'}).join('');
+    return '<section class="lesson-playground cnn-playground cnn-conv-playground" data-cnn-convolution data-row="'+row+'" data-col="'+col+'" data-term="'+term+'" data-kernel="vertical" aria-label="卷积乘加互动">'+header('INTERACTIVE · 卷积乘加台','一次窗口扫描，怎样写出一张特征图？','选一种小滤波器，点输出格定位输入窗口，再逐项推进 4 次乘法。紫色标出当前配对，绿色格是这一步产生的响应。')
+      +'<div class="cnn-conv-kernel-options" role="group" aria-label="选择演示用滤波器"><button type="button" data-cnn-conv-kernel="vertical" aria-pressed="true"><b>竖直边缘</b><span>左右亮度变化</span></button><button type="button" data-cnn-conv-kernel="horizontal" aria-pressed="false"><b>水平边缘</b><span>上下亮度变化</span></button><button type="button" data-cnn-conv-kernel="smooth" aria-pressed="false"><b>邻域平滑</b><span>局部平均亮度</span></button></div>'
+      +'<div class="cnn-conv-flow"><article class="cnn-conv-panel"><div class="cnn-card-title"><strong>输入图像 · 5×5</strong><span>单通道像素</span></div><div class="cnn-conv-input-grid" data-cnn-conv-input-grid role="img" aria-label="5 行 5 列单通道输入，紫色窗口当前覆盖第 1 行第 3 列附近">'+inputCells+'</div><p class="cnn-conv-panel-caption">紫色窗口会随着输出位置移动</p></article><div class="cnn-conv-flow-arrow" aria-hidden="true">逐点相乘<br>再求和<br>→</div><article class="cnn-conv-panel"><div class="cnn-card-title"><strong>卷积核 · 2×2</strong><span data-cnn-conv-kernel-caption>左右亮度变化</span></div><div class="cnn-conv-kernel-grid" data-cnn-conv-kernel-grid role="img" aria-label="当前滤波器权重矩阵">'+kernelCells+'</div><p class="cnn-conv-panel-caption">相同位置的两个数配成一组</p></article><div class="cnn-conv-flow-arrow" aria-hidden="true">窗口滑动<br>每格写入<br>→</div><article class="cnn-conv-panel"><div class="cnn-card-title"><strong>输出特征图 · 4×4</strong><span>点一格定位窗口</span></div><div class="cnn-conv-output-grid" data-cnn-conv-output-grid role="group" aria-label="可选择位置的 4 行 4 列卷积输出">'+outputCells+'</div><p class="cnn-conv-panel-caption">颜色表示响应强弱；数值为精确计算结果</p></article></div>'
+      +'<div class="cnn-conv-bias-control"><label for="cnn-conv-bias">输出偏置 b <output data-cnn-conv-bias-value>0</output></label><input id="cnn-conv-bias" type="range" min="-3" max="3" step="1" value="0" data-cnn-conv-bias aria-label="调整卷积输出偏置，从负三到正三"></div>'
+      +'<div class="cnn-conv-workbench"><div class="cnn-conv-stepper"><p data-cnn-conv-progress aria-live="polite">输出位置 3 / 16 · 正在计算第 1 / 4 项</p><button type="button" data-cnn-conv-step="-1" disabled>上一步</button><button type="button" data-cnn-conv-step="1">下一项乘加</button></div><div class="cnn-conv-term-list" data-cnn-conv-terms role="list" aria-label="当前窗口逐项乘法">'+termRows+'</div><div class="cnn-conv-answer"><span>本格输出 = 4 项乘积之和 + 偏置</span><code data-cnn-conv-equation>1 × (-1) + 4 × 1 + 1 × (-1) + 4 × 1 + 0</code><strong data-cnn-conv-result aria-live="polite">6</strong></div></div>'
+      +'<p class="cnn-play-note">本例 stride=1、padding=0，暂不接激活函数；输出是激活前数值。严格数学卷积会先翻转卷积核，而 PyTorch Conv2d 等常见深度学习实现按图中方向原样滑动（互相关），但仍沿用“卷积”这个名字。真实图像有多个通道时，每个输出滤波器还要把各输入通道的乘加结果相加。</p></section>';
+  }
   window.lessonPlaygrounds={
     render(id,index){
       if(id==='cnn'&&index===section8)return flattenMarkup();
@@ -110,6 +141,7 @@
       if(id==='cnn'&&index===section10)return motionMarkup();
       if(id==='cnn'&&index===section11)return claimsMarkup();
       if(id==='cnn'&&index===section12)return sharingMarkup();
+      if(id==='cnn'&&index===section5)return convolutionMarkup()+(base?.render?.(id,index)||'');
       return base?.render?.(id,index)||'';
     },
     initialize(){
@@ -118,6 +150,7 @@
       document.querySelectorAll('[data-cnn-parameters]').forEach(updateParameters);
       document.querySelectorAll('[data-cnn-motion]').forEach(updateMotion);
       document.querySelectorAll('[data-cnn-sharing]').forEach(updateSharing);
+      document.querySelectorAll('[data-cnn-convolution]').forEach(updateConvolution);
     }
   };
 
@@ -188,6 +221,24 @@
     root.querySelector('[data-cnn-share-conv-detail]').textContent=outChannels+'×(3×3×'+inChannels+' + 1)';
     root.querySelector('[data-cnn-share-summary]').textContent='当前有 '+positions+' 个空间位置。局部连接把感受范围缩小；共享卷积核又把这 '+positions+' 套位置参数绑成一套，因此局部连接层参数量是共享卷积的 '+positions+' 倍。';
   }
+  function updateConvolution(root){
+    const row=Math.max(0,Math.min(3,Number(root.dataset.row)||0)),col=Math.max(0,Math.min(3,Number(root.dataset.col)||0)),term=Math.max(0,Math.min(3,Number(root.dataset.term)||0)),kernelId=root.dataset.kernel||'vertical',kernel=convKernels[kernelId]||convKernels.vertical,bias=Number(root.querySelector('[data-cnn-conv-bias]').value)||0,values=convMap(kernel.weights,bias),maxAbs=Math.max(1,...values.map(Math.abs));
+    root.dataset.row=String(row);root.dataset.col=String(col);root.dataset.term=String(term);root.querySelector('[data-cnn-conv-bias-value]').textContent=convNumber(bias);root.querySelector('[data-cnn-conv-kernel-caption]').textContent=kernel.hint;
+    root.querySelectorAll('[data-cnn-conv-kernel]').forEach(button=>{const active=button.dataset.cnnConvKernel===kernelId;button.setAttribute('aria-pressed',String(active))});
+    root.querySelectorAll('[data-cnn-conv-cell]').forEach(cell=>{const [r,c]=cell.dataset.cnnConvCell.split(',').map(Number),inside=r>=row&&r<row+2&&c>=col&&c<col+2,active=inside&&r===row+Math.floor(term/2)&&c===col+term%2;cell.classList.toggle('is-in-window',inside);cell.classList.toggle('is-current-product',active)});
+    root.querySelectorAll('[data-cnn-conv-weight]').forEach(cell=>cell.classList.toggle('is-current-product',Number(cell.dataset.cnnConvWeight)===term));
+    root.querySelectorAll('[data-cnn-conv-pos]').forEach(cell=>{const [r,c]=cell.dataset.cnnConvPos.split(',').map(Number),value=values[r*4+c],active=r===row&&c===col,level=Math.min(3,Math.ceil(Math.abs(value)/maxAbs*3));cell.querySelector('span').textContent=convNumber(value);cell.setAttribute('aria-label','特征图第 '+(r+1)+' 行第 '+(c+1)+' 列，响应 '+convNumber(value));cell.setAttribute('aria-pressed',String(active));cell.classList.toggle('is-selected',active);cell.dataset.sign=value===0?'zero':value>0?'positive':'negative';cell.dataset.level=String(level)});
+    const terms=kernel.weights.map((weight,index)=>{const r=Math.floor(index/2),c=index%2,input=convInput[(row+r)*5+col+c],product=input*weight;return '<div class="cnn-conv-term'+(index===term?' is-current':'')+'" data-cnn-conv-term="'+index+'" role="listitem"><span class="cnn-conv-term-index">'+(index+1)+'</span><span>'+input+' × ('+convNumber(weight)+')</span><b>= '+convNumber(product)+'</b></div>'}).join('');
+    root.querySelector('[data-cnn-conv-terms]').innerHTML=terms;
+    const selectedValue=values[row*4+col],expression=kernel.weights.map((weight,index)=>{const r=Math.floor(index/2),c=index%2,input=convInput[(row+r)*5+col+c];return input+' × ('+convNumber(weight)+')'}).join(' + ');
+    root.querySelector('[data-cnn-conv-equation]').textContent=expression+' + '+convNumber(bias);
+    root.querySelector('[data-cnn-conv-result]').textContent=convNumber(selectedValue);
+    const position=row*4+col,step=position*4+term;root.querySelector('[data-cnn-conv-progress]').textContent='输出位置 '+(position+1)+' / 16 · 正在计算第 '+(term+1)+' / 4 项';
+    root.querySelector('[data-cnn-conv-step="-1"]').disabled=step===0;root.querySelector('[data-cnn-conv-step="1"]').disabled=step===63;
+    root.querySelector('[data-cnn-conv-input-grid]').setAttribute('aria-label','5 行 5 列输入矩阵；当前窗口从第 '+(row+1)+' 行、第 '+(col+1)+' 列开始，正在配对第 '+(Math.floor(term/2)+1)+' 行、第 '+(term%2+1)+' 列的输入');
+    root.querySelector('[data-cnn-conv-output-grid]').setAttribute('aria-label','4 行 4 列输出特征图；当前选中第 '+(row+1)+' 行、第 '+(col+1)+' 列，值为 '+convNumber(selectedValue));
+  }
+  function stepConvolution(root,direction){const row=Number(root.dataset.row)||0,col=Number(root.dataset.col)||0,term=Number(root.dataset.term)||0,linear=Math.max(0,Math.min(63,(row*4+col)*4+term+direction)),position=Math.floor(linear/4);root.dataset.row=String(Math.floor(position/4));root.dataset.col=String(position%4);root.dataset.term=String(linear%4);updateConvolution(root)}
   function localSvgPoint(svg,event){const point=svg.createSVGPoint();point.x=event.clientX;point.y=event.clientY;return point.matrixTransform(svg.getScreenCTM().inverse())}
   let drag=null;
   document.addEventListener('pointerdown',event=>{
@@ -206,6 +257,9 @@
   document.addEventListener('pointerup',event=>{if(drag&&event.pointerId===drag.pointerId){drag.root.querySelector('[data-cnn-draggable]')?.setAttribute('cursor','grab');drag=null}});
   document.addEventListener('pointercancel',()=>{if(drag){drag.root.querySelector('[data-cnn-draggable]')?.setAttribute('cursor','grab');drag=null}});
   document.addEventListener('click',event=>{
+    const convKernel=event.target.closest('[data-cnn-conv-kernel]');if(convKernel){const root=convKernel.closest('[data-cnn-convolution]');root.dataset.kernel=convKernel.dataset.cnnConvKernel;root.dataset.term='0';updateConvolution(root);return}
+    const convPosition=event.target.closest('[data-cnn-conv-pos]');if(convPosition){const root=convPosition.closest('[data-cnn-convolution]'),[row,col]=convPosition.dataset.cnnConvPos.split(',').map(Number);root.dataset.row=String(row);root.dataset.col=String(col);root.dataset.term='0';updateConvolution(root);return}
+    const convStep=event.target.closest('[data-cnn-conv-step]');if(convStep){stepConvolution(convStep.closest('[data-cnn-convolution]'),Number(convStep.dataset.cnnConvStep));return}
     const sharingPosition=event.target.closest('[data-cnn-share-pos]');if(sharingPosition){const root=sharingPosition.closest('[data-cnn-sharing]'),[row,col]=sharingPosition.dataset.cnnSharePos.split(',').map(Number);root.dataset.row=String(row);root.dataset.col=String(col);updateSharing(root);return}
     const pixel=event.target.closest('[data-cnn-pixel]');if(pixel){updatePixelSelection(pixel.closest('[data-cnn-flatten]'),Number(pixel.dataset.cnnPixel));return}
     const move=event.target.closest('[data-cnn-move]');if(move){const root=move.closest('[data-cnn-motion]'),[dx,dy]=move.dataset.cnnMove.split(',').map(Number);root.dataset.row=String(Math.max(0,Math.min(5,(Number(root.dataset.row)||0)+dy)));root.dataset.col=String(Math.max(0,Math.min(5,(Number(root.dataset.col)||0)+dx)));updateMotion(root);return}
@@ -215,6 +269,7 @@
     const feedback=root.querySelector('[data-cnn-claim-feedback="'+index+'"]');feedback.textContent=(correct?'判断正确。':'再看看修正点：')+claim.why;feedback.classList.add('is-visible');
   });
   document.addEventListener('input',event=>{
+    const convBias=event.target.closest('[data-cnn-conv-bias]');if(convBias){updateConvolution(convBias.closest('[data-cnn-convolution]'));return}
     const sharing=event.target.closest('[data-cnn-share-side],[data-cnn-share-input],[data-cnn-share-output]');if(sharing){updateSharing(sharing.closest('[data-cnn-sharing]'));return}
     const parameters=event.target.closest('[data-cnn-size],[data-cnn-channels],[data-cnn-hidden]');if(parameters){updateParameters(parameters.closest('[data-cnn-parameters]'));return}
     const motion=event.target.closest('[data-cnn-row],[data-cnn-col]');if(!motion)return;

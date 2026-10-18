@@ -65,7 +65,8 @@
       const tensorExplorer=l.id==='tensor'&&i===8?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&i===4?tensorTransposeMarkup():'';
       const lessonPlayground=window.lessonPlaygrounds?.render(l.id,i)||'';
-      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+fallback+transposeExplorer+tensorExplorer+lessonPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
+      const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,i)||'';
+      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+fallback+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
     }).join('');
   }
   function tensorExplorerMarkup(){
@@ -409,6 +410,7 @@
     initializeConceptGuides();
     initializeWorkedExamples();
     window.lessonPlaygrounds?.initialize();
+    window.lessonBiasPlaygrounds?.initialize();
     initializeTensorLearning();
     if(route==='lesson'&&targetSection)document.getElementById(targetSection)?.scrollIntoView({behavior:'auto',block:'start'});
     if(route==='lab'){updateIoU();window.initializeInteractiveLab?.();}

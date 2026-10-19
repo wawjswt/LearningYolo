@@ -31,11 +31,11 @@
 
   const stages=[
     {label:'输入',name:'一张灰度数字图',copy:'LeNet-5 按单通道 32×32 图像设计。28×28 的 MNIST 示意图需要先扩边并保持训练时的居中、归一化约定。'},
-    {label:'C1 卷积',name:'6 个局部滤镜开始找笔画',copy:'每个 5×5 卷积核在整张图上滑动并复用同一组权重；6 个核产生 6 张 28×28 特征图。无填充、步幅 1 时，边长从 32 变为 28。'},
-    {label:'S2 子采样',name:'压缩网格，保留主要响应',copy:'每张图以不重叠的 2×2 区域做子采样，边长从 28 减到 14，通道数仍为 6。原始 S2 的缩放系数与偏置可学习，所以不是固定平均池化。'},
-    {label:'C3 卷积',name:'组合更丰富的局部形状',copy:'16 张输出特征图各用 5×5 局部窗口，在 14×14 输入上产生 10×10 响应。原始 C3 采用部分连接：每张输出图只读取选定的 S2 特征图。'},
-    {label:'S4 子采样',name:'再次缩小空间网格',copy:'第二个子采样层把 16 张 10×10 特征图缩到 16 张 5×5 图。原始 S4 与 S2 一样带有可学习的缩放与偏置。'},
-    {label:'C5 卷积',name:'把整张小特征图汇成高层表征',copy:'120 个 5×5 卷积核分别覆盖全部 16 张 S4 特征图，输出 120 个 1×1 单元。论文把它称为卷积层；在这组固定输入尺寸下，它的连接效果类似全连接。'},
+    {label:'C1 卷积',name:'6 个局部滤镜开始找笔画',copy:'每个 5×5 卷积核在整张图上滑动并复用同一组权重；无填充、步幅 1 时，高和宽各缩小 4 格，6 个核会产生 6 张特征图。'},
+    {label:'S2 子采样',name:'压缩网格，保留主要响应',copy:'每张图用 2×2 区域、步幅 2 做子采样，空间边长按整数规则缩小，通道数仍为 6。原始 S2 的缩放系数与偏置可学习，所以不是固定平均池化。'},
+    {label:'C3 卷积',name:'组合更丰富的局部形状',copy:'16 张输出特征图各用 5×5 局部窗口；无填充、步幅 1 时，空间边长各缩小 4 格。原始 C3 采用部分连接：每张输出图只读取选定的 S2 特征图。'},
+    {label:'S4 子采样',name:'再次缩小空间网格',copy:'第二个子采样层用 2×2 区域、步幅 2 缩小 16 张特征图的空间网格。原始 S4 与 S2 一样带有可学习的缩放与偏置。'},
+    {label:'C5 卷积',name:'把整张小特征图汇成高层表征',copy:'120 个 5×5 卷积核分别覆盖全部 16 张 S4 特征图；经典结构的每个核输出一个 1×1 单元。论文把它称为卷积层；在固定输入尺寸下，它的连接效果类似全连接。'},
     {label:'F6 全连接',name:'整合高层特征',copy:'84 个单元分别读取 C5 的 120 个值，并使用缩放版 tanh。它把前面抽取到的局部信息组合起来。'},
     {label:'类别输出',name:'比较十个数字类别',copy:'原始 LeNet-5 使用 10 个 RBF 输出单元，每类一个，输出表示与类别目标编码的距离/惩罚，不是 Softmax 概率。现代实现常换成 10 个线性 logits。'}
   ];
@@ -70,7 +70,7 @@
     const quizCards=quiz.map((item,index)=>'<article class="lenet-quiz-card" data-lenet-quiz-card="'+index+'"><h4>'+esc(item.question)+'</h4><div class="lenet-quiz-options" role="group" aria-label="判断第 '+(index+1)+' 题"><button type="button" data-lenet-quiz-answer="true">正确</button><button type="button" data-lenet-quiz-answer="false">不正确</button></div><p class="lenet-quiz-feedback" data-lenet-quiz-feedback="'+index+'" aria-live="polite"></p></article>').join('');
     return '<section class="lesson-playground lenet-playground" data-lenet data-stage="0" data-variant="original" data-train-step="0" data-era="0" aria-labelledby="lenet-play-title">'+
       '<div class="lenet-heading"><span>INTERACTIVE · 经典网络剖面</span><h3 id="lenet-play-title">把一张 28×28 数字图送进 LeNet-5</h3><p>拖动边缘补值，观察每一层的网格怎样变化；再点选层名，读懂特征图背后的运算。</p></div>'+
-      '<div class="lenet-pad-control"><label for="lenet-pad-slider">给 28×28 图像的每条边补 <output data-lenet-pad-value>2</output> 个像素</label><input id="lenet-pad-slider" type="range" min="0" max="4" step="1" value="2" data-lenet-pad aria-label="每条边增加的图像像素数"><p data-lenet-pad-note aria-live="polite">28 + 2×2 = 32，符合经典 LeNet-5 的输入边长。</p></div>'+
+      '<div class="lenet-pad-control"><label for="lenet-pad-slider">给 28×28 图像的每条边补 <output data-lenet-pad-value>2</output> 个像素</label><input id="lenet-pad-slider" type="range" min="0" max="3" step="1" value="2" data-lenet-pad aria-label="每条边增加的图像像素数"><p data-lenet-pad-note aria-live="polite">28 + 2×2 = 32，符合经典 LeNet-5 的输入边长。</p></div>'+
       diagramMarkup()+
       '<div class="lenet-stage-track" role="group" aria-label="选择 LeNet-5 中的一层">'+stageButtons+'</div>'+
       '<div class="lenet-stage-detail" aria-live="polite"><div><span data-lenet-stage-index>第 1 站 · 输入</span><h4 data-lenet-stage-title>一张灰度数字图</h4><code data-lenet-selected-shape>1×32×32</code></div><p data-lenet-stage-copy>'+esc(stages[0].copy)+'</p></div>'+

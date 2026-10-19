@@ -62,12 +62,13 @@
         return markup;
       }).join('');
       const fallback=placements.filter(figure=>figure.section===i&&!placed.has(figure.key)).map(figure=>{placed.add(figure.key);return window.lessonFigures.render(l,figure.key)}).join('');
+      const sectionCode=s.code?'<div class="code-block"><div class="code-head"><span>Python · 本节示例</span><button class="copy" type="button" data-copy-fragment="section-code-'+l.id+'-'+i+'">复制本段代码</button></div><pre><code id="section-code-'+l.id+'-'+i+'">'+esc(s.code)+'</code></pre></div>'+(s.codeNote?'<p class="code-note">'+rich(s.codeNote)+'</p>':'') : '';
       const tensorOperations=l.id==='tensor'&&i===1?tensorOperationsMarkup():'';
       const tensorExplorer=l.id==='tensor'&&i===8?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&i===4?tensorTransposeMarkup():'';
       const lessonPlayground=window.lessonPlaygrounds?.render(l.id,i)||'';
       const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,i)||'';
-      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
+      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
     }).join('');
   }
   function tensorOperationsMarkup(){

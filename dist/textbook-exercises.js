@@ -293,13 +293,37 @@ Object.assign(chapterExerciseBank, {
   ],
 });
 
+// 补齐后续扩展章节的题目，保持题目与原章节顺序一致。
+sectionExerciseBank.network.splice(3,0,lessons.find(lesson=>lesson.id==='network').sections[3].exercise);
+sectionExerciseBank.losses.splice(3,0,
+  exercise('信息量 I=−ln(p) 中，概率从 0.9 变成 0.1 时，信息量怎样变化？',['从约 0.105 nat 增到约 2.303 nat','保持为 0','从 2.303 nat 减到 0.105 nat'],0,'越罕见的结果越意外；使用自然对数时单位为 nat。'),
+  exercise('真实目标分布 P 固定时，H(P,Q)=H(P)+KL(P∥Q) 表明什么？',['降低交叉熵等价于降低 KL 散度','交叉熵一定等于准确率','KL 对两个分布一定对称'],0,'H(P) 固定，变化来自预测分布 Q；KL 通常不对称。')
+);
+sectionExerciseBank.losses.push(exercise('训练互斥分类时，CrossEntropyLoss 通常应接收什么？',['原始 logits 和类别索引','argmax 后的类别编号作为预测分数','先 Softmax 再把概率当 logits'],0,'稳定接口内部计算 log-softmax；argmax 会丢掉训练需要的连续分数信息。'));
+const trainingSections=lessons.find(lesson=>lesson.id==='training').sections;
+sectionExerciseBank.training.push(
+  exercise('PyTorch 的 state_dict 通常包含哪些内容？',['参数与持久化 buffer，通常不包含模型类定义','只有训练图片','整个 Python 项目的全部源文件'],0,'加载 state_dict 一般要先重建兼容模型结构；BatchNorm 运行统计量等持久化 buffer 也会保存。'),
+  ...trainingSections.slice(5).map(section=>section.exercise)
+);
+sectionExerciseBank.dataset.push(lessons.find(lesson=>lesson.id==='dataset').sections[4].exercise);
+sectionExerciseBank.quaternion=[
+  exercise('表示纯三维旋转时，四元数通常需要满足什么条件？',['单位范数','四个分量都等于 1','实部必须为 0'],0,'单位四元数用于表示旋转；任意四个数不能不经条件检查就当作旋转。'),
+  exercise('轴角到单位四元数的公式为什么要用单位旋转轴？',['让轴方向与 sin(θ/2) 的尺度各有明确含义','让旋转角一定为 0','让四元数只能绕 x 轴旋转'],0,'q=[cos(θ/2),u·sin(θ/2)] 中 u 应归一化；还需核对标量分量的位置约定。'),
+  exercise('主动旋转与一致乘法约定下，向量 p 的常见四元数旋转形式是什么？',['q p q⁻¹，把 p 写成纯虚四元数','q+p','只对 p 的长度加 1'],0,'左右两侧的乘法组合表示旋转；具体顺序仍须与库的主动/被动约定一致。'),
+  exercise('为什么组合旋转要关注顺序？',['一般 q₂q₁ 不等于 q₁q₂','所有旋转都交换','顺序只改变文件大小'],0,'三维旋转通常不可交换；必须说明哪一次先作用。'),
+  exercise('一组三个欧拉角要唯一说明旋转操作，还需要什么？',['旋转顺序、内禀/外禀与单位等约定','只需要模型名称','只要总和为 360 度'],0,'相同数字在不同轴顺序或坐标系约定下可产生不同朝向。'),
+  exercise('万向节锁通常表示什么？',['特定欧拉角配置下参数化丢失一个独立变化方向','物体无法在真实空间转动','四元数必须有零范数'],0,'它是欧拉角参数化的奇异性，物体本身并没有失去空间运动能力。'),
+  exercise('四元数 q 与 −q 对应怎样的旋转关系？',['表示同一空间旋转','总是相反的空间旋转','一个必须是非法的'],0,'单位四元数对三维旋转是双覆盖；插值时还要处理符号与路径。'),
+  exercise('把旋转数据交给另一个库前，先核对什么？',['分量排列、乘法和坐标系约定、角度单位','只核对文件后缀','只核对随机种子'],0,'不同库可能用 wxyz 或 xyzw、不同旋转顺序与主动/被动定义，需用简单已知旋转核对。')
+];
+
 for (const lesson of lessons) {
   const sectionExercises = sectionExerciseBank[lesson.id];
   const chapterExercises = chapterExerciseBank[lesson.id];
-  if (!sectionExercises || sectionExercises.length !== lesson.sections.length || !chapterExercises || chapterExercises.length !== 2) {
+  if (!sectionExercises || sectionExercises.length !== lesson.sections.length || sectionExercises.some(item=>!item) || (!lesson.chapterExercises?.length && (!chapterExercises || chapterExercises.length !== 2))) {
     throw new Error(`Exercise coverage is incomplete for ${lesson.id}`);
   }
-  lesson.sections.forEach((section, index) => { section.exercise = sectionExercises[index]; });
-  lesson.chapterExercises = [lesson.quiz, ...chapterExercises];
+  lesson.sections.forEach((section, index) => { section.exercise = section.exercise || sectionExercises[index]; });
+  if(!lesson.chapterExercises?.length)lesson.chapterExercises = [lesson.quiz, ...chapterExercises].filter(Boolean);
 }
 

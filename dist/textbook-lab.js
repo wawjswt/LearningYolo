@@ -234,11 +234,8 @@
       const classTp = predictions.reduce((sum, item) => sum + (item.correct[iouIndex] ? 1 : 0), 0);
       const classFp = predictions.length - classTp;
       const classFn = Math.max(0, classInfo.groundTruthCount - classTp);
-      const precision = classTp + classFp ? classTp / (classTp + classFp) : 0;
-      const recall = classInfo.groundTruthCount ? classTp / classInfo.groundTruthCount : 0;
-      return { tp: classTp, fp: classFp, fn: classFn, precision, recall, f1: precision + recall ? 2 * precision * recall / (precision + recall) : 0 };
+      return { tp: classTp, fp: classFp, fn: classFn };
     });
-    const totals = classPoints.reduce((sum, item) => ({ tp: sum.tp + item.tp, fp: sum.fp + item.fp, fn: sum.fn + item.fn }), { tp: 0, fp: 0, fn: 0 });
     const confidenceCurve = analysis.confidenceSamples.map((threshold, index) => ({
       threshold,
       precision: mean(selectedClasses.map(item => item.iouResults[iouIndex].precisionCurve[index])),
@@ -255,7 +252,7 @@
     const ap50ByClass = Object.fromEntries(analysis.classes.map(item => [String(item.id), item.iouResults[0].ap]));
     const ap5095ByClass = Object.fromEntries(analysis.classes.map(item => [String(item.id), mean(item.iouResults.map(result => result.ap))]));
     return {
-      operatingPoint: { ...totals, precision: mean(classPoints.map(item => item.precision)), recall: mean(classPoints.map(item => item.recall)), f1: mean(classPoints.map(item => item.f1)) },
+      operatingPoint: aggregateClassCounts(classPoints),
       curve,
       prCurve,
       confidenceCurve,
@@ -457,6 +454,29 @@
     return { tp, fp, fn, precision, recall, f1 };
   }
 
+  function mean(values) {
+    return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+  }
+
+  function aggregateClassCounts(classCounts) {
+    const totals = classCounts.reduce((sum, item) => ({
+      tp: sum.tp + item.tp,
+      fp: sum.fp + item.fp,
+      fn: sum.fn + item.fn,
+    }), { tp: 0, fp: 0, fn: 0 });
+    const perClassMetrics = classCounts.map(({ tp, fp, fn }) => {
+      const precision = tp + fp ? tp / (tp + fp) : 0;
+      const recall = tp + fn ? tp / (tp + fn) : 0;
+      return { precision, recall, f1: precision + recall ? 2 * precision * recall / (precision + recall) : 0 };
+    });
+    return {
+      ...totals,
+      precision: mean(perClassMetrics.map(item => item.precision)),
+      recall: mean(perClassMetrics.map(item => item.recall)),
+      f1: mean(perClassMetrics.map(item => item.f1)),
+    };
+  }
+
   function detectionCurve(items, groundTruthCount, iouThreshold) {
     const thresholds = [1, ...new Set(items.map(item => Number(item.score)))].sort((a, b) => b - a);
     return thresholds.map(threshold => ({
@@ -486,10 +506,37 @@
     const className = options.className || 'all';
     const classes = Object.keys(groundTruthCounts).filter(name => Number(groundTruthCounts[name]) > 0);
     const selectedClasses = className === 'all' || !classes.includes(className) ? classes : [className];
-    const selectedPredictions = predictions.filter(item => selectedClasses.includes(item.className));
-    const selectedGroundTruths = selectedClasses.reduce((sum, name) => sum + Number(groundTruthCounts[name]), 0);
-    const curve = detectionCurve(selectedPredictions, selectedGroundTruths, iouThreshold);
-    const operatingPoint = detectionCounts(selectedPredictions, selectedGroundTruths, confidenceThreshold, iouThreshold);
+    const classCurves = selectedClasses.map(name => {
+      const classPredictions = predictions.filter(item => item.className === name);
+      const groundTruthCount = Number(groundTruthCounts[name]);
+      return {
+        predictions: classPredictions,
+        groundTruthCount,
+        curve: detectionCurve(classPredictions, groundTruthCount, iouThreshold),
+      };
+    });
+    const operatingPoint = aggregateClassCounts(classCurves.map(item => (
+      detectionCounts(item.predictions, item.groundTruthCount, confidenceThreshold, iouThreshold)
+    )));
+    const thresholds = [...new Set([1, ...classCurves.flatMap(item => item.predictions.map(prediction => Number(prediction.score)))])].sort((a, b) => b - a);
+    const confidenceCurve = thresholds.map(threshold => ({
+      threshold,
+      ...aggregateClassCounts(classCurves.map(item => (
+        detectionCounts(item.predictions, item.groundTruthCount, threshold, iouThreshold)
+      ))),
+    }));
+    const recallSamples = Array.from({ length: 101 }, (_, index) => index / 100);
+    const prCurve = recallSamples.map(recall => ({
+      recall,
+      precision: mean(classCurves.map(item => {
+        let bestPrecision = 0;
+        for (const point of item.curve) {
+          if (point.tp + point.fp > 0 && point.recall + 1e-12 >= recall) bestPrecision = Math.max(bestPrecision, point.precision);
+        }
+        return bestPrecision;
+      })),
+    }));
+    const curve = confidenceCurve;
     const apAtIouByClass = {};
     const ap50ByClass = {};
     const ap5095ByClass = {};
@@ -502,11 +549,12 @@
         sum + interpolatedAveragePrecision(detectionCurve(classPredictions, Number(groundTruthCounts[name]), threshold))
       ), 0) / iouThresholds.length;
     }
-    const mean = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
-    const bestF1 = curve.reduce((best, point) => point.f1 > best.f1 ? point : best, curve[0] || { threshold: 1, f1: 0 });
+    const bestF1 = confidenceCurve.reduce((best, point) => point.f1 > best.f1 ? point : best, confidenceCurve[0] || { threshold: 1, f1: 0 });
     return {
       operatingPoint,
       curve,
+      prCurve,
+      confidenceCurve,
       bestF1,
       apAtIouByClass,
       ap50ByClass,
@@ -675,16 +723,16 @@
       + '<div class="metric-intro-card"><span class="chapter-kicker">INTERACTIVE TEACHING EXAMPLE · SYNTHETIC DATA</span><h2>交互计算：阈值怎样改变检测指标</h2><p id="metric-data-description">本区教学样例包含 ' + sampleGroundTruthCount + ' 个标注目标、' + metricPredictions.length + ' 个预测框和 3 个类别，用于观察置信度和 IoU 对指标的影响。下方 swim_v9 区域展示你的真实曲线；可导入逐框验证 JSON 来计算其他模型的真实曲线。</p>'
       + '<div class="metric-import-toolbar"><span id="metric-data-mode" class="metric-data-mode">合成教学样例</span><label class="metric-upload-button" for="metric-import-file">导入 YOLOv5 验证 JSON<input id="metric-import-file" type="file" accept=".json,application/json"></label><a class="secondary metric-export-link" href="visionlab-yolov5-export.py" download>下载 YOLOv5 导出脚本</a><button class="secondary metric-reset-button" type="button" data-metric-reset>恢复合成样例</button></div><p id="metric-data-status" class="metric-data-status" aria-live="polite">这是用于操作学习的合成数据，不是 swim_v9 评估结果。</p>'
       + '<details class="metric-export-guide"><summary>怎样从 swim_v9 生成可交互的真实曲线</summary><ol><li>下载导出脚本，放到 YOLOv5 仓库根目录。</li><li>用训练时相同的权重、验证集和输入尺寸重新运行验证：</li></ol><pre><code>python visionlab-yolov5-export.py --weights runs/train/swim_v9/weights/best.pt --data data/swim.yaml --imgsz 960 --device 0 --output runs/val/swim_v9.json</code></pre><p>脚本会保存每个预测框的类别、置信度，以及它在 IoU=0.50 至 0.95 下是否匹配标注。网页只在本机浏览器读取导出的 JSON。你的现有结果文件夹保存了 PR/F1 图片和每轮汇总指标，但没有逐框置信度与匹配记录；导入 JSON 后，网页才能让游标沿真实 PR/F1 曲线移动。</p></details></div>'
-      + '<div class="metric-workbench"><div class="metric-chart-stack"><article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">PRECISION ↔ RECALL</span><h3>PR 曲线 · 交互教学样例</h3></div><span class="lab-step-badge">置信度阈值逐步变化</span></div><div id="metric-pr-chart" class="metric-chart" aria-live="polite"></div><p class="metric-chart-caption">本图用合成数据或导入的真实逐框数据重算；真实 swim_v9 原始 PR 图见上方。曲线越靠近右上角，通常表示找回更多目标时仍能保持较高准确率。</p></article>'
-      + '<article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">F1 ↔ CONFIDENCE</span><h3>F1 曲线 · 交互教学样例</h3></div><span id="metric-best-f1" class="lab-step-badge"></span></div><div id="metric-f1-chart" class="metric-chart" aria-live="polite"></div><p class="metric-chart-caption">本图用于学习 Precision 与 Recall 的折中；导入真实逐框 JSON 后会显示所选模型的真实曲线。swim_v9 的原始 F1 图及最优阈值见上方。</p></article></div>'
-      + '<aside class="lab-control-card metric-control-card"><label for="metric-class">查看类别</label><select id="metric-class"><option value="all">全部类别 · 汇总</option><option value="pedestrian">行人</option><option value="vehicle">车辆</option><option value="bicycle">自行车</option></select>'
+      + '<div class="metric-workbench"><div class="metric-chart-stack"><article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">PRECISION ↔ RECALL</span><h3>PR 曲线 · 交互教学样例</h3></div><span class="lab-step-badge">置信度阈值逐步变化</span></div><div id="metric-pr-chart" class="metric-chart" aria-live="polite"></div><p id="metric-pr-caption" class="metric-chart-caption"></p></article>'
+      + '<article class="lab-visual-card metric-chart-card"><div class="lab-card-heading"><div><span class="chapter-kicker">F1 ↔ CONFIDENCE</span><h3>F1 曲线 · 交互教学样例</h3></div><span id="metric-best-f1" class="lab-step-badge"></span></div><div id="metric-f1-chart" class="metric-chart" aria-live="polite"></div><p id="metric-f1-caption" class="metric-chart-caption"></p></article></div>'
+      + '<aside class="lab-control-card metric-control-card"><label for="metric-class">查看类别</label><select id="metric-class"><option value="all">全部类别 · 宏平均</option><option value="pedestrian">行人</option><option value="vehicle">车辆</option><option value="bicycle">自行车</option></select>'
       + '<label for="metric-confidence">置信度阈值 <output id="metric-confidence-value">0.70</output></label><input id="metric-confidence" type="range" min="0" max="1" step="0.01" value="0.70">'
       + '<label for="metric-iou">匹配所需 IoU <output id="metric-iou-value">0.50</output></label><input id="metric-iou" type="range" min="0.50" max="0.95" step="0.05" value="0.50">'
       + '<p id="metric-point-summary" class="lab-callout metric-point-summary" aria-live="polite"></p><div class="metric-score-grid"><div><span>Precision</span><strong id="metric-precision"></strong></div><div><span>Recall</span><strong id="metric-recall"></strong></div><div><span>F1</span><strong id="metric-f1"></strong></div></div>'
-      + '<div class="metric-formulas"><p><b>Precision</b> = TP ÷ (TP + FP)</p><p><b>Recall</b> = TP ÷ (TP + FN)</p><p><b>F1</b> = 2 × P × R ÷ (P + R)</p></div><p class="lab-small-note">TP：正确匹配的框；FP：重复、误检或 IoU 未达标的框；FN：没有被找回的标注目标。</p></aside></div>'
+      + '<div id="metric-formulas" class="metric-formulas"></div><p id="metric-count-note" class="lab-small-note"></p><p class="lab-small-note">TP：正确匹配的框；FP：重复、误检或 IoU 未达标的框；FN：没有被找回的标注目标。</p></aside></div>'
       + '<article class="lab-visual-card metric-map-card"><div class="lab-card-heading"><div><span class="chapter-kicker">AVERAGE PRECISION · MEAN AP</span><h3>从 PR 面积到 mAP</h3></div><div id="metric-map-summary" class="metric-map-summary" aria-live="polite"></div></div><div class="metric-ap-legend"><span><i class="ap50"></i>AP@0.50</span><span><i class="ap5095"></i>AP@0.50:0.95</span></div><div id="metric-map-breakdown" class="metric-map-breakdown"></div><p class="metric-chart-caption">AP 是某一类别 PR 曲线下的插值面积；mAP@0.50 先在 IoU=0.50 计算每类 AP，再对类别求平均。mAP@0.50:0.95 则把 IoU 从 0.50 到 0.95（步长 0.05）的 AP 一并平均，共 10 个阈值。导入数据严格使用 YOLOv5 的验证匹配结果；上方 swim_v9 数值直接取自原始训练图与 results.csv。</p></article>'
       + mapWalkthroughPanel()
-      + '<p class="lab-formula metric-reading-note">置信度改变 PR 曲线上的工作点；匹配 IoU 改变哪些预测算 TP。AP 是单个类别 PR 曲线下的面积，mAP 再对类别及指定 IoU 阈值求平均。</p>'
+      + '<div id="metric-reading-note" class="metric-reading-note"></div>'
       + '<a class="lab-lesson-link" href="#lesson/metrics">接着学习：NMS、Precision、Recall 与 mAP →</a>'
       + swimV9CasePanel() + '</section>';
   }
@@ -1152,6 +1200,11 @@
     const prChart = byId('metric-pr-chart');
     const f1Chart = byId('metric-f1-chart');
     const mapBreakdown = byId('metric-map-breakdown');
+    const formulaBox = byId('metric-formulas');
+    const countNote = byId('metric-count-note');
+    const readingNote = byId('metric-reading-note');
+    const prCaption = byId('metric-pr-caption');
+    const f1Caption = byId('metric-f1-caption');
     if (!classInput || !confidenceInput || !iouInput || !prChart || !f1Chart || !mapBreakdown) return;
     const classOptions = importedYoloV5Evaluation
       ? importedYoloV5Evaluation.classes.map(item => ({ key: String(item.id), label: item.name }))
@@ -1169,7 +1222,7 @@
       : evaluateDetectionMetrics(metricPredictions, metricGroundTruths, { confidenceThreshold: confidence, iouThreshold, className });
     const point = metrics.operatingPoint;
     const percentage = value => (value * 100).toFixed(1) + '%';
-    const classLabel = className === 'all' ? (importedYoloV5Evaluation ? '全部类别宏平均' : '全部类别汇总')
+    const classLabel = className === 'all' ? '全部类别宏平均'
       : importedYoloV5Evaluation ? importedYoloV5Evaluation.classes.find(item => String(item.id) === className)?.name || className : metricClassLabels[className];
     const groundTruthCount = importedYoloV5Evaluation
       ? importedYoloV5Evaluation.classes.reduce((sum, item) => sum + item.groundTruthCount, 0)
@@ -1193,12 +1246,27 @@
       : '教学样例包含 ' + groundTruthCount + ' 个标注目标、' + predictionsCount + ' 个预测框和 3 个类别，供操作学习使用。要查看与你模型一致的曲线，请用下方导出工具在自己的 YOLOv5 验证集上生成数据并导入。';
     byId('metric-confidence-value').textContent = confidence.toFixed(2);
     byId('metric-iou-value').textContent = iouThreshold.toFixed(2);
-    byId('metric-point-summary').textContent = classLabel + (importedYoloV5Evaluation && className === 'all' ? ' · 指标按类别宏平均' : '') + ' · TP ' + point.tp + ' · FP ' + point.fp + ' · FN ' + point.fn;
+    byId('metric-point-summary').textContent = className === 'all'
+      ? classLabel + ' · 各类别数量合计 TP ' + point.tp + ' · FP ' + point.fp + ' · FN ' + point.fn
+      : classLabel + ' · TP ' + point.tp + ' · FP ' + point.fp + ' · FN ' + point.fn;
     byId('metric-precision').textContent = percentage(point.precision);
     byId('metric-recall').textContent = percentage(point.recall);
     byId('metric-f1').textContent = percentage(point.f1);
     byId('metric-best-f1').textContent = '峰值 ' + percentage(metrics.bestF1.f1) + ' · 阈值 ' + metrics.bestF1.threshold.toFixed(2);
     byId('metric-map-summary').textContent = 'mAP@0.50 ' + percentage(metrics.map50) + '　·　mAP@0.50:0.95 ' + percentage(metrics.map5095) + '　·　当前 IoU 的 mAP ' + percentage(metrics.mapAtIou);
+    if (formulaBox) formulaBox.innerHTML = className === 'all'
+      ? '<p><b>先逐类计算：</b> P<sub>c</sub>=TP<sub>c</sub>/(TP<sub>c</sub>+FP<sub>c</sub>)；R<sub>c</sub>=TP<sub>c</sub>/(TP<sub>c</sub>+FN<sub>c</sub>)；F1<sub>c</sub>=2P<sub>c</sub>R<sub>c</sub>/(P<sub>c</sub>+R<sub>c</sub>)</p><p><b>再取类别算术平均：</b> P<sub>macro</sub>=mean(P<sub>c</sub>)；R<sub>macro</sub>=mean(R<sub>c</sub>)；F1<sub>macro</sub>=mean(F1<sub>c</sub>)</p>'
+      : '<p><b>单类别：</b> Precision=TP/(TP+FP)</p><p>Recall=TP/(TP+FN)</p><p>F1=2×Precision×Recall/(Precision+Recall)</p>';
+    if (countNote) countNote.textContent = className === 'all'
+      ? '这里的 TP、FP、FN 是各类别数量合计；直接用它们计算得到的是微平均，不是上方显示的类别宏平均。'
+      : 'TP、FP、FN 与上方指标都只统计所选类别；本实验在分母为 0 时将对应指标显示为 0。';
+    if (readingNote) readingNote.innerHTML = '<p>宏平均与微平均的区别：A 类 (TP=90, FP=10, FN=10) 的 P/R/F1 都是 0.9；B 类 (1,9,9) 都是 0.1。宏平均各为 0.5；合并计数后各约为 0.83，这是微平均。</p><p>宏平均 F1 先逐类计算再平均。例：A 类 (9,1,81) 与 B 类 (9,81,1) 各自 F1 都是 0.18，因此宏平均 F1=0.18；虽然宏平均 P 和 R 都是 0.5，也不能再用它们算出宏平均 F1。</p>';
+    if (prCaption) prCaption.textContent = className === 'all'
+      ? '曲线是各类别精度包络在相同 Recall 位置的平均；圆点按当前置信度和 IoU 用逐框计数精确重算。插值包络与离散工作点含义不同，圆点不一定落在线上。'
+      : '曲线是所选类别的精度包络；圆点按当前置信度和 IoU 用逐框计数精确重算。插值包络与离散工作点含义不同，圆点不一定落在线上。';
+    if (f1Caption) f1Caption.textContent = importedYoloV5Evaluation
+      ? '曲线显示各类别 F1 的平均；YOLOv5 数据按每类 P/R 插值曲线在 1000 个置信度样本上计算。圆点使用当前阈值的精确计数，作为该工作点的权威读数。'
+      : '曲线在每个候选置信度下先逐类统计，再平均各类 F1。圆点使用滑杆阈值的精确计数，作为该工作点的权威读数。';
 
     const left = 48, top = 18, width = 422, height = 196;
     const grid = Array.from({ length: 5 }, (_, index) => {

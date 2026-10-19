@@ -27,7 +27,7 @@
 - 复用现有模块、样式和 verify.cjs，不新增运行时依赖，不拆分整个实验室模块。
 - 教学正文独立可读，不使用“视频里提到”等依赖来源的表述。
 - 只修正已确认的指标口径问题及直接相关解释。
-- 按当前站点托管流程发布修正；不向项目 GitHub `origin` 提交或推送，除非用户另行提出。
+- 按当前站点托管流程提交并发布修正；不直接向项目 GitHub `origin` 推送，除非用户另行提出。
 
 ## Review Focus
 
@@ -63,7 +63,7 @@
 **Files:**
 - Modify: `dist/textbook-lab.js` — `metricsPanel()`、`updateMetrics()`。
 - Modify: `dist/textbook-v2.js` — metrics 课程的 P/R/F1 说明，补充类别平均的适用范围。
-- Test: `verify.cjs` — 现有模拟 DOM 交互检查。
+- Test: `verify-metrics.cjs` — 指标数值和模拟 DOM 交互的专项验证。
 
 **Interfaces:**
 - Consumes: Task 1 的工作点结果及当前 className。
@@ -76,7 +76,7 @@
 - [x] 定向交互断言覆盖：合成全部类别→单类别→导入全部类别→恢复合成，名称、公式和计数说明均正确。
 - [x] Run: `node verify-metrics.cjs`；数值与文字状态检查通过。
 
-### Task 3: 验收与网站更新准备
+### Task 3: 验收与网站更新
 
 **Files:**
 - Modify: `dist/index.html` — 实施完成后更新受影响 JS 的缓存版本。
@@ -86,7 +86,7 @@
 - [x] 用现有验证 fixture 自动核对导入态 P/R/F1 宏平均、数量合计、AP/mAP 稳定；自动交互检查恢复合成数据后的标签和公式。
 - [x] 在 390×844 窄屏检查新增公式、曲线说明及算例可读；键盘切换类别与滑杆可用。
 - [x] 确认课程普通 P/R/F1 定义与实验室宏平均说明衔接；`git diff --check` 通过并复核变更范围。
-- [x] 按当前站点托管流程发布，在线上实验室确认新缓存版本生效；站点访问范围保持原设置。项目 GitHub `origin` 未提交或推送。
+- [x] 按当前站点托管流程发布，在线上实验室确认新缓存版本生效；站点访问范围保持原设置，未向项目 GitHub `origin` 推送。
 
 ## 计划自查
 
@@ -102,4 +102,4 @@
 - 静态检查：`node --check dist/textbook-lab.js`、`node --check dist/textbook-v2.js`、`node --check verify-metrics.cjs`、`git diff --check` 均通过。
 - 广义验证限制：原 `node verify.cjs` 在测试指标代码前，于 `textbook-exercises.js` 因 `network` 课程有 9 节但练习覆盖仅 4 节而退出。本次范围不涉及该练习库，因此未扩展修复。
 - 浏览器：本地预览在桌面和 390×844 窄屏验证；全部类别与单类别切换、阈值边界、图表说明及宏平均公式可读。
-- 发布：按站点自身源码仓库流程完成，部署地址、版本和部署状态将在发布验收后补录。
+- 发布：站点源仓库 commit `0940d4664fcbbe8ac677bcd60bd507b162c95029`；版本 69；部署状态 `succeeded`；线上地址 `https://vision-lab-yolov5.snappybream7.chatgpt.site`。本机标准打包 helper 在目录复制阶段失败，随后用 Windows 文件复制和系统 tar 生成含 `dist/.openai/hosting.json` 的等效归档；Sites 已接受该归档并成功部署。

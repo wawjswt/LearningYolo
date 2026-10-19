@@ -1,0 +1,16 @@
+.tensor-ops-panel{margin:26px 0 18px;padding:22px;background:#fbfaf7;border:1px solid #e7e2d7;border-radius:12px;box-shadow:0 8px 24px rgba(42,40,56,.04)}
+.tensor-ops-heading h3{margin:5px 0 4px;color:#292d40;font-size:20px;line-height:1.4}
+.tensor-ops-heading p{margin:0;color:#777d8a;font-size:12px}
+.tensor-ops-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
+.tensor-op-card{min-width:0;padding:15px 16px;background:#fff;border:1px solid #e9e7e1;border-radius:9px}
+.tensor-op-card>span{display:block;color:#777d8a;font-size:11px;font-weight:650}
+.tensor-ops-panel .tensor-op-card code{display:block;width:max-content;max-width:100%;margin:5px 0 8px;padding:4px 7px;overflow-wrap:anywhere;background:#f1eef9;border-radius:5px;color:#5b4c94;font:12px/1.5 Consolas,"Cascadia Code",monospace}
+.tensor-op-card p{margin:0 0 8px;color:#596273;font-size:12px;line-height:1.65}
+.tensor-op-card small{display:inline-block;color:#427d73;font-size:10px;font-weight:600}
+.tensor-ops-code{margin:0;box-shadow:0 5px 16px rgba(33,37,48,.1)}
+.tensor-ops-code pre{max-height:460px}
+.tensor-ops-output{display:grid;grid-template-columns:115px 1fr;gap:12px;align-items:start;margin-top:12px;padding:13px 15px;background:#f0f6f3;border:1px solid #d9e8df;border-radius:8px}
+.tensor-ops-output strong{padding-top:2px;color:#427365;font-size:11px}
+.tensor-ops-output pre{margin:0;overflow:auto;color:#405b52;font:11px/1.7 Consolas,"Cascadia Code",monospace;white-space:pre}
+.tensor-ops-footnote{margin:12px 2px 0!important;color:#777d8a!important;font-size:11px!important;line-height:1.75!important}
+@media(max-width:760px){.tensor-ops-panel{padding:16px}.tensor-ops-grid{grid-template-columns:1fr}.tensor-ops-output{grid-template-columns:1fr;gap:5px}.tensor-ops-code pre{max-height:360px}}

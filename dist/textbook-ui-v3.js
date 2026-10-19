@@ -62,13 +62,54 @@
         return markup;
       }).join('');
       const fallback=placements.filter(figure=>figure.section===i&&!placed.has(figure.key)).map(figure=>{placed.add(figure.key);return window.lessonFigures.render(l,figure.key)}).join('');
+      const tensorOperations=l.id==='tensor'&&i===1?tensorOperationsMarkup():'';
       const tensorExplorer=l.id==='tensor'&&i===8?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&i===4?tensorTransposeMarkup():'';
       const lessonPlayground=window.lessonPlaygrounds?.render(l.id,i)||'';
       const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,i)||'';
-      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+fallback+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
+      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
     }).join('');
   }
+  function tensorOperationsMarkup(){
+    const code=[
+      'import torch',
+      '',
+      '# 1) 逐元素乘法：对应位置分别相乘，形状相同或可广播',
+      'A = torch.tensor([[1., 2., 3.], [4., 5., 6.]])',
+      'B = torch.tensor([[10., 20., 30.], [40., 50., 60.]])',
+      "print('逐元素乘法:', A * B)",
+      '',
+      '# 2) 向量点积：等长的一维向量，对应相乘后求和，结果是标量',
+      'u = torch.tensor([1., 2., 3.])',
+      'v = torch.tensor([4., 5., 6.])',
+      "print('向量点积:', torch.dot(u, v))  # 1×4 + 2×5 + 3×6 = 32",
+      '',
+      '# 3) 矩阵乘法：左列数 3 = 右行数 3，结果形状为 (2, 2)',
+      'M = torch.tensor([[1., 2., 3.], [4., 5., 6.]])',
+      'N = torch.tensor([[1., 0.], [0., 1.], [1., 1.]])',
+      "print('矩阵乘法:', M @ N)  # 也可写 torch.matmul(M, N)",
+      '',
+      '# 4) 三维向量叉积：输出一个垂直于两输入的三分量向量',
+      'ex = torch.tensor([1., 0., 0.])',
+      'ey = torch.tensor([0., 1., 0.])',
+      "print('叉积:', torch.linalg.cross(ex, ey, dim=0))  # [0., 0., 1.]"
+    ].join('\n');
+    return '<section class="tensor-ops-panel" aria-labelledby="tensor-ops-title"><div class="tensor-ops-heading"><div><span class="chapter-kicker">PYTORCH · MULTIPLICATION MAP</span><h3 id="tensor-ops-title">四种运算，看符号就分清</h3><p>先看输入是什么形状，再判断结果是逐项、标量、矩阵还是垂直向量。</p></div></div><div class="tensor-ops-grid"><article class="tensor-op-card"><span>逐元素乘法</span><code>A * B</code><p>对应位置分别相乘；形状相同或可以广播。</p><small>(2, 3) 与 (2, 3) → (2, 3)</small></article><article class="tensor-op-card"><span>向量点积</span><code>torch.dot(u, v)</code><p>等长的一维向量，对应相乘后求和。</p><small>(3,) 与 (3,) → 标量 ()</small></article><article class="tensor-op-card"><span>矩阵乘法</span><code>A @ B</code><p>行与列相乘并累加；中间维度必须相等。</p><small>(2, 3) @ (3, 2) → (2, 2)</small></article><article class="tensor-op-card"><span>三维向量叉积</span><code>torch.linalg.cross(u, v)</code><p>得到同时垂直于两个输入的三分量向量。</p><small>(3,) 与 (3,) → (3,)</small></article></div><div class="tensor-ops-code code-block"><div class="code-head"><span>PyTorch · 可直接运行</span><button class="copy" type="button" data-copy-fragment="tensor-ops-code">复制本段代码</button></div><pre><code id="tensor-ops-code">'+esc(code)+'</code></pre></div><div class="tensor-ops-output"><strong>这段代码的结果</strong><pre>逐元素乘法: tensor([[ 10.,  40.,  90.],&#10;        [160., 250., 360.]])&#10;向量点积: tensor(32.)&#10;矩阵乘法: tensor([[ 4.,  5.],&#10;        [10., 11.]])&#10;叉积: tensor([0., 0., 1.])</pre></div><p class="tensor-ops-footnote">`torch.dot` 只接受两个等长的一维向量；批量矩阵乘法用 `@` / `torch.matmul`。叉积的三元素轴必须长度为 3；批量输入也可以沿最后一轴计算。</p></section>';
+  }
+  document.addEventListener('click',async event=>{
+    const button=event.target.closest('button[data-copy-fragment]');
+    if(!button)return;
+    const code=document.getElementById(button.dataset.copyFragment);
+    if(!code)return;
+    try{
+      await navigator.clipboard.writeText(code.innerText);
+      button.textContent='已复制';
+      window.setTimeout(()=>{button.textContent='复制本段代码'},1400);
+    }catch{
+      button.textContent='复制失败，请手动选择';
+      window.setTimeout(()=>{button.textContent='复制本段代码'},1800);
+    }
+  });
   function tensorExplorerMarkup(){
     return '<section class="tensor-explorer" data-tensor-explorer data-shape="4d" data-step="0" aria-labelledby="tensor-explorer-title"><div class="tensor-explorer-heading"><div><span class="chapter-kicker">INTERACTIVE EXPLORER · 动手看 shape 与索引</span><h3 id="tensor-explorer-title">亲自选一组索引，看它怎样落到内存</h3></div><span class="tensor-zero-note">索引从 0 开始</span></div><p class="tensor-explorer-intro">拖动每条轴的索引。左边看它选中了哪一组数据，右边看最终的行、列与元素；默认把元素按 0、1、2……的顺序填入，再按 shape 重排。</p><div class="tensor-shape-switch" role="group" aria-label="选择张量形状"><button type="button" data-tensor-shape="3d" aria-pressed="false">三维　(3, 4, 5)</button><button type="button" data-tensor-shape="4d" aria-pressed="true">四维　(2, 3, 4, 5)</button></div><div class="tensor-layout"><figure class="tensor-diagram-card"><div class="tensor-card-label"><strong>分组结构</strong><span>紫色边框标出所选组与表</span></div><div class="tensor-diagram-scroll" data-tensor-diagram></div><figcaption>先沿外层轴选组，再进入其中的表；放大区展示行轴与列轴上的位置。图中的折叠只是阅读方式，张量本身仍有 shape 所写的全部轴。</figcaption></figure><div class="tensor-controls-card"><div class="tensor-card-label"><strong>逐轴选择</strong><span>用滑块或键盘方向键</span></div><div class="tensor-axis-controls" data-tensor-axis-controls></div><div class="tensor-computation"><p><span>shape</span><code data-tensor-shape-readout></code></p><p><span>stride</span><code data-tensor-stride-readout></code></p><p><span>storage_offset</span><code>0</code></p><div class="tensor-selected-value" aria-live="polite"><span>当前元素</span><strong data-tensor-selected-readout></strong></div><p class="tensor-valid-range" data-tensor-range-readout></p></div></div></div><div class="tensor-learning-grid"><section class="tensor-steps-card"><div class="tensor-card-label"><strong>把 offset 一步步算出来</strong><span>每项都是“索引 × stride”</span></div><p class="tensor-formula">元素位置 = storage_offset + Σ(索引 × stride)</p><div class="tensor-step-list" data-tensor-step-list aria-live="polite"></div><div class="tensor-step-actions"><button type="button" class="secondary" data-tensor-step-next>显示下一步</button><button type="button" class="tensor-quiet-button" data-tensor-step-reset>从头演示</button></div></section><section class="tensor-predict-card"><div class="tensor-card-label"><strong>先预测，再揭晓</strong><span>试着心算当前索引</span></div><p>按上面的 stride，当前索引对应的元素偏移是多少？</p><label class="tensor-prediction-label" for="tensor-prediction">我的预测</label><div class="tensor-prediction-row"><input id="tensor-prediction" data-tensor-prediction type="number" min="0" step="1" inputmode="numeric" placeholder="输入一个整数"><button type="button" class="secondary" data-tensor-check>检查</button></div><p class="tensor-prediction-feedback" data-tensor-prediction-feedback role="status" aria-live="polite"></p><p class="tensor-small-note">本示例用从 0 开始的连续整数填充张量，因此偏移数值也恰好是元素值。换成别的数据后，两者不一定相等。</p></section></div></section>';
   }

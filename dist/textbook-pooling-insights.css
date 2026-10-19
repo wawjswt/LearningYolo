@@ -1,0 +1,23 @@
+.pooling-shift-playground{margin-top:22px;padding:17px;border:1px solid #e7e3d9;border-radius:5px;background:#faf9f5;color:#394651}
+.pooling-shift-methods{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.pooling-shift-methods button{min-height:34px;padding:7px 11px;border:1px solid #e4e0d7;border-radius:4px;background:#fffefa;color:#64717d;font:inherit;font-size:11px;cursor:pointer}
+.pooling-shift-methods button[aria-pressed="true"]{border-color:#a99bc8;background:#f0edf6;color:#554584;box-shadow:inset 0 0 0 1px #d9d1e8}
+.pooling-shift-svg-wrap{overflow-x:auto;border:1px solid #e9e6df;border-radius:5px;background:#fffefa}
+.pooling-shift-svg-wrap svg{display:block;width:100%;min-width:590px;height:auto}
+.pooling-shift-svg-title{fill:#43515d;font-size:13px;font-weight:700}
+.pooling-shift-svg-note,.pooling-shift-arrow-label{fill:#78828a;font-size:10px}
+.pooling-shift-cell{fill:#f7f5f0;stroke:#e3e0d8;stroke-width:1.4}
+.pooling-shift-cell.is-active{fill:#dcd3ed;stroke:#7866a4;stroke-width:2}
+.pooling-shift-cell-value{fill:#66717a;font-size:12px;font-weight:650}
+.pooling-shift-output{fill:#f7f5f0;stroke:#e3e0d8;stroke-width:1.4}
+.pooling-shift-output.is-selected{fill:#e7f1eb;stroke:#6c9a7e;stroke-width:2.3}
+.pooling-shift-output-value{fill:#455a4d;font-size:19px;font-weight:750}
+.pooling-shift-output-label{fill:#7b858d;font-size:9px}
+.pooling-shift-arrow{fill:none;stroke:#9c93a9;stroke-width:2}
+.pooling-shift-window{fill:#7866a4;fill-opacity:.08;stroke:#7866a4;stroke-width:2;stroke-dasharray:5 4;pointer-events:none}
+.pooling-shift-range{display:grid;gap:7px;margin:14px 0 8px;color:#5c6873;font-size:11px}
+.pooling-shift-range input{width:100%;accent-color:#7866a4}
+.pooling-shift-range output{color:#5b4c83;font-weight:700}
+.pooling-shift-status{min-height:2.2em;margin:9px 0;padding:10px 12px;border-left:3px solid #806da6;background:#f2eff7;color:#5f586b;font-size:11px;line-height:1.7}
+.pooling-shift-playground button:focus-visible,.pooling-shift-playground input:focus-visible{outline:2px solid #7867aa;outline-offset:2px}
+@media(max-width:520px){.pooling-shift-playground{margin:20px -9px 25px;padding:13px 10px}.pooling-shift-svg-wrap svg{min-width:560px}}

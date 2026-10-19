@@ -50,6 +50,7 @@
   ];
   const quiz=[
     {q:'2012 年的 AlexNet 是深度学习和 CNN 的起点。',a:'false',why:'不正确。更早已有深度学习与卷积网络研究；2012 年是大规模视觉识别中的重要里程碑。'},
+    {q:'训练阶段，AlexNet 在前两个全连接隐藏层使用 Dropout。',a:'true',why:'正确。原论文把 Dropout 用在前两个全连接隐藏层；推理阶段会关闭随机屏蔽。'},
     {q:'ReLU 让所有输入区间的梯度都保持非零。',a:'false',why:'不正确。ReLU 的负半轴输出与梯度都为 0；它缓解部分饱和问题，但不能消除所有优化困难。'},
     {q:'15.3% 与 26.2% 是 AlexNet 增强前后的错误率。',a:'false',why:'不正确。它们对应不同参赛系统的 Top-5 错误率；论文另报告未使用额外数据的 AlexNet 五模型集成为 16.4%。'},
     {q:'只要做数据增强，所有图像任务都可以水平翻转。',a:'false',why:'不正确。只有标签在该变换下仍然成立时，增强才可靠；文字识别、左右方向类别等任务需谨慎。'}
@@ -83,7 +84,7 @@
   }
   function playgroundMarkup(){
     const quizCards=quiz.map((item,index)=>'<article class="ax-quiz-card" data-ax-quiz-card="'+index+'"><h4>'+esc(item.q)+'</h4><div role="group" aria-label="判断第 '+(index+1)+' 题"><button type="button" data-ax-answer="true">正确</button><button type="button" data-ax-answer="false">不正确</button></div><p data-ax-feedback aria-live="polite"></p></article>').join('');
-    return '<section class="lesson-playground alexnet-playground" data-alexnet data-ax-stage="0" data-ax-idea-active="relu" data-ax-gpu-layout="2" data-ax-aug-active="crop" aria-labelledby="ax-title">'+
+    return '<section class="lesson-playground alexnet-playground" data-alexnet data-ax-active-stage="0" data-ax-idea-active="relu" data-ax-gpu-layout="2" data-ax-aug-active="crop" aria-labelledby="ax-title">'+
       '<header class="ax-heading"><span>INTERACTIVE · 经典 CNN 档案</span><h3 id="ax-title">拆开 AlexNet：从像素到 1000 类</h3><p>沿着网络结构点选，接着动手试试激活、池化、Dropout、GPU 分工和数据增强。</p></header>'+ 
       '<section class="ax-panel"><div class="ax-subhead"><div><span>01 · NETWORK MAP</span><h4>五层卷积，三层全连接</h4></div><p>通道越往后，特征越抽象；空间网格逐步缩小。</p></div>'+architectureMarkup()+'</section>'+
       '<section class="ax-panel"><div class="ax-subhead"><div><span>02 · TRAINING IDEAS</span><h4>五种关键设计，五个小实验</h4></div><p>点选一种方法，直接观察它改变了什么。</p></div>'+ideasMarkup()+'</section>'+ 
@@ -93,7 +94,7 @@
       '<p class="ax-footer-note">AlexNet 的价值在于一次成功的规模化实践。理解它时，既要记住有效组合，也要看见时代背景、指标口径与技术边界。</p></section>';
   }
   function updateStage(root){
-    const index=Number(root.dataset.axStage)||0,stage=stages[index];
+    const index=Number(root.dataset.axActiveStage)||0,stage=stages[index];
     root.querySelectorAll('[data-ax-stage]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.axStage)===index)));
     root.querySelector('[data-ax-stage-kind]').textContent=stage.kind==='image'?'图像输入':stage.kind==='dense'?'全连接层':stage.kind==='output'?'分类输出':'卷积特征';
     root.querySelector('[data-ax-stage-title]').textContent=stage.title;
@@ -164,7 +165,7 @@
   };
   document.addEventListener('click',event=>{
     const root=event.target.closest('[data-alexnet]');if(!root)return;
-    const stage=event.target.closest('[data-ax-stage]');if(stage){root.dataset.axStage=stage.dataset.axStage;update(root);return}
+    const stage=event.target.closest('[data-ax-stage]');if(stage){root.dataset.axActiveStage=stage.dataset.axStage;update(root);return}
     const idea=event.target.closest('[data-ax-idea]');if(idea){root.dataset.axIdeaActive=idea.dataset.axIdea;update(root);return}
     const gpu=event.target.closest('[data-ax-gpu]');if(gpu){root.dataset.axGpuLayout=gpu.dataset.axGpu;updateGpu(root);return}
     const result=event.target.closest('[data-ax-result]');if(result){root.querySelectorAll('[data-ax-result]').forEach(button=>button.setAttribute('aria-pressed',String(button===result)));updateResults(root);return}

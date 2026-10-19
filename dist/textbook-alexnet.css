@@ -1,4 +1,5 @@
 .alexnet-playground{display:grid;gap:14px;padding:0 0 20px;color:#46535e}
+.alexnet-playground,.alexnet-playground>* ,.ax-panel,.ax-panel>*,.ax-architecture,.ax-ideas,.ax-idea-panel,.ax-idea-panel>*,.ax-demo,.ax-subhead{min-width:0;max-width:100%;box-sizing:border-box}
 .ax-heading{padding:16px 18px 14px;border-left:3px solid #8b78b4;background:linear-gradient(105deg,#f4f1f8,#faf8f4)}
 .ax-heading>span,.ax-subhead>div>span,.ax-idea-copy>span{color:#75649f;font-size:9px;font-weight:750;letter-spacing:.08em}
 .ax-heading h3{margin:5px 0;color:#354353;font-size:17px;line-height:1.4}
@@ -46,6 +47,7 @@
 .ax-probe{stroke:#cf997a;stroke-width:1.5;stroke-dasharray:3 3}
 .ax-probe-dot{fill:#cf997a;stroke:#fff;stroke-width:2}
 .ax-demo-readout{min-height:30px;margin:0;padding:8px 9px;border-left:2px solid #9abcae;background:#edf4f0;color:#4d665e;font-size:9px;line-height:1.65}
+.ax-stage-detail p,.ax-idea-copy p,.ax-demo-readout,.ax-subhead>p{overflow-wrap:anywhere}
 .ax-pool-demo{grid-template-columns:minmax(120px,.5fr) 1fr;align-items:center}
 .ax-pool-demo .ax-control-line{display:grid;gap:8px}
 .ax-pool-demo select{width:100%;padding:7px;border:1px solid #ddd9d1;border-radius:4px;background:#fffefa;color:#52606a;font:10px "Segoe UI","Microsoft YaHei",sans-serif}

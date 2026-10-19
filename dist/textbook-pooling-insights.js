@@ -7,9 +7,6 @@
   lesson.sections[2].paragraphs.push('下面移动一个强激活，观察它在 2×2、stride=2 池化网格中的位置。示意图只展示一个激活值在池化窗口间的关系；真实图像还会经过多层卷积、边界填充和采样，池化不保证整个网络对任意平移保持相同预测。');
   lesson.keypoints.push('池化带来的位置容忍度取决于窗口与步幅；跨越池化网格边界时，输出位置仍会改变。');
   lesson.sources=[...(lesson.sources||[]),
-    {url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html',label:'PyTorch MaxPool2d：最大值、窗口、步幅与输出形状'},
-    {url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.AvgPool2d.html',label:'PyTorch AvgPool2d：窗口平均、步幅与填充值规则'},
-    {url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html',label:'PyTorch Conv2d：可学习权重、输出通道与步幅'},
     {url:'https://arxiv.org/abs/2103.10097',label:'Stride and Translation Invariance in CNNs：下采样、平移与泛化的权衡'}
   ];
 

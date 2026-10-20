@@ -42,7 +42,11 @@
     window.addEventListener('resize',readingEffectsHandler);
     readingEffectsHandler();
   }
-  function rich(value){const mark=String.fromCharCode(96);const pattern=new RegExp(mark+'([^'+mark+']+)'+mark,'g');return esc(value).replace(pattern,'<code>$1</code>').replace(/\n/g,'<br>')}
+  function mathLike(value){const source=value.trim();if(!source||source.length>140||/(?:->|=>)/.test(source))return false;if(/(?:\b(?:torch|nn|numpy|np|model|loss|optimizer|parameter|dataset|DataLoader|Linear|Conv2d|BatchNorm|CrossEntropyLoss|MSELoss|AdamW?|SGD|ReLU|Sigmoid|reshape|view|argmax|softmax|backward|zero_grad|train|eval|state_dict|shape|dtype|requires_grad|detach|item|append|range|print|tensor|True|False|None)\b|\.[A-Za-z_]\w*|["'])/.test(source))return false;if(/^(?:bias|axis|dim|stride|padding|dtype|device|lr|weight_decay|reduction|in_channels|out_channels|kernel_size|num_classes|batch_size|num_workers|dropout|eps|momentum)\s*=/.test(source))return false;return /[=≈≃≤≥<>±×·÷⊙∑Σ√∞^*+−-]|[\u0391-\u03A9\u03B1-\u03C9]|_[0-9{]/.test(source)||(/^[A-Za-z0-9.]+\/[A-Za-z0-9.]+$/.test(source)&&/\d/.test(source))}
+  function rich(value){const source=String(value),mark=String.fromCharCode(96),pattern=new RegExp(mark+'([^'+mark+']+)'+mark,'g');let html='',last=0,match;while((match=pattern.exec(source))){html+=esc(source.slice(last,match.index));html+=mathLike(match[1])?'\\('+esc(match[1])+'\\)':'<code>'+esc(match[1])+'</code>';last=pattern.lastIndex}return (html+esc(source.slice(last))).replace(/\n/g,'<br>')}
+  const lessonMathOptions={delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],ignoredTags:['script','noscript','style','textarea','pre','code','option'],throwOnError:false};
+  function renderLessonMath(root){if(root&&window.renderMathInElement)window.renderMathInElement(root,lessonMathOptions)}
+  window.renderLessonMath=renderLessonMath;
   function exerciseCard(l,exercise,type,index){
     const label=type==='section'?'本节练习':'章末综合题 '+(index+1);
     const indexAttribute=type==='section'?'data-section-index':'data-exercise-index';
@@ -449,6 +453,7 @@
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     document.querySelectorAll('[data-course-count]').forEach(badge=>{badge.textContent=String(lessons.length);badge.setAttribute('aria-label',lessons.length+' 节课程')});
     document.getElementById('content').innerHTML=content;
+    renderLessonMath(document.getElementById('content'));
     initializeConceptGuides();
     initializeWorkedExamples();
     window.lessonPlaygrounds?.initialize();

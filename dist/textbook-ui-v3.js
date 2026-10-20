@@ -60,7 +60,8 @@
     const placed=new Set();
     return l.sections.map((s,i)=>{
       const paragraphs=s.paragraphs.map((p,j)=>{
-        const markup='<p>'+rich(p)+'</p>';
+        const heading=s.subheadings?.[j]?'<h3 class="lesson-subheading">'+rich(s.subheadings[j])+'</h3>':'';
+        const markup=heading+'<p>'+rich(p)+'</p>'+(window.lessonBiasPlaygrounds?.renderParagraph(l.id,i,j)||'');
         const here=placements.filter(figure=>figure.section===i&&figure.paragraph===j&&!placed.has(figure.key));
         if(here.length){here.forEach(figure=>placed.add(figure.key));return markup+here.map(figure=>window.lessonFigures.render(l,figure.key)).join('')}
         return markup;

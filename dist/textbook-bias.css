@@ -16,3 +16,29 @@
 .bn-readouts{grid-template-columns:repeat(3,minmax(0,1fr))}
 .bn-readouts>div:last-child strong{font-size:13px}
 @media(max-width:700px){.bias-playground .bias-control-grid,.bias-readouts,.bn-readouts{grid-template-columns:1fr}.bn-flow{gap:7px;padding:9px}.bn-flow span{padding:6px 7px;font-size:10px}}
+
+/* 分层讲解与四步 BN 入门实验 */
+.text-section>.lesson-subheading{font:650 17px/1.6 "Segoe UI","Microsoft YaHei",sans-serif;color:#364553;margin:28px 0 12px}
+.bn-sample-inputs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+.bn-sample-inputs label{font-size:12px;color:#5b6571}
+.bn-sample-inputs input{display:block;box-sizing:border-box;width:100%;min-width:0;margin-top:6px;padding:9px 10px;border:1px solid #dcd6e7;border-radius:4px;background:#fff;color:#304050;font:inherit;font-variant-numeric:tabular-nums}
+.bn-sample-inputs input[aria-invalid="true"]{border-color:#b65444}
+.bn-presets{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.bn-step-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:18px 0 12px}
+.bn-presets button,.bn-step-buttons button{border:1px solid #ddd8e6;border-radius:4px;padding:9px 11px;background:#fffefa;color:#56616d;font:inherit;font-size:12px;cursor:pointer}
+.bn-step-buttons button[aria-pressed="true"]{background:#ebe5f7;border-color:#9e8ac2;color:#5d4698;font-weight:650}
+.bn-primer .bn-step-explanation{padding:12px 14px;background:#f0ecf7;border-left:3px solid #8d79b4;font-size:13px;line-height:1.85}
+.bn-primer-chart{overflow-x:auto;background:#fffefa;border:1px solid #e9e6df;border-radius:4px}
+.bn-primer-chart svg{display:block;width:100%;min-width:520px;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.bn-table-wrap{max-width:100%;overflow-x:auto;margin:18px 0 22px;border:1px solid #e4dfea;border-radius:5px;background:#fffefa}
+.bn-learning-table{width:100%;min-width:520px;border-collapse:collapse;font-size:12px;line-height:1.7;font-variant-numeric:tabular-nums}
+.bn-learning-table caption{text-align:left;padding:11px 13px;color:#68727f;background:#f7f5fa;font-size:12px;line-height:1.7}
+.bn-learning-table th,.bn-learning-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #ede9f1;vertical-align:top;color:#465462}
+.bn-learning-table thead th{font-weight:650;color:#5f4c8b;background:#f9f7fc}
+.bn-learning-table tbody th{font-weight:600}
+.bn-learning-table tr:last-child td,.bn-learning-table tr:last-child th{border-bottom:0}
+.bn-learning-table .is-current{background:#eee8f8}
+.bn-learning-table .is-current th{color:#634b9c}
+.bias-playground .bn-affine-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+.bn-primer button:focus-visible,.bn-sample-inputs input:focus-visible,.bn-table-wrap:focus-visible{outline:2px solid #8d72ba;outline-offset:3px}
+@media(max-width:700px){.bn-sample-inputs,.bn-step-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}.bias-playground .bn-affine-controls{grid-template-columns:1fr}.text-section>.lesson-subheading{font-size:16px}.bn-readouts strong{font-size:15px}}

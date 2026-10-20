@@ -74,6 +74,9 @@
   add('broadcasting','广播（broadcasting）','运算时把长度为 1 或缺失的轴按规则重复扩展，以便形状兼容。','像把一条统一规则复制到每一行，但要先确认行列能对齐。',['广播','broadcasting','广播机制','broadcast'],'tensor');
   add('gradient-descent','梯度下降（gradient descent）','沿梯度相反方向小步调整参数，尝试降低损失。','像沿着坡度最陡的下坡方向，一步步走向低处。',['梯度下降','gradient descent','GD']);
   add('backpropagation','反向传播（backpropagation）','按链式法则把输出误差对各层参数的影响逐层算回去。','像从总账倒查每个环节各自贡献了多少误差。',['反向传播','backpropagation','backprop']);
+  add('chain-rule','链式法则（chain rule）','当一个结果由多步计算得到时，把每一步的变化影响相乘，就能求出最终结果对最初输入的影响。','像沿着接力路线追踪变化：每一段传递多少影响，最后把各段影响乘起来。',['链式法则','chain rule'],'gradient');
+  add('intermediate-variable','中间变量（intermediate variable）','在多步计算中暂时保存某一步结果的变量，便于继续计算或追踪影响。','像做长算式时先把一段答案写在草稿纸上，再带入下一步。',['中间变量','中间结果','intermediate variable'],'gradient');
+  add('computation-graph','计算图（computation graph）','用节点表示数值或运算、用箭头表示数据流向的计算步骤图。','像把食谱画成流程图：原料经过几道步骤，最后变成成品。',['计算图','computation graph'],'gradient');
   add('optimizer','优化器（optimizer）','读取当前变化信号，并按规则决定模型里的数字如何更新。','像参考方向箭头和每次改动大小，决定下一步怎么走。',['优化器','optimizer']);
   add('sgd','随机梯度下降（Stochastic Gradient Descent，SGD）','使用一个样本或一批样本估计梯度并更新参数的基本方法。','像每次根据一小批练习的表现调整学习方向。',['SGD','Stochastic Gradient Descent','随机梯度下降'],'optimizer');
   add('momentum','动量（momentum）','把过去的更新方向累积起来，让当前参数更新更平滑。','像推购物车时保留一点惯性，减少左右来回晃动。',['动量','momentum'],'optimizer');
@@ -155,6 +158,8 @@
   // 三维旋转
   add('euler-angles','欧拉角（Euler angles）','用依次绕三个指定轴转动的角度表示三维朝向；必须说明旋转顺序和坐标约定。','像先转方向盘、再抬头、再侧倾；顺序一变，最终朝向通常也变。',['欧拉角','Euler angles','Euler angle'],'quaternion');
   add('quaternion','四元数（quaternion）','用四个数编码三维旋转的一种表示；旋转四元数通常先归一化。','像用一组可组合的四个旋钮记录三维朝向。',['四元数','quaternion'],'quaternion');
+  add('hamilton-product','Hamilton 四元数乘积（Hamilton product）','按规定的标量与向量运算规则组合两个四元数；旋转的组合顺序会影响结果。','像按固定规则把两张转动指令合成一张新指令，先后次序会改变最终方向。',['Hamilton product','Hamilton 乘积','四元数乘法'],'quaternion');
+  add('quaternion-conjugate','四元数共轭（quaternion conjugate）','保留四元数的第一个分量，并把后三个方向分量改成相反数；单位四元数的共轭可用于撤销旋转。','像保留转动幅度信息、把方向指令反过来。',['四元数共轭','共轭四元数','quaternion conjugate','q*'],'quaternion');
   add('axis-angle','轴角表示（axis-angle）','用一条旋转轴和绕该轴转过的角度描述一次三维旋转。','像指明绕哪根箭头旋转、转几度。',['轴角','轴角表示','axis-angle'],'quaternion');
   add('rotation-matrix','旋转矩阵（rotation matrix）','用矩阵乘法把向量转到新的方向，并保持长度与夹角。','像一张方向换算表，把旧坐标换成旋转后的坐标。',['旋转矩阵','rotation matrix'],'quaternion');
   add('radian','弧度（radian）','以圆弧长度相对半径表示角度的单位；一整圈是 2π 弧度。','像用圆的半径当作量角的尺。',['弧度','radian','radians'],'quaternion');

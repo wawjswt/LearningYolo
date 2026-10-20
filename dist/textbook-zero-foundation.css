@@ -424,6 +424,31 @@ code[data-glossary-open]:hover,code[data-glossary-open]:focus-visible{outline:2p
 .bw-hard-negative-scene{max-width:460px;margin:12px auto}
 .bw-hard-negative-scene svg{display:block;width:100%;height:auto;border:1px solid #e2e7e9;border-radius:8px}
 .bw-yolo-loss-table{min-width:760px}
+
+/* 新手分步演示：链式法则、四元数乘法与正负候选损失账本 */
+.bw-chain-demo,.bw-quaternion-product,.bw-yolo-candidate-ledger{margin-top:16px;padding:15px;border:1px solid #e8e3ef;border-radius:10px;background:#fff}
+.bw-chain-demo h4,.bw-quaternion-product h4,.bw-yolo-candidate-ledger h4{margin:0 0 7px;color:#4e4275;font-size:14px}
+.bw-chain-demo>p,.bw-quaternion-product>p,.bw-yolo-candidate-ledger>p{margin:7px 0;color:#596575;font-size:12px;line-height:1.8}
+.bw-chain-flow{display:flex;align-items:center;justify-content:center;gap:10px;margin:13px 0}
+.bw-chain-flow>div{display:grid;gap:5px;min-width:120px;padding:10px;border:1px solid #e5e0ec;border-radius:9px;background:#faf9fc;text-align:center;transition:background .16s,border-color .16s,transform .16s}
+.bw-chain-flow>div.is-current{border-color:#8069b4;background:#f0ebfa;transform:translateY(-2px)}
+.bw-chain-flow small,.bw-chain-readouts small,.bw-candidate-losses small{color:#788294;font-size:11px}
+.bw-chain-flow strong,.bw-chain-readouts strong,.bw-candidate-losses strong{color:#54478b;font-variant-numeric:tabular-nums}
+.bw-chain-flow>span{color:#8b81a4}
+.bw-chain-readouts,.bw-candidate-losses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:11px 0}
+.bw-chain-readouts>div,.bw-candidate-losses>div{display:grid;gap:4px;padding:10px;border:1px solid #eeeaf3;border-radius:8px;background:#faf9fc}
+.bw-chain-readouts>div>span{color:#697487;font-size:11px;line-height:1.6}
+.bw-q-product-equation{margin:12px 0;padding:14px;border-left:3px solid #8974c1;border-radius:7px;background:#f6f3fb;color:#40365e;font-size:14px;line-height:1.8;overflow-wrap:anywhere}
+.bw-q-product-more{margin:10px 0;padding:10px 12px;border:1px solid #eeeaf3;border-radius:8px;background:#fbfafd;color:#4d5968;font-size:12px;line-height:1.8}
+.bw-q-product-more summary{color:#564a7a;font-weight:650;cursor:pointer}
+.bw-q-product-more ol{padding-left:20px}
+.bw-candidate-card{margin:10px 0;padding:12px;border:1px solid #e9e3f0;border-radius:9px;background:#faf9fc}
+.bw-candidate-card>strong{color:#504576;font-size:13px}
+.bw-candidate-card>p{margin:6px 0;color:#596575;font-size:12px;line-height:1.7}
+.bw-candidate-table{min-width:620px}
+.bw-candidate-table tr.is-current{background:#f1edf9;color:#463c68;font-weight:650}
+@media(max-width:700px){.bw-chain-demo,.bw-quaternion-product,.bw-yolo-candidate-ledger{padding:12px}.bw-chain-flow{gap:5px}.bw-chain-flow>div{min-width:0;flex:1;padding:8px 5px}.bw-chain-flow>span{font-size:11px}.bw-chain-readouts,.bw-candidate-losses{grid-template-columns:1fr}.bw-q-product-equation{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.bw-chain-flow>div{transition:none}}
 .bw-yolo-quickstart ol{margin:10px 0;padding-left:22px;color:#566477;font-size:12px;line-height:1.85}
 .bw-yolo-quickstart li{padding:3px 0}
 .bw-yolo-command-example{overflow-x:auto;margin:10px 0;padding:12px;border-radius:8px;background:#27354a;color:#f0f2f5;font-size:11px;line-height:1.8}

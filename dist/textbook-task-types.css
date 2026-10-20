@@ -1,0 +1,62 @@
+.task-types-playground{margin:28px 0 10px;padding:clamp(18px,3vw,30px);border:1px solid #e6e1f1;border-radius:22px;background:linear-gradient(145deg,#fbfaff 0%,#f7fafc 100%);box-shadow:0 16px 38px rgba(54,43,92,.07);color:#2c3444}
+.tt-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}
+.tt-eyebrow{display:inline-block;color:#7966bb;font-size:11px;font-weight:800;letter-spacing:.12em}
+.tt-heading h3{margin:7px 0 6px;color:#29354a;font-size:clamp(20px,3vw,26px);letter-spacing:-.025em}
+.tt-heading p{max-width:650px;margin:0;color:#687489;font-size:14px;line-height:1.7}
+.tt-stamp{flex:none;margin-top:4px;padding:8px 11px;border-radius:999px;background:#eeebfa;color:#7363aa;font-size:12px;font-weight:700}
+.tt-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:5px;border:1px solid #e9e5f1;border-radius:14px;background:#fff}
+.tt-tabs button{flex:1;min-width:130px;padding:11px 14px;border:0;border-radius:10px;background:transparent;color:#687489;font:inherit;font-size:13px;font-weight:750;cursor:pointer;transition:background .18s,color .18s,transform .18s}
+.tt-tabs button:hover{background:#f5f2fb;color:#5d4d99}
+.tt-tabs button[aria-selected=true]{background:#7663b5;color:#fff;box-shadow:0 5px 14px rgba(104,84,172,.18)}
+.tt-tabs button:focus-visible,.tt-check button:focus-visible,.tt-slider-label input:focus-visible{outline:3px solid #9c8bd4;outline-offset:3px}
+.tt-panel{padding:clamp(12px,2vw,20px);border:1px solid #e8e8f0;border-radius:18px;background:#fff}
+.tt-panel[hidden]{display:none}
+.tt-demo-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(290px,.9fr);gap:16px}
+.tt-visual-card,.tt-result-card{min-width:0;margin:0;padding:16px;border:1px solid #edf0f4;border-radius:16px;background:#fbfcfe}
+.tt-card-label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;color:#39445a}
+.tt-card-label strong{font-size:14px}
+.tt-card-label span{color:#8790a1;font-size:12px}
+.tt-visual-card svg{display:block;width:100%;height:auto;max-height:220px;border-radius:13px}
+.tt-visual-card figcaption{margin-top:11px;color:#687489;font-size:12px;line-height:1.6}
+.tt-prob-row{display:grid;grid-template-columns:32px 1fr 42px;align-items:center;gap:9px;margin:15px 0;color:#536176;font-size:13px}
+.tt-prob-row strong{color:#364156;text-align:right;font-variant-numeric:tabular-nums}
+.tt-bar{height:12px;overflow:hidden;border-radius:99px;background:#e9e5f2}
+.tt-bar i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8d7bc8,#6d5bac);transition:width .16s}
+.tt-bar-blue{background:#e2ebf7}
+.tt-bar-blue i{background:linear-gradient(90deg,#83a9d0,#5581b3)}
+.tt-slider-label{display:block;margin:20px 0 12px;color:#526075;font-size:12px;font-weight:650}
+.tt-slider-label output{float:right;color:#6d5bac;font-variant-numeric:tabular-nums;font-weight:800}
+.tt-slider-label input{display:block;width:100%;height:6px;margin:13px 0 8px;accent-color:#7561b5;cursor:pointer}
+.tt-score-row{display:grid;grid-template-columns:1fr auto;gap:8px 14px;padding:13px 14px;border-radius:12px;background:#f2f0fa;color:#667187;font-size:12px}
+.tt-score-row strong{color:#4f4380;text-align:right;font-variant-numeric:tabular-nums}
+.tt-dynamic-note{margin:12px 0 0;color:#5d7f70;font-size:12px;line-height:1.6}
+.tt-insight{margin:15px 2px 1px;padding:12px 14px;border-left:3px solid #9986d0;border-radius:0 10px 10px 0;background:#f7f5fc;color:#616b7e;font-size:13px;line-height:1.75}
+.tt-insight b{color:#50447c}
+.tt-number-result{display:flex;align-items:baseline;gap:7px;padding:14px 15px;border-radius:13px;background:#f0edf9;color:#655987}
+.tt-number-result span{margin-right:auto;font-size:13px}
+.tt-number-result strong{color:#57488f;font-size:30px;font-variant-numeric:tabular-nums}
+.tt-number-result small{font-size:12px}
+.tt-legend{display:flex;gap:15px;margin-top:10px;color:#697589;font-size:11px}
+.tt-legend span{display:inline-flex;align-items:center;gap:6px}
+.tt-dot-green,.tt-dot-purple{display:inline-block;width:10px;height:10px;border-radius:50%;background:#2f967b}
+.tt-dot-purple{background:#8069c7}
+.tt-detect-chip{display:flex;align-items:center;gap:9px;padding:13px 14px;border:1px solid #e3e1ef;border-radius:12px;background:#f8f7fc}
+.tt-detect-chip span{margin-right:auto;color:#6b7588;font-size:12px}
+.tt-detect-chip strong{color:#514686;font-size:15px}
+.tt-detect-chip small{color:#8b91a0;font-size:11px}
+.tt-iou-readout{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:13px 14px;border-radius:12px;background:#edf5f2;color:#526e66;font-size:13px}
+.tt-iou-readout strong{color:#287d68;font-size:24px;font-variant-numeric:tabular-nums}
+.tt-scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.tt-scope-grid article{display:flex;gap:12px;padding:15px;border:1px solid #eae7f1;border-radius:14px;background:#fff}
+.tt-scope-mark{display:grid;flex:none;place-items:center;width:30px;height:30px;border-radius:10px;background:#efecf9;color:#7562b2;font-size:11px;font-weight:800}
+.tt-scope-grid strong{color:#3e4860;font-size:13px}
+.tt-scope-grid p{margin:6px 0 0;color:#748094;font-size:12px;line-height:1.7}
+.tt-check{display:grid;grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr);gap:14px;align-items:center;margin-top:16px;padding:17px;border:1px solid #e7e2f1;border-radius:16px;background:#f8f6fc}
+.tt-check h4{margin:7px 0 0;color:#354057;font-size:15px;line-height:1.55}
+.tt-check-options{display:grid;gap:7px}
+.tt-check-options button{padding:10px 12px;border:1px solid #e2dfeb;border-radius:10px;background:#fff;color:#5d687d;text-align:left;font:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,background .15s}
+.tt-check-options button:hover,.tt-check-options button.is-selected{border-color:#9a88d2;background:#f0edfa;color:#50447c}
+.tt-check-feedback{grid-column:1/-1;margin:0;color:#607d70;font-size:12px;line-height:1.6}
+.tt-footnote{margin:13px 2px 0;color:#8790a0;font-size:11px;line-height:1.7}
+@media(max-width:760px){.tt-heading{display:block}.tt-stamp{display:inline-block;margin-top:13px}.tt-demo-grid,.tt-scope-grid,.tt-check{grid-template-columns:1fr}.tt-check{align-items:stretch}.tt-check-feedback{grid-column:auto}.tt-tabs button{min-width:100%;text-align:left}.tt-number-result strong{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.tt-tabs button,.tt-bar i,.tt-check-options button{transition:none}}

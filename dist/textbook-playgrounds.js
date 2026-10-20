@@ -98,7 +98,7 @@
       +'<aside class="multiclass-target-panel"><span class="multiclass-panel-kicker">训练目标</span><p>这张图片的真实类别是：</p><div class="multiclass-targets" role="group" aria-label="选择真实类别">'+multiclassLabels.map((label,i)=>'<button type="button" data-multiclass-target="'+i+'" aria-pressed="'+String(i===2)+'">'+label+'</button>').join('')+'</div>'
       +'<div class="multiclass-vector"><span>独热标签 y</span><strong data-multiclass-onehot>[0, 0, 1]</strong></div>'
       +'<div class="multiclass-loss-result"><span>真实类预测概率 p<sub>y</sub></span><strong data-multiclass-true-prob>9.9%</strong></div>'
-      +'<div class="multiclass-loss-result"><span>单样本交叉熵 −log(p<sub>y</sub>)</span><strong data-multiclass-ce>2.32</strong></div>'
+      +'<div class="multiclass-loss-result"><span>单样本交叉熵 \\(-\\ln p_y\\)</span><strong data-multiclass-ce>2.32</strong></div>'
       +'<p class="multiclass-top-prediction" data-multiclass-top>最高概率：猫</p></aside></div>'
       +'<p class="playground-insight" data-multiclass-hint role="status" aria-live="polite"></p>'
       +'<p class="playground-footnote">示意：类别 logits 为 [z猫,z狗,z兔子]，训练标签表示这三个互斥答案中哪一个是真的。改变非目标类分数也会改变 Softmax 和反向梯度；交叉熵公式中其他 one-hot 项为 0，不代表它们不参与学习。</p></section>';
@@ -120,10 +120,10 @@
 
   function informationMarkup(){
     return '<section class="lesson-playground information-playground" data-information-playground data-base="nat" aria-labelledby="information-playground-title">'
-      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · 信息量</span><h3 id="information-playground-title">一个结果越少见，带来的信息越多</h3><p>拖动事件概率。看看概率降低时，信息量 −log(p) 怎样快速上升。</p></div><button type="button" class="playground-reset" data-information-reset>恢复默认</button></div>'
+      +'<div class="playground-heading"><div><span class="playground-kicker">互动图解 · 信息量</span><h3 id="information-playground-title">一个结果越少见，带来的信息越多</h3><p>拖动事件概率。看看概率降低时，信息量 \\(-\\ln p\\) 怎样快速上升。</p></div><button type="button" class="playground-reset" data-information-reset>恢复默认</button></div>'
       +'<div class="information-units" role="group" aria-label="选择信息量单位"><button type="button" data-information-base="nat" aria-pressed="true">自然对数 · nat</button><button type="button" data-information-base="bit" aria-pressed="false">以 2 为底 · bit</button></div>'
       +'<div class="information-layout"><div class="information-chart" data-information-chart></div><div class="information-controls"><label class="playground-range"><span>结果发生概率 p <output data-information-probability-value>0.90</output></span><input type="range" min="0.01" max="1" step="0.01" value="0.9" data-information-probability aria-label="结果发生概率"></label>'
-      +'<div class="information-result"><span>自信息量</span><strong data-information-value>0.105 nat</strong><code>I(p) = −log(p)</code></div>'
+      +'<div class="information-result"><span>自信息量</span><strong data-information-value>0.105 nat</strong><span class="information-equation">\\(I(p)=-\\ln p\\)</span></div>'
       +'<div class="information-presets" role="group" aria-label="快速试试不同概率"><button type="button" data-information-preset="0.9">常见 · 90%</button><button type="button" data-information-preset="0.5">一半 · 50%</button><button type="button" data-information-preset="0.1">少见 · 10%</button></div>'
       +'<p class="playground-insight" data-information-hint role="status" aria-live="polite"></p></div></div>'
       +'<p class="playground-footnote">概率为 1 的确定结果没有意外信息；概率越接近 0，负对数惩罚越大。p=0 的理想化信息量趋于无穷，实际训练通常通过有限 logits 与稳定的 log-softmax 计算。</p></section>';
@@ -160,10 +160,10 @@
       +'<div class="entropy-scenarios" role="group" aria-label="选择真实数据分布">'+Object.entries(entropyScenarios).map(([id,spec])=>'<button type="button" data-entropy-scenario="'+id+'" aria-pressed="'+String(id==='skew')+'">'+spec.name+'</button>').join('')+'</div>'
       +'<div class="entropy-distributions"><section class="entropy-distribution entropy-truth"><header><strong>真实分布 P(y)</strong><span>数据里各类别实际出现的比例</span></header><div data-entropy-truth-bars role="img" aria-label="真实类别分布"></div></section>'
       +'<section class="entropy-distribution entropy-prediction"><header><strong>模型分布 Q(y)</strong><span>Softmax(logits) 转成的预测概率</span></header><div class="entropy-logits">'+multiclassLabels.map((label,i)=>'<label class="playground-range"><span>'+label+' 的 logit z<sub>'+i+'</sub><output data-entropy-logit-value="'+i+'">'+[-1.6,-1.2,-.7][i].toFixed(2)+'</output></span><input type="range" min="-4" max="4" step="0.1" value="'+[-1.6,-1.2,-.7][i]+'" data-entropy-logit="'+i+'" aria-label="'+label+' 预测 logit"></label>').join('')+'</div><div data-entropy-prediction-bars role="img" aria-label="模型预测类别分布"></div></section></div>'
-      +'<div class="entropy-score-grid"><div><span>数据本身的熵</span><strong data-entropy-h>0.898 nat</strong><small>H(P)：标签分布有多不确定</small></div><div><span>模型的交叉熵</span><strong data-entropy-ce>1.389 nat</strong><small>H(P,Q)：真实结果在模型眼中有多意外</small></div><div><span>多出来的代价</span><strong data-entropy-kl>0.492 nat</strong><small>KL(P∥Q)：模型分布与真实分布的差异</small></div></div>'
-      +'<div class="entropy-identity"><strong>交叉熵 = 熵 + KL</strong><code>H(P,Q) = H(P) + KL(P∥Q)</code><span data-entropy-scenario-hint></span></div>'
+      +'<div class="entropy-score-grid"><div><span>数据本身的熵</span><strong data-entropy-h>0.898 nat</strong><small>\\(H(P)\\)：标签分布有多不确定</small></div><div><span>模型的交叉熵</span><strong data-entropy-ce>1.389 nat</strong><small>\\(H(P,Q)\\)：真实结果在模型眼中有多意外</small></div><div><span>多出来的代价</span><strong data-entropy-kl>0.492 nat</strong><small>\\(D_{\\mathrm{KL}}(P\\parallel Q)\\)：模型分布与真实分布的差异</small></div></div>'
+      +'<div class="entropy-identity"><strong>交叉熵 = 熵 + KL</strong><span class="entropy-equation">\\[H(P,Q)=H(P)+D_{\\mathrm{KL}}(P\\parallel Q).\\]</span><span data-entropy-scenario-hint></span></div>'
       +'<p class="playground-insight" data-entropy-hint role="status" aria-live="polite"></p>'
-      +'<p class="playground-footnote">固定 P 时，H(P) 不随模型变化；训练降低的是 H(P,Q)，也就是把模型分布 Q 往 P 靠近。KL 与交叉熵都依赖方向，交换 P、Q 后通常会变。单个独热标签是 P=[1,0,0] 的特例，交叉熵就只剩 −ln Q(真实类)。</p></section>';
+      +'<p class="playground-footnote">固定 \\(P\\) 时，\\(H(P)\\) 不随模型变化；训练降低的是 \\(H(P,Q)\\)，也就是把模型分布 \\(Q\\) 往 \\(P\\) 靠近。\\(D_{\\mathrm{KL}}(P\\parallel Q)\\) 与交叉熵都依赖方向，交换 \\(P\\)、\\(Q\\) 后通常会变。单个独热标签是 \\(P=[1,0,0]\\) 的特例，交叉熵就只剩 \\(-\\ln Q(y_{\\mathrm{true}})\\)。</p></section>';
   }
   function entropyBars(values,kind){
     const label=kind==='truth'?'真实 P':'模型 Q';
@@ -178,17 +178,17 @@
     root.querySelector('[data-entropy-h]').textContent=fmt(entropy,3)+' nat';
     root.querySelector('[data-entropy-ce]').textContent=fmt(cross,3)+' nat';
     root.querySelector('[data-entropy-kl]').textContent=fmt(kl,3)+' nat';
-    root.querySelector('[data-entropy-scenario-hint]').textContent=entropyScenarios[scenario].name+'；选择“结果总是猫”时 H(P)=0，交叉熵直接等于猫这一类的 −ln Q(猫)。';
+    root.querySelector('[data-entropy-scenario-hint]').textContent=entropyScenarios[scenario].name+'；选择“结果总是猫”时 \\(H(P)=0\\)，交叉熵直接等于猫这一类的 \\(-\\ln Q(y_{\\mathrm{true}})\\)。';window.renderLessonMath?.(root.querySelector('[data-entropy-scenario-hint]'));
     root.querySelectorAll('[data-entropy-scenario]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.entropyScenario===scenario)));
     const predicted=prediction.indexOf(Math.max(...prediction));
     root.querySelector('[data-entropy-hint]').textContent='模型目前把 '+multiclassLabels[predicted]+' 排在第一。真实分布中各类仍按 P 加权计分，因此只看最高概率类别或准确率，无法看出交叉熵的完整惩罚。';
   }
   function lossTrainingMarkup(){
     return '<section class="lesson-playground loss-training-card" aria-labelledby="loss-training-title"><div class="playground-heading"><div><span class="playground-kicker">训练流程 · 从分数到更新</span><h3 id="loss-training-title">模型不是“看见答案”，而是收到一条可微的误差信号</h3><p>交叉熵把真实类别概率转换成损失；反向传播再把这条信号传回网络参数。</p></div></div>'
-      +'<div class="loss-training-flow" role="img" aria-label="logits 经 CrossEntropyLoss 计算损失，反向传播并更新参数的训练流程"><div><span>神经网络输出</span><strong>logits z</strong></div><i>→</i><div><span>稳定地计算</span><strong>交叉熵 L</strong></div><i>→</i><div><span>反向传播</span><strong>∇W L</strong></div><i>→</i><div><span>优化器更新</span><strong>W ← W − η∇W L</strong></div></div>'
+      +'<div class="loss-training-flow" role="img" aria-label="logits 经 CrossEntropyLoss 计算损失，反向传播并更新参数的训练流程"><div><span>神经网络输出</span><strong>logits z</strong></div><i>→</i><div><span>稳定地计算</span><strong>交叉熵 L</strong></div><i>→</i><div><span>反向传播</span><strong>\\(\\nabla_W\\mathcal{L}\\)</strong></div><i>→</i><div><span>优化器更新</span><strong>\\(W\\leftarrow W-\\eta\\nabla_W\\mathcal{L}\\)</strong></div></div>'
       +'<div class="loss-training-notes"><div><strong>训练时</strong><p>把原始 logits 直接交给损失函数。log-sum-exp 技巧避免巨大分数导致指数溢出，融合的 log-softmax 计算也避免先得到极小概率再取对数。</p></div><div><strong>推理展示时</strong><p>想看每类概率，再对 logits 做 softmax。只取 argmax 可以得到类别，但会丢掉置信度，也不能拿来训练交叉熵。</p></div></div>'
       +'<pre class="loss-training-code"><code>logits = model(images)                  # [N, K]，原始分数\nloss = nn.CrossEntropyLoss()(logits, labels)  # labels: [N] 类别编号\noptimizer.zero_grad()\nloss.backward()\noptimizer.step()</code></pre>'
-      +'<p class="playground-footnote">对普通、未加权的单标签多分类，单个样本对 logits 的梯度为 softmax(z)−y。真实类的预测越低，修正信号通常越大；类别权重或标签平滑会改变该表达式。损失是训练目标，不等于准确率、泛化能力或概率校准。</p></section>';
+      +'<p class="playground-footnote">对普通、未加权的单标签多分类，单个样本对 logits 的梯度为 \\(\\operatorname{softmax}(\\mathbf{z})-\\mathbf{y}\\)。真实类的预测越低，修正信号通常越大；类别权重或标签平滑会改变该表达式。损失是训练目标，不等于准确率、泛化能力或概率校准。</p></section>';
   }
 
   const optimizerSpecs={

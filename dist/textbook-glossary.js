@@ -22,7 +22,7 @@
   add('training','训练（training）','模型反复预测、对照答案并调整参数的过程。','像做题、批改、改正，再做下一题。',['训练','training','train']);
   add('inference','推理（inference）','用已训练好的模型处理新输入并产生结果的过程。','像考试时用已经学会的方法解一道新题。',['推理','inference']);
   add('prediction','预测（prediction）','模型对输入给出的估计答案；它可能正确，也可能错误。','像学生先写下的答案，之后还要对照标准答案。',['预测','prediction']);
-  add('ground-truth','真实标注（ground truth）','数据中记录的目标答案或目标位置，训练和评估时用来比较。','像老师核对时使用的标准答案。',['真实标注','真值','ground truth','ground-truth']);
+  add('ground-truth','真实标注（ground truth）','数据中记录的目标答案或目标位置，训练和评估时用来比较。','像老师核对时使用的标准答案。',['真实标注','真值','ground truth','ground-truth','GT']);
   add('dataset','数据集（dataset）','按任务整理的一组样本，常包含输入与相应标签。','像一本按规则收集并整理好的练习册。',['数据集','dataset']);
   add('training-set','训练集（training set）','用于计算学习信号并更新模型参数的数据部分。','像平时用来练习的题目。',['训练集','training set']);
   add('validation-set','验证集（validation set）','训练期间用来比较方案和检查效果、但不直接更新参数的数据部分。','像阶段测验，帮助判断目前学得怎样。',['验证集','validation set','val']);
@@ -41,7 +41,7 @@
   add('loss','损失（loss）','把模型预测与目标之间的差异算成数字，供训练过程衡量和改进。','像一次作业的扣分；越不符合目标，通常损失越大。',['损失','损失函数','loss','loss function'],'losses');
   add('cross-entropy','交叉熵（Cross Entropy，CE）','根据模型分给真实答案的概率计算惩罚；真实答案概率越低，惩罚越大。','像猜盒中物品：把正确答案的可能性估得越低，扣分越多。',['交叉熵','Cross Entropy','cross entropy','CE','交叉熵损失'],'losses');
   add('bce','二元交叉熵（Binary Cross Entropy，BCE）','用于一个是/否答案的常见损失；按真实标签比较正类概率是否合理。','像判断“下雨/不下雨”：猜错且很肯定时扣分更多。',['二元交叉熵','Binary Cross Entropy','BCE'],'losses');
-  add('bce-with-logits','带 logits 的二元交叉熵（BCEWithLogitsLoss）','PyTorch 的损失接口，直接接收原始分数，并以稳定方式组合 Sigmoid 与二元交叉熵。','像把原始打分直接交给评分器，由评分器内部完成换算和扣分。',['BCEWithLogitsLoss','带 logits 的 BCE'],'losses');
+  add('bce-with-logits','带 logits 的二元交叉熵（BCEWithLogitsLoss）','PyTorch 的损失接口，直接接收原始分数，并以稳定方式组合 Sigmoid 与二元交叉熵。','像把原始打分直接交给评分器，由评分器内部完成换算和扣分。',['BCEWithLogitsLoss','BCEWithLogits','带 logits 的 BCE'],'losses');
   add('bce-loss','二元交叉熵概率接口（BCELoss）','PyTorch 的二元交叉熵接口，输入应是已经算好的 0 到 1 概率。','像已经把分数换成百分比后，再交给扣分表。',['BCELoss'],'losses');
   add('cross-entropy-loss','多类交叉熵接口（CrossEntropyLoss）','PyTorch 常用多分类损失，常见用法是输入原始 logits 与类别编号标签。','像把每位候选人的原始得分和正确人选交给评分器。',['CrossEntropyLoss','nn.CrossEntropyLoss'],'losses');
   add('binary-classification','二分类（binary classification）','在两个互斥答案中作选择，例如“有/没有目标”。','像只有“是”和“否”两个按钮的问题。',['二分类','binary classification'],'losses');
@@ -52,10 +52,10 @@
   add('argmax','argmax（最大值位置）','返回一组数字里最大数所在的位置，常用于选出分数最高类别。','像在记分牌上指出分数最高的人，而不是保留所有分数。',['argmax','最大值位置'],'losses');
   add('cross-entropy-example','真实类概率（target-class probability）','模型分配给正确类别的概率；交叉熵主要根据这个数计算单样本惩罚。','像多选一时，模型给标准答案分到的那一份可能性。',['真实类概率','正确类别概率'],'losses');
   add('regression','回归（regression）','预测可连续变化的数量，例如温度、价格或坐标。','像预测下一小时的气温，答案不局限于几个选项。',['回归','regression'],'losses');
-  add('mse','均方误差（Mean Squared Error，MSE）','把预测误差平方后再平均的损失；较大的误差会被放大。','像对偏差按平方收费，错得越远，增长越快。',['MSE','Mean Squared Error','均方误差'],'losses');
+  add('mse','均方误差（Mean Squared Error，MSE）','把预测误差平方后再平均的损失；较大的误差会被放大。','像对偏差按平方收费，错得越远，增长越快。',['MSE','MSELoss','Mean Squared Error','均方误差'],'losses');
   add('mae','平均绝对误差（Mean Absolute Error，MAE）','把每个预测误差的绝对值取平均。','像按偏离目标的距离收取固定单价。',['MAE','Mean Absolute Error','平均绝对误差'],'losses');
-  add('huber','Huber 损失（Huber loss）','小误差时采用平方惩罚，大误差时改为较缓的线性惩罚。','像小偏差按距离平方计费，偏差太大后改成固定单价。',['Huber','Huber loss','Smooth L1'],'losses');
-  add('natural-exponential','自然指数函数（exp / e 的幂）','把数值变成 e 的相应次方；Softmax 用它把分数变为正数并放大差距。','像一种会快速增长的刻度尺。',['exp','指数函数','自然指数','exponential','e^']);
+  add('huber','Huber 损失（Huber loss）','小误差时采用平方惩罚，大误差时改为较缓的线性惩罚。','像小偏差按距离平方计费，偏差太大后改成固定单价。',['Huber','HuberLoss','Huber loss','Smooth L1','SmoothL1Loss'],'losses');
+  add('natural-exponential','自然指数函数（exp / e 的幂）','把数值变成 e 的相应次方；Softmax 用它把分数变为正数并放大差距。','像一种会快速增长的刻度尺。',['exp','指数','指数函数','自然指数','exponential','e^']);
   add('e-constant','自然常数 e','约等于 2.718 的固定数学常数，自然指数与自然对数都以它为基础。','像一把固定单位尺上的常数刻度。',['自然常数','数学常数 e']);
   add('logarithm','对数（logarithm）','对数回答“一个底数要乘方多少次才能得到这个数”。','像反过来问：底数要重复相乘几次，才到目标数字？',['对数','logarithm','log']);
   add('natural-log','自然对数（natural logarithm，ln）','以 e 为底的对数；概率越低，负自然对数越大。','像把概率的稀少程度换成一把递增的惊讶刻度。',['自然对数','ln','natural logarithm'],'losses');
@@ -69,7 +69,7 @@
   add('norm','范数（norm）','把一组数的整体大小压成一个非负数；常见 L2 范数类似向量长度。','像把多根箭头的分量合成一个总长度。',['范数','norm','L2 范数','‖∇L‖']);
   add('matrix-multiplication','矩阵乘法（matrix multiplication）','用左边每一行和右边每一列对应相乘后求和，得到新表格。','像每位学生的成绩乘上各科权重，再分别汇总成总分。',['矩阵乘法','matrix multiplication','矩阵相乘','matmul'],'tensor');
   add('broadcasting','广播（broadcasting）','运算时把长度为 1 或缺失的轴按规则重复扩展，以便形状兼容。','像把一条统一规则复制到每一行，但要先确认行列能对齐。',['广播','broadcasting','广播机制','broadcast'],'tensor');
-  add('gradient-descent','梯度下降（gradient descent）','沿梯度相反方向小步调整参数，尝试降低损失。','像沿着坡度最陡的下坡方向，一步步走向低处。',['梯度下降','gradient descent']);
+  add('gradient-descent','梯度下降（gradient descent）','沿梯度相反方向小步调整参数，尝试降低损失。','像沿着坡度最陡的下坡方向，一步步走向低处。',['梯度下降','gradient descent','GD']);
   add('backpropagation','反向传播（backpropagation）','按链式法则把输出误差对各层参数的影响逐层算回去。','像从总账倒查每个环节各自贡献了多少误差。',['反向传播','backpropagation','backprop']);
   add('optimizer','优化器（optimizer）','根据梯度决定模型参数如何更新的算法。','像根据方向箭头和步幅规则，决定下一步怎么走。',['优化器','optimizer']);
   add('sgd','随机梯度下降（Stochastic Gradient Descent，SGD）','使用一个样本或一批样本估计梯度并更新参数的基本方法。','像每次根据一小批练习的表现调整学习方向。',['SGD','Stochastic Gradient Descent','随机梯度下降'],'optimizer');
@@ -81,7 +81,7 @@
   add('overfitting','过拟合（overfitting）','模型在训练样本上表现很好，却在新样本上表现变差。','像把练习题答案背下来，换一道题就不会做。',['过拟合','overfitting'],'regularization');
   add('underfitting','欠拟合（underfitting）','模型连训练数据里的主要规律都还没学会。','像还没掌握基础方法，熟题也做不对。',['欠拟合','underfitting'],'regularization');
   add('dropout','随机失活（Dropout）','训练时随机暂时关闭部分神经元输出，减少模型依赖某一小组单元。','像练习时轮流遮住一部分提示，避免只记住某个提示。',['Dropout','dropout','随机失活'],'regularization');
-  add('batch-normalization','批量归一化（Batch Normalization，BatchNorm / BN）','按通道整理中间数值的尺度，再用可学习参数调整。训练和评估时统计方式不同。','像先把每组测量值换成相近尺度，再允许模型重新调整。',['BatchNorm','Batch Normalization','BN','批量归一化'],'network');
+  add('batch-normalization','批量归一化（Batch Normalization，BatchNorm / BN）','按通道整理中间数值的尺度，再用可学习参数调整。训练和评估时统计方式不同。','像先把每组测量值换成相近尺度，再允许模型重新调整。',['BatchNorm','BatchNorm1d','BatchNorm2d','Batch Normalization','BN','批量归一化'],'network');
 
   // 数字、张量与图像
   add('scalar','标量（scalar）','只有一个数值、没有轴的数据。','像一个温度读数。',['标量','scalar'],'tensor');
@@ -114,7 +114,7 @@
   add('cpu','中央处理器（Central Processing Unit，CPU）','通用计算部件，擅长执行多种程序任务。','像多技能的总控工作台。',['CPU','Central Processing Unit']);
   add('gpu','图形处理器（Graphics Processing Unit，GPU）','可并行处理大量相似数字运算的计算设备，常用于深度学习。','像许多工人同时做同一种计算。',['GPU','Graphics Processing Unit']);
   add('vram','显存（video memory / VRAM）','GPU 上用于暂存模型、图像和中间结果的内存。','像放在 GPU 工作台旁、可快速取用的桌面空间。',['显存','VRAM','video memory'],'training');
-  add('fp16','半精度浮点（FP16）','一种 16 位浮点数格式，通常能降低内存和计算开销，但可表示范围较小。','像刻度更少的轻量尺，省空间但极端数值更容易超范围。',['FP16','float16'],'training');
+  add('fp16','半精度浮点（FP16）','一种 16 位浮点数格式，通常能降低内存和计算开销，但可表示范围较小。','像刻度更少的轻量尺，省空间但极端数值更容易超范围。',['FP16','F16','float16'],'training');
   add('amp','自动混合精度（Automatic Mixed Precision，AMP）','在合适的运算中混用不同浮点精度，以节省资源并维持训练稳定性。','像大多数测量用轻便尺，关键测量再换更精细的尺。',['AMP','Automatic Mixed Precision','自动混合精度'],'training');
 
   // 网络与视觉模型
@@ -122,7 +122,7 @@
   add('weight','权重（weight）','乘在输入数前面的可训练数字，决定这条输入对输出的影响。','像混合配方里每种材料所占的比例。',['权重','weight'],'network');
   add('bias','偏置（bias）','加在加权求和结果上的可训练常数，可以整体移动输出。','像给整条刻度线加一个统一的起始偏移。',['偏置','bias'],'network');
   add('affine','仿射变换（affine transformation）','先做线性组合，再加一个偏置的计算，例如 z=w·x+b。','像先按比例缩放，再整体平移。',['仿射','仿射变换','affine'],'network');
-  add('activation','激活函数（activation function）','作用于神经元计算结果的函数，让多层网络能表示非线性关系。','像每个路口的一道可调门，决定哪些信号通过、怎样变化。',['激活函数','activation function'],'network');
+  add('activation','激活函数（activation function）','作用于神经元计算结果的函数，让多层网络能表示非线性关系。','像每个路口的一道可调门，决定哪些信号通过、怎样变化。',['激活','激活函数','activation function','激活值'],'network');
   add('relu','ReLU（Rectified Linear Unit，修正线性单元）','负数变成 0，正数保持不变的激活函数。','像只让正向信号通过的单向门。',['ReLU','Rectified Linear Unit'],'network');
   add('silu','SiLU（Sigmoid Linear Unit）','把输入乘以它的 Sigmoid 值，让较大正数通过、负数被平滑压小。','像一扇开合平滑、不会突然啪地关上的门。',['SiLU','Swish'],'network');
   add('gelu','GELU（Gaussian Error Linear Unit）','按输入大小平滑调整信号通过程度的激活函数。','像根据输入大小柔和调节水流的阀门。',['GELU','Gaussian Error Linear Unit'],'network');
@@ -134,7 +134,7 @@
   add('conv-stride','卷积步幅（convolution stride）','卷积窗口每次移动的像素格数；步幅越大，输出空间尺寸通常越小。','像模板每次向前跨几格。',['stride=','卷积步幅','convolution stride'],'cnn');
   add('padding','填充（padding）','在输入边缘补上数值，控制卷积窗口能访问哪些边界位置及输出尺寸。','像在画纸外侧补空白边，方便模板扫到边缘。',['padding','填充'],'cnn');
   add('dilation','空洞率（dilation）','卷积核内部元素之间隔开的位置数，用较少权重查看更大的区域。','像用带间隔的梳子，一次触到更宽的范围。',['dilation','空洞率'],'cnn');
-  add('pooling','池化（pooling）','在小区域里汇总数值，常用来缩小特征图的宽和高。','像把一小块区域用最高分或平均分代表。',['池化','pooling'],'pooling');
+  add('pooling','池化（pooling）','在小区域里汇总数值，常用来缩小特征图的宽和高。','像把一小块区域用最高分或平均分代表。',['池化','pooling','MaxPool','MaxPool2d','AvgPool','AvgPool2d'],'pooling');
   add('receptive-field','感受野（receptive field）','某个输出位置能通过网络影响或看到的输入范围。','像观察员从所在位置能看见的那片区域。',['感受野','receptive field'],'cnn');
   add('downsampling','下采样（downsampling）','减少特征图的空间位置数量，降低后续计算量。','像把大图缩小成较少格子的预览图。',['下采样','downsampling'],'cnn');
   add('depthwise-convolution','逐通道卷积（depthwise convolution）','每个输入通道分别使用卷积核，不在该步骤里混合通道。','像每张颜色胶片各自先做一次局部检查。',['depthwise convolution','逐通道卷积'],'cnn');
@@ -164,17 +164,18 @@
   add('sppf','快速空间金字塔池化（Spatial Pyramid Pooling–Fast，SPPF）','YOLOv5 中用多次池化汇集不同范围上下文的模块。','像先看一个小邻域，再看逐渐扩大的区域，最后把线索拼起来。',['SPPF','Spatial Pyramid Pooling','空间金字塔池化'],'architecture');
   add('residual-connection','残差连接 / 捷径连接（residual / shortcut connection）','把较早的输入直接加到后面的计算结果上，给信息和梯度留一条直达路径。','像在复杂路线旁保留一条直路，最终把两条路的结果相加。',['残差连接','捷径连接','shortcut','skip connection','residual connection'],'cnn');
   add('concatenation','拼接（concatenation / Concat）','沿指定轴把多组张量并排接在一起，不是逐项相加。','像把两列不同信息并排贴到一张表里。',['拼接','Concat','concatenation'],'architecture');
-  add('feature-p3','P3 特征层','YOLOv5 检测头中空间分辨率较高的一层，保留较多位置细节，常用于小目标。','像较大比例尺的地图，格子多、位置看得细。',['P3'],'architecture');
-  add('feature-p4','P4 特征层','YOLOv5 检测头中空间分辨率居中的一层，平衡位置细节与范围。','像中等比例尺地图，细节和覆盖范围折中。',['P4'],'architecture');
-  add('feature-p5','P5 特征层','YOLOv5 检测头中空间分辨率较低、单格覆盖范围较大的一层。','像较小比例尺的地图，格子少但每格看得更广。',['P5'],'architecture');
+  add('feature-p3','P3 特征层','YOLOv5 检测头中空间分辨率较高的一层，保留较多位置细节，常用于小目标。','像较大比例尺的地图，格子多、位置看得细。',['P3','P3/8'],'architecture');
+  add('feature-p4','P4 特征层','YOLOv5 检测头中空间分辨率居中的一层，平衡位置细节与范围。','像中等比例尺地图，细节和覆盖范围折中。',['P4','P4/16'],'architecture');
+  add('feature-p5','P5 特征层','YOLOv5 检测头中空间分辨率较低、单格覆盖范围较大的一层。','像较小比例尺的地图，格子少但每格看得更广。',['P5','P5/32'],'architecture');
   add('grid','网格（grid cell）','特征图上的一个位置单元，检测器可在这里产生物体预测。','像把地图分成许多方格，逐格检查附近是否有目标。',['网格','grid cell','grid'],'anchors');
   add('anchor','锚框（anchor）','预设的宽高参考框，帮助检测器组织候选框和训练匹配。','像先放在图上的空白模板，网络再调整它的位置和大小。',['anchor','anchors','锚框'],'anchors');
-  add('candidate-box','候选框（candidate box）','模型产生、还未经过最终筛选的一种目标位置猜测。','像草稿上先圈出的一个可能位置。',['候选框','candidate box','候选预测框'],'anchors');
+  add('candidate-box','候选框（candidate box）','模型产生、还未经过最终筛选的一种目标位置猜测。','像草稿上先圈出的一个可能位置。',['候选','候选框','candidate box','候选预测框'],'anchors');
   add('positive-sample','正样本（positive sample）','训练中被分配为负责某个真实目标的预测位置或候选。','像老师指定负责回答某道题的那一位学生。',['正样本','positive sample'],'anchors');
   add('negative-sample','负样本（negative sample）','训练中被当作背景或不匹配目标来处理的候选。','像检查后确认并不负责该目标的候选位置。',['负样本','negative sample'],'anchors');
   add('objectness','目标存在性分数（objectness）','模型对某候选位置包含物体的预测分数。','像先问“这里有没有东西”的门卫。',['objectness','目标性','目标存在性'],'yolo-loss');
   add('class-score','类别分数（class score）','模型对候选目标属于某个类别的预测分数。','像目标通过门卫后，分类员再判断它是什么。',['class score','类别分数','分类分数'],'yolo-loss');
   add('confidence-threshold','置信度阈值（confidence threshold）','保留预测前设置的最低分数门槛。','像考试先设最低及格线，低于门槛的答案暂不保留。',['置信度阈值','confidence threshold'],'inference');
+  add('confidence','置信度（confidence score）','模型对一个预测有多可信的分数；它不自动等于现实中的正确概率。','像答题人给自己答案标的把握分，仍要用真实结果检验是否可靠。',['置信度','confidence score'],'inference');
   add('decode','解码（decode）','把网络输出的偏移或分数组合成可读坐标、类别和分数的过程。','像把机器内部的简写草稿翻译成框和标签。',['解码','decode'],'inference');
   add('bounding-box','边界框（bounding box）','用矩形框近似表示物体在图像中的位置和大小。','像在照片上套一个刚好圈住物体的透明矩形。',['边界框','bounding box','bbox','检测框'],'iou');
   add('iou','交并比（Intersection over Union，IoU）','预测框与真实框的交集面积除以两框的并集面积。','像比较两个圈有多少共同覆盖，再除以它们总共覆盖的区域。',['IoU','Intersection over Union','交并比'],'iou');
@@ -207,12 +208,93 @@
   add('tensorrt','TensorRT 推理 SDK','NVIDIA 提供的模型优化与推理软件开发工具包。','像针对 NVIDIA GPU 准备的模型加速工具箱。',['TensorRT'],'inference');
   add('api','应用程序接口（Application Programming Interface，API）','让一个程序按约定请求另一个程序提供功能的接口。','像按菜单格式下单，再接收厨房返回的结果。',['API','Application Programming Interface','接口'],'inference');
   add('latency','延迟（latency）','一次输入从发出到收到结果所经历的时间。','像按下按钮后等待机器给出答案的时长。',['延迟','latency'],'inference');
-  add('throughput','吞吐量（throughput）','一段时间内系统能处理的输入数量。','像厨房每分钟能完成多少份订单。',['吞吐量','throughput'],'inference');
+  add('throughput','吞吐量（throughput）','一段时间内系统能处理的输入数量。','像厨房每分钟能完成多少份订单。',['吞吐','吞吐量','throughput'],'inference');
+  add('coordinate','坐标（coordinate）','用一组有顺序的数字指出点在图像或空间中的位置；坐标含义取决于原点、轴方向和单位。','像按照“先横向、再纵向”的地址找到地图上的一个位置。',['坐标','coordinates','coordinate'],'iou');
+  add('mask','掩码（mask）','用一组逐像素的标记指出哪些位置属于目标或区域。','像给图片盖上一张只露出目标形状的镂空纸。',['掩码','mask','分割掩码'],'tasks');
+  add('model-weights-file','模型权重文件（model weights file）','保存模型参数的一种文件；它提供一组数值，不等同于网络结构或训练数据。','像把机器内部旋钮当前的位置记在一张存档卡上。',['权重文件','模型权重文件','weights file'],'inference');
+  add('kl-divergence','KL 散度（Kullback–Leibler divergence）','用真实分布 P 作参考时，衡量模型分布 Q 带来的额外平均对数代价；它非负但不对称，不是普通距离。','像用不合身的地图代替参考地图时，平均多付出的路线说明成本。',['KL','KL 散度','KL divergence','Kullback–Leibler divergence'],'losses');
+  add('swiglu','SwiGLU（SiLU 门控线性单元）','一种门控计算：两路线性结果相乘，其中一路先经过 SiLU；常见于 Transformer 前馈部分。','像两路水管汇合，一路决定流量阀门开多大，另一路提供要传递的水。',['SwiGLU','SwiGLUFFN','swiglu'],'network',{contextNote:'这是可选进阶结构。先理解线性层、激活函数和普通前馈网络，再看它会更容易。'});
+  add('adamw','AdamW 优化器','一种把权重衰减与 Adam 梯度统计更新分开处理的优化器。','像先按梯度决定怎么走，再单独轻轻把过大的参数往回拉。',['AdamW','AdamW optimizer'],'optimizer');
+  add('grad-scaler','梯度缩放器（GradScaler）','混合精度训练中暂时放大损失及梯度、再还原梯度的工具，帮助较小梯度避免在低精度表示中变成 0。','像先把很轻的信号放大到仪表能读清，再按比例换回原单位。',['GradScaler','torch.amp.GradScaler'],'training');
+  add('gguf','GGUF 模型文件格式','一种保存张量信息与元数据的二进制模型文件格式，常见于基于 GGML 的推理工具；它是文件格式，不是模型结构或训练方法。','像装着模型数字和说明标签的专用箱子。',['GGUF','.gguf'],'inference');
+  add('semantic-segmentation','语义分割（semantic segmentation）','为图像中的每个像素预测类别，但不区分同类目标各自是哪一个实例。','像给整张地图逐格涂上“道路、草地、天空”等区域颜色。',['语义分割','semantic segmentation'],'tasks');
+  add('instance-segmentation','实例分割（instance segmentation）','给每个目标分别找出像素轮廓，并区分同一类别中的不同个体。','像在合照里给每个人各画一圈轮廓，而不把同类人合成一片。',['实例分割','instance segmentation'],'tasks');
+  add('keypoint','关键点（keypoint）','用坐标标记物体上的一个有意义位置，例如人体关节或物体角点。','像在人体骨架图上标出肩、肘、膝等位置。',['关键点','keypoint','landmark'],'tasks');
+  add('tracking','目标跟踪（object tracking）','在连续视频帧中关联同一个目标，判断它在不同时间出现的位置。','像在人群连续照片里持续认出同一个人。',['目标跟踪','追踪','跟踪','tracking'],'tasks');
+  add('pose-estimation','姿态估计（pose estimation）','根据关键点或骨架结构估计人体或物体的姿势。','像根据肩、肘、膝的位置推断一个人正在做什么动作。',['姿态估计','pose estimation'],'tasks');
+  add('depth-estimation','深度估计（depth estimation）','预测图像各位置到相机或观察者的远近。','像给平面照片添上一张“每个位置离镜头多远”的地图。',['深度估计','depth estimation'],'tasks');
+  add('gan','生成对抗网络（Generative Adversarial Network，GAN）','由生成器产生样本、判别器判断真伪并相互训练的一类生成模型。','像一个出题者不断仿造样品，另一个检查员努力识别真伪。',['GAN','Generative Adversarial Network','生成对抗网络'],'tasks');
+  add('u-net','U-Net','一种常见的编码器—解码器式网络，用较深层信息与高分辨率特征融合，常用于像素级预测。','像先把图像概括成摘要，再逐层放大还原，并把早期细节带回来。',['U-Net','U Net'],'tasks');
+  add('diffusion-model','扩散模型（diffusion model）','训练模型逐步去除噪声；生成时从噪声开始，多步得到样本的一类方法。','像从一张被雪花遮住的图开始，分多步把雪花擦掉。',['扩散模型','diffusion model'],'tasks');
+  add('psnr','峰值信噪比（Peak Signal-to-Noise Ratio，PSNR）','根据图像像素误差计算的一种重建质量指标；数值高通常表示像素误差较小，但不完全等同于人眼观感。','像逐像素比较两张图片，估算重建误差相对信号有多小。',['PSNR','Peak Signal-to-Noise Ratio'],'tasks');
+  add('ssim','结构相似性指数（Structural Similarity Index，SSIM）','比较图像局部亮度、对比度与结构相似程度的一种指标；它仍只是人眼感受的近似。','像不只逐点比颜色，也看局部明暗和形状纹理是否相像。',['SSIM','Structural Similarity Index'],'tasks');
+  add('oks','关键点相似度（Object Keypoint Similarity，OKS）','姿态评估中比较预测关键点与真实关键点距离的一种相似度，通常会按人体尺度和关键点容差调整。','像评估一张骨架图的关节点离标准位置有多近，同时考虑人物大小。',['OKS','Object Keypoint Similarity'],'metrics');
+  add('normal-cdf','标准正态累积分布函数（常记作 Φ）','在正态分布假设下，Φ(x) 表示随机值不超过 x 的累计概率；这个符号的含义要结合公式上下文确认。','像沿着钟形曲线从最左边累加面积，读出到某个位置为止的比例。',['Φ','标准正态累积分布函数','normal CDF'],'ai-foundations');
   add('fps','帧率（frames per second，FPS）','每秒处理或显示的图像帧数。','像每秒翻过多少张连续画面。',['FPS','frames per second','帧率'],'inference');
   add('nan','非数值（Not a Number，NaN）','浮点运算产生的无效数值标记，例如非法运算结果。','像仪表显示“这个读数算不出来”。',['NaN','Not a Number'],'debugging');
   add('infinity','无穷大（infinity / Inf）','浮点数中的正或负无穷标记，常见于数值溢出或除零。','像计数器已经超出可显示范围。',['Inf','infinity','无穷大'],'debugging');
   add('none','空值（None）','Python 中表示“这里没有对象或结果”的特殊值，不等同于数字 0。','像表格里空着没填，不是填了零分。',['None','空值'],'debugging');
   add('random-seed','随机种子（random seed）','控制伪随机数序列起点的数值，用于帮助复现实验。','像随机抽牌前选定洗牌序列的起始编号。',['随机种子','random seed','seed'],'training');
+
+  // 课程正文中常见的模型、库名称和代码术语
+  add('alexnet','AlexNet 卷积神经网络','2012 年具有代表性的深层卷积网络，使用卷积、ReLU、池化和全连接层完成图像分类。','像一条逐层提取图像线索、最后给整张图片分类的流水线。',['AlexNet'],'cnn',{contextNote:'AlexNet 的历史影响很大；今天的视觉任务通常会使用后续设计的网络。'});
+  add('bert','BERT 语言模型','一种双向 Transformer 编码器模型，通过结合左右上下文学习文字表示。','像读一句话时同时参考目标词左边和右边的内容。',['BERT','Bidirectional Encoder Representations from Transformers'],'ai-foundations');
+  add('cnn','卷积神经网络（Convolutional Neural Network，CNN）','常用于图像的神经网络，会用局部滤镜扫描图像并逐层组合边缘、纹理和形状线索。','像拿一扇小窗在图片上移动，先看局部，再把局部线索拼成整体。',['CNN','CNNs','Convolutional Neural Network'],'cnn');
+  add('ffn','前馈网络（Feed-Forward Network，FFN）','数据向前经过若干计算层得到输出的网络模块；Transformer 中常指注意力层之后的逐位置变换部分。','像按固定顺序通过几台加工机器，中途没有把后面的结果送回前面。',['FFN','Feed-Forward Network','前馈网络'],'network');
+  add('ggml','GGML 张量计算库','用于机器学习张量与模型推理相关工作的开源项目；名称也常出现在配套文件格式和工具中。','像一套处理模型数字、让程序能执行张量运算的工具箱。',['GGML','ggml'],'inference',{contextNote:'GGML、GGUF 和量化是相关但不同的概念：库/项目、文件格式、数值压缩方法不能混为一谈。'});
+  add('glu','门控线性单元（Gated Linear Unit，GLU）','把一条线性变换结果与另一条经门函数控制的结果逐项相乘，以调节信息通过多少。','像一条水管提供信息，另一条水管控制阀门开度，两者相乘后决定流量。',['GLU','Gated Linear Unit'],'network');
+  add('gpt2','GPT-2 语言模型','以 Transformer 解码器为基础、通过预测下一个词元生成文本的语言模型。','像根据已经写出的文字，一步步猜接下来最合适的词。',['GPT-2','GPT 2'],'ai-foundations');
+  add('hsv','HSV 颜色表示','用色相、饱和度和明度三个量描述颜色的一种方式。','像先选色环上的颜色，再调颜色浓淡和明暗。',['HSV','Hue Saturation Value'],'image');
+  add('jpeg','JPEG 图像格式','常见的有损图像压缩格式，通过近似部分图像细节来减小文件体积。','像缩小照片文件时略微简化不太显眼的细节。',['JPEG','JPG'],'image');
+  add('pytorch','PyTorch 深度学习框架','用于构建神经网络、执行张量运算和训练模型的 Python 软件库。','像搭建并训练数值模型的一套积木和实验台。',['PyTorch','torch'],'ai-foundations');
+  add('scipy','SciPy 科学计算库','提供优化、统计、信号处理等常用科学计算功能的 Python 软件库。','像科学计算工具箱里放着的一组现成仪器。',['SciPy'],'ai-foundations');
+  add('torchscript','TorchScript 模型表示','把部分 PyTorch 程序表示成可序列化计算图的一种旧式部署方式，常见于既有项目。','像把模型的计算步骤整理成一份可保存、可交给运行环境执行的流程图。',['TorchScript'],'inference',{contextNote:'阅读已有代码时认识这个名称即可；新项目应根据当前 PyTorch 官方导出与部署文档选择接口。'});
+  add('yolo-family','YOLO 目标检测模型家族','一系列以单次网络推理直接预测目标位置与类别为特色的目标检测模型。','像一次查看整张图片，同时回答“有哪些物体、各自在哪里”。',['YOLO','You Only Look Once'],'architecture');
+  add('dfl','分布焦点损失（Distribution Focal Loss，DFL）','一些较新的检测器用来监督边界框距离分布的损失项；并非所有检测模型都使用。','像不只报一个距离答案，而是学习目标距离可能落在哪些邻近刻度。',['DFL','Distribution Focal Loss'],'yolo-loss',{contextNote:'具体实现随模型和版本变化；标准 YOLOv5 的常见 box、objectness、class 三项中没有 DFL。'});
+  add('compute-loss','ComputeLoss（损失计算代码）','YOLOv5 代码中的损失计算组件，负责把预测与标注匹配后计算框、物体性和类别相关损失。','像把模型的答题结果与标准答案逐项对照，再汇总扣分。',['ComputeLoss','compute_loss'],'yolo-loss',{contextNote:'这是代码里的名称，实际细节应以正在阅读的仓库版本为准。'});
+  add('rotation-order','三维旋转顺序（XYZ / ZYX）','描述绕多个轴依次旋转的顺序；结果会受内禀/外禀定义、坐标系和矩阵约定影响。','像先转身体再转相机，或先转相机再转身体，顺序不同可能得到不同朝向。',['XYZ','ZYX','三维旋转顺序'],'quaternion',{contextNote:'XYZ 与 ZYX 不是可随意交换的字母标签；读公式或软件参数时要确认轴顺序和旋转约定。'});
+  add('multi-scale-detect-features','YOLO 多尺度特征层（P3 / P4 / P5）','YOLO 检测头读取的三种空间尺度特征层，通常分别保留较多、中等和较少的位置细节。','像同时使用局部放大图、中比例地图和大范围地图寻找不同大小的物体。',['P3/P4/P5','P3 / P4 / P5'],'architecture');
+  add('q4-quantization','Q4 四位量化标记','模型文件或工具中的一种常见量化命名，通常表示四位量化系列；实际编码细节取决于具体格式和后缀。','像把数字压到较少的刻度档位保存，能省空间，但细节会有损失。',['Q4','Q4_K','Q4_K_M'],'inference',{contextNote:'“4”是量化家族标签，不保证文件中每个参数连同元数据都恰好占 4 位。'});
+  add('yolov5','YOLOv5 目标检测模型','Ultralytics YOLO 项目中的一个目标检测版本；本课程按对应配置讲解它的层、特征尺度和训练流程。','像一套有具体图纸和零件版本的目标检测机器。',['YOLOv5','YOLOv5s','YOLOv5l','YOLOV5'],'architecture',{contextNote:'YOLO 系列版本和仓库实现会变化；本课提到的层号、损失与默认设置以所展示的 YOLOv5 配置/代码为准。'});
+  add('yolo-conv-module','YOLOv5 Conv 模块','YOLOv5 源码里的常用卷积模块，典型实现把卷积、批量归一化和激活函数组合在一起。','像一台连续完成“局部计算、整理数值、通过非线性门”的小机器。',['Conv','Conv module'],'architecture',{contextNote:'配置中的 Conv 常指该项目封装模块；普通数学语境的卷积或 PyTorch 的 nn.Conv2d 本身不一定包含 BN 和激活。'});
+  add('conv2d-layer','二维卷积层（Conv2d）','对高度和宽度两个空间方向应用卷积核的神经网络层；输入和输出通常还有批次轴与通道轴。','像拿一块小滤镜沿图片的行和列滑动，逐格算出新图。',['Conv2d','nn.Conv2d'],'cnn');
+  add('detect-module','Detect 检测头模块','YOLOv5 模型末端按多个尺度生成目标框、物体性和类别预测的代码模块。','像在几种比例的地图上同时寻找物体并写出候选结果。',['Detect','Detect module'],'architecture',{contextNote:'训练和推理模式的返回值不同；后处理筛选与 NMS 也不等同于检测头内部的卷积计算。'});
+  add('lenet5','LeNet-5','早期用于手写数字识别的卷积神经网络，由卷积/下采样阶段和后续分类层组成。','像一条小型图像流水线，逐层看笔画并判断数字。',['LeNet-5','LeNet'],'cnn');
+  add('vgg-family','VGG 网络家族','以重复堆叠小卷积核和池化层为特点的一组图像分类网络，数字后缀表示具体配置版本。','像用许多相同尺寸的小观察窗一层层组合视觉线索。',['VGG','VGG-16','VGG-19','VGG-16/19'],'cnn');
+  add('resnet-family','ResNet 残差网络家族','使用残差捷径连接的深层网络家族，常见不同深度版本以层数标记。','像在很多加工步骤旁保留直达通路，让原始信息可以继续向前。',['ResNet','ResNet-18/34','ResNet-50/101/152'],'cnn');
+  add('basicblock','BasicBlock（基础残差块）','一些 ResNet 结构中的基本模块，通常把卷积变换结果与捷径分支合并。','像把加工后的线索和抄送来的原线索相加，再交给下一层。',['BasicBlock'],'cnn');
+  add('imagenet','ImageNet 图像数据集','一个用于视觉研究的大型图像数据资源；不同基准任务会使用其中不同类别划分与评测设置。','像一座带类别标签的大型图片资料库。',['ImageNet'],'cnn',{contextNote:'预训练模型所说的 ImageNet 权重，不意味着模型只会识别 ImageNet 类别；迁移后还要针对新任务调整。'});
+  add('mnist','MNIST 手写数字数据集','一组常用于入门演示的手写数字灰度图像及其数字标签。','像一本每页都是数字小图并附标准答案的练习册。',['MNIST'],'cnn');
+  add('coco','COCO 视觉数据集','常用于目标检测、分割和图像描述研究的数据集及评测基准之一。','像一套含多类日常场景图片和目标标注的练习与评测资料。',['COCO'],'dataset',{contextNote:'COCO 的类别、标注和评测协议有具体版本；使用时要核对所用数据配置。'});
+  add('opencv','OpenCV 计算机视觉库','用于读取、处理和显示图像/视频的计算机视觉软件库。','像一组读取照片、改尺寸、换颜色和画标注框的工具。',['OpenCV','cv2'],'image');
+  add('numpy','NumPy 数值数组库','Python 中用于多维数组和数值计算的常用库。','像一张能快速进行批量数字运算的表格。',['NumPy','numpy'],'tensor');
+  add('torchvision','TorchVision 视觉工具库','PyTorch 生态中提供图像数据集、变换和视觉模型等工具的库。','像给 PyTorch 配套的图像数据与模型工具箱。',['TorchVision','Torchvision','torchvision'],'image');
+  add('pillow','Pillow 图像处理库','Python 中用于打开、保存和进行基础图像操作的图像库。','像一本处理图片文件的基础工具册。',['Pillow','PIL'],'image');
+  add('mosaic-augmentation','Mosaic 拼图增强','把多张训练图像裁切、缩放并拼到同一画布上的数据增强方式，目标框也要同步变换。','像把四张照片拼成一张新练习图，并把每个目标的位置一并搬过去。',['Mosaic','Mosaic augmentation'],'augmentation');
+  add('accuracy','准确率（accuracy）','在某种明确的匹配规则下，所有判断中正确的比例；具体分母要按分类或检测任务定义。','像把答对的题数除以参加统计的总题数。',['Accuracy','accuracy','准确率'],'metrics',{contextNote:'目标检测中的 Precision、Recall 和 mAP 衡量角度不同，不能用一个分类准确率替代。'});
+  add('true-negative','真阴性（true negative，TN）','按评估规则判定为负类的对象被正确识别为负类。','像确认一张没有猫的图片确实没有猫。',['TN','true negative','真阴性'],'metrics');
+  add('focal-loss','焦点损失（Focal Loss）','一种降低易分类样本影响、让训练更关注难分类样本的损失改造。','像复习时少花时间做已经会的题，把精力多放在总做错的题上。',['Focal Loss','FocalLoss','Focal'],'yolo-loss',{contextNote:'它常用于类别不平衡等场景，但并非处理不平衡的唯一办法，也不是所有检测器默认使用的损失。'});
+  add('flops','浮点运算量（FLOPs）','对模型一次前向计算中浮点运算数量的估算指标。','像数一遍完成一次预测大约需要多少次数字运算。',['FLOPs','FLOP count'],'cnn',{contextNote:'不同工具对乘加是否计作一次或两次运算的约定可能不同，比较时应使用相同口径。'});
+  add('local-response-normalization','局部响应归一化（Local Response Normalization，LRN）','一种早期卷积网络使用的局部数值归一化操作，会参考相邻通道的响应。','像把附近几个频道的信号放在一起比较，再调整当前频道的强弱。',['LRN','Local Response Normalization'],'cnn',{contextNote:'它是理解 AlexNet 等历史结构时会遇到的名称，不是现代视觉网络普遍必需的模块。'});
+  add('radial-basis-function','径向基函数（Radial Basis Function，RBF）','函数值主要随输入到某个中心点的距离变化的一类函数，常用于 RBF 网络或核方法。','像离一个地标越近，收到的影响越强；越远影响越弱。',['RBF','Radial Basis Function'],'cnn');
+  add('neocognitron','Neocognitron（早期视觉网络）','受视觉皮层层级处理启发的早期神经网络模型，包含逐层提取局部模式的思路。','像先识别简单笔画，再把笔画组合成数字形状的早期设计。',['Neocognitron'],'cnn',{contextNote:'这是历史模型名称；现代 CNN 的训练方法和结构已发展很多，不能把两者当作同一个实现。'});
+  add('autoanchor','AutoAnchor（锚框检查工具）','YOLOv5 训练代码中用于检查或重新适配锚框尺寸的辅助逻辑。','像开练前先检查鞋码模板是否适合训练集中的物体尺寸。',['AutoAnchor'],'anchors',{contextNote:'不同仓库版本是否启用、何时运行以及参数如何处理，应查看对应代码。'});
+  add('exponential-moving-average','指数移动平均（Exponential Moving Average，EMA）','给近期数值更大权重、给较早数值较小权重的一种平滑平均；训练中也可用于平滑模型参数。','像每次记新成绩时更看重最近表现，同时保留一部分过去记录。',['EMA','Exponential Moving Average'],'training',{contextNote:'“参数 EMA”是参数平滑副本，不等同于优化器中梯度的一阶或二阶移动统计。'});
+  add('lrn-scheduler','学习率调度器（learning-rate scheduler）','按预设规则随训练进程调整学习率的工具。','像根据训练轮次自动换挡，让步子大小随阶段改变。',['CosineAnnealingLR','ReduceLROnPlateau','学习率调度器','scheduler'],'optimizer');
+  add('warmup','学习率预热（warmup）','训练开始时先使用较小学习率，再逐渐升到设定值的策略。','像刚开始骑车先慢慢加速，避免一上来就冲得太快。',['Warmup','warmup'],'optimizer');
+  add('panet','PANet（路径聚合网络）','一种通过增加自下而上路径来促进多尺度特征融合的网络结构设计。','像在已有楼层之间再增加一条向上通道，让低层细节更直接传到高层。',['PANet'],'architecture',{contextNote:'YOLOv5 中的 PAN 风格特征路径与原论文 PANet 不能直接视为完全相同的整套网络。'});
+  add('upsample','上采样（upsampling）','把特征图的空间尺寸放大的操作，具体插值规则由实现决定。','像把小地图放大到更多格子，得到更细的展示网格。',['Upsample','upsampling','上采样'],'architecture');
+  add('decoder','解码器（decoder）','把较紧凑或较抽象的表示逐步变换成目标输出的网络部分或计算步骤。','像把压缩的提示逐层展开，恢复成可阅读的答案。',['Decoder','decoder','解码器'],'tasks');
+  add('yolo-loss-symbols','YOLO 损失分项符号（Lbox / Lobj / Lcls）','分别表示边界框定位、物体性判断和类别判断相关的损失分量；具体加权和记号以当前公式为准。','像把总扣分单分成位置、有没有目标、类别三本账。',['Lbox','Lobj','Lcls','L_total','Ltotal'],'yolo-loss');
+  add('conv-shape-symbols','卷积尺寸符号（Cin / Cout / Hin / Win）','常用来表示卷积输入通道数、输出通道数以及输入空间的高和宽。','像给进入和离开机器的通道数、网格高度和宽度分别贴上标签。',['Cin','Cout','Hin','Win','Hout','Wout'],'cnn');
+  add('tanh','双曲正切函数（Tanh）','一种把输入平滑压到 −1 到 1 之间的激活函数。','像把各种大小的数值压进正负一之间的固定刻度。',['Tanh','tanh'],'network');
+  add('transformer','Transformer 网络结构','一种以注意力运算为核心、可组合编码器或解码器模块的神经网络结构。','像让每个位置根据其他位置的信息决定该重点参考谁。',['Transformer','Transformers','Transformer network'],'network',{contextNote:'不同 Transformer 模型可使用编码器、解码器或两者；BERT 与 GPT-2 就不是同一种结构用法。'});
+  add('precision-recall-curve','精确率—召回率曲线（Precision–Recall curve）','改变预测分数门槛后，把对应的精确率与召回率画成的一组点或曲线。','像逐步调高“算不算报出”的门槛，再记录误报与漏报之间的变化。',['Precision-Recall curve','Precision–Recall curve','PR curve','PR 曲线'],'metrics');
+  add('top5-accuracy','Top-5 准确率（Top-5 accuracy）','分类任务中，只要真实类别出现在模型分数最高的五个类别里，就算该样本命中。','像考试允许写出最可能的五个答案，只要标准答案在其中就记为答对。',['Top-5','Top-5 accuracy','top 5 accuracy'],'metrics',{contextNote:'它通常用于类别很多的图像分类评测，不能直接替代检测任务中的 mAP。'});
+  add('cifar10','CIFAR-10 图像数据集','一个包含十个类别的小尺寸彩色图像分类数据集，常用于入门实验。','像一本由十类小彩图组成的分类练习册。',['CIFAR-10','CIFAR10'],'cnn');
+  add('python-language','Python 编程语言','一种常用于数据处理、科学计算和深度学习的通用编程语言。','像写给计算机的一套较易阅读的操作说明。',['Python'],'ai-foundations');
+  add('csv','CSV 表格文本格式','把表格每一行写成文本记录、用分隔符区分列的一种简单文件格式。','像把电子表格保存成一行一行的纯文字。',['CSV','.csv'],'dataset');
+  add('json','JSON 数据格式','用键和值、列表等结构保存数据的一种文本格式，常用于配置和程序交换数据。','像用统一标签写好的数据清单，其他程序可以按标签读取。',['JSON','.json'],'dataset');
 
   const byId=Object.fromEntries(items.map(item=>[item.id,item]));
   const aliases=items.flatMap(item=>item.aliases.map(alias=>({alias,item}))).sort((a,b)=>b.alias.length-a.alias.length);
@@ -221,6 +303,7 @@
   const matcher=alternation?new RegExp('(^|[^A-Za-z0-9_])('+alternation+')(?=$|[^A-Za-z0-9_])','giu'):null;
   const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   function lookup(alias){return aliases.find(entry=>entry.alias.toLocaleLowerCase()===String(alias).toLocaleLowerCase())?.item||null}
+  function termsIn(text){const source=String(text||''),found=new Map();matcher.lastIndex=0;let match;while((match=matcher.exec(source))){const end=match.index+match[1].length+match[2].length;if(!allowedAlias(match[2],source,end)){if(match[0].length===0)matcher.lastIndex++;continue;}const item=lookup(match[2]);if(item)found.set(item.id,item);if(match[0].length===0)matcher.lastIndex++;}matcher.lastIndex=0;return [...found.values()]}
   function chip(id,label){const item=byId[id];if(!item)return '';return '<button class="glossary-chip" type="button" data-glossary-open="'+escapeHtml(id)+'" aria-haspopup="dialog">'+escapeHtml(label||item.title)+'<span aria-hidden="true">ⓘ</span></button>'}
   function renderSearch(query){
     const q=String(query||'').trim().toLocaleLowerCase();if(!q)return [];
@@ -228,12 +311,14 @@
   }
   function eligible(node){
     const parent=node.parentElement;
-    return parent&&!parent.closest('script,style,textarea,pre,option,svg,math,a,button,.katex,.glossary-term,.glossary-card,.glossary-chip,[contenteditable="true"]');
+    return parent&&!parent.closest('script,style,textarea,pre,code,option,svg,math,a,button,.katex,.glossary-term,.glossary-card,.glossary-chip,[contenteditable="true"]');
   }
-  function firstTerm(text){matcher.lastIndex=0;const match=matcher.exec(String(text||''));matcher.lastIndex=0;return match?lookup(match[2]):null;}
+  function allowedAlias(alias,text,end){return !(alias==='激活'&&/^(?:环境|账号|账户|设备|用户)/.test(String(text||'').slice(end)));}
+  function firstTerm(text){const source=String(text||'');matcher.lastIndex=0;let match,result=null;while((match=matcher.exec(source))){const start=match.index+match[1].length,end=start+match[2].length;if(allowedAlias(match[2],source,end)){result=lookup(match[2]);break;}if(match[0].length===0)matcher.lastIndex++;}matcher.lastIndex=0;return result;}
   function addTooltipHint(element,item){
     if(!element||!item||element.dataset.termId||element.dataset.glossaryOpen||element.classList?.contains('glossary-chip'))return;
-    element.dataset.glossaryTooltip=item.id;
+    if(element.matches?.('code')){element.dataset.glossaryOpen=item.id;element.setAttribute('aria-haspopup','dialog');element.setAttribute('aria-expanded','false');element.setAttribute('aria-label',item.title+'。按回车或点击查看详细解释。');element.tabIndex=0;}
+    else element.dataset.glossaryTooltip=item.id;
     const descriptionId='glossary-description-'+item.id,described=(element.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean);
     if(!described.includes(descriptionId))described.push(descriptionId);
     element.setAttribute('aria-describedby',described.join(' '));
@@ -241,11 +326,12 @@
   }
   function decorateHintTargets(root){
     const candidates=[];
-    if(root.matches?.('a,button,label,select,input,svg text'))candidates.push(root);
-    candidates.push(...(root.querySelectorAll?.('a,button,label,select,input,svg text')||[]));
+    if(root.matches?.('a,button,label,select,input,code,svg text'))candidates.push(root);
+    candidates.push(...(root.querySelectorAll?.('a,button,label,select,input,code,svg text')||[]));
     candidates.forEach(element=>{
       if(element.closest?.('.glossary-card,.glossary-chip'))return;
       const source=element.matches('input,select')?(element.getAttribute('aria-label')||element.labels?.[0]?.textContent||''):element.textContent;
+      if(element.matches('code')){if(element.closest('pre,a,button'))return;const found=termsIn(source);if(found.length===1)addTooltipHint(element,found[0]);return;}
       const item=firstTerm(source);if(item)addTooltipHint(element,item);
     });
   }
@@ -256,8 +342,9 @@
     nodes.forEach(node=>{
       const source=node.nodeValue;matcher.lastIndex=0;let cursor=0,match,fragment=document.createDocumentFragment(),changed=false;
       while((match=matcher.exec(source))){
-        const item=lookup(match[2]);if(!item)continue;
         const start=match.index+match[1].length,end=start+match[2].length;
+        if(!allowedAlias(match[2],source,end))continue;
+        const item=lookup(match[2]);if(!item)continue;
         if(start<cursor)continue;
         fragment.append(document.createTextNode(source.slice(cursor,start)));
         const mark=document.createElement('dfn'),interactive=node.parentElement?.closest('a,button');mark.className='glossary-term';mark.dataset.termId=item.id;mark.tabIndex=0;mark.setAttribute('aria-label',item.title+'。按回车或点击查看解释。');mark.setAttribute('aria-haspopup','dialog');mark.setAttribute('aria-describedby','glossary-description-'+item.id);mark.textContent=source.slice(start,end);if(interactive){const ids=(interactive.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean);if(!ids.includes('glossary-description-'+item.id))ids.push('glossary-description-'+item.id);interactive.setAttribute('aria-describedby',ids.join(' '));}fragment.append(mark);cursor=end;changed=true;

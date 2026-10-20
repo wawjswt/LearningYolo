@@ -29,6 +29,35 @@
     architecture:{title:'先用三个动作读懂整张网络',question:'YOLOv5l 从图片到检测框经过什么？',why:'先看“提取线索→融合线索→给出答案”的数据流，再读层号和 YAML，能知道每个模块为什么在这里。',example:'Backbone 把 640×640 图像逐步缩小并提取特征；Neck 融合浅层位置细节与深层语义；Detect Head 在 P3/P4/P5 预测候选框和类别。',terms:['backbone','neck','head','feature-map','fpn','pan','c3','sppf']},
   };
 
+  const beginnerSteps={
+    'ai-foundations':[['输入先变成数字','图片或文字先整理成数字，模型才能按规则处理。'],['模型按参数计算','权重和偏置决定每一步怎样把输入组合成分数。'],['结果还要对照答案','训练时把预测与标签比较，再调整参数；使用学到的参数处理新例子叫推理。']],
+    tensor:[['先数清有几组数字','一个数、一串数、表格和多层分组，都可以用形状描述。'],['给每条轴起名字','批次、颜色通道、高度和宽度各代表一种分组方向。'],['再做运算和取值','矩阵相乘、索引或改形状前，先检查每条轴的长度与含义。']],
+    network:[['一个节点先做乘加','每个输入乘上自己的权重，再把结果相加并加偏置。'],['得到的是原始分数','这个分数叫 logit，可以小于零，也不一定在 0 到 1 之间。'],['需要概率时再转换','二分类常用 Sigmoid，多类互斥选择常用 Softmax；接着才计算损失。']],
+    losses:[['先确认任务和标准答案','一个“有/没有”的问题用一个 0 或 1 标签；多类互斥选择用一个类别编号。'],['模型先给原始分数','logit 还不是概率；二分类可经 Sigmoid，多类可经 Softmax 得到概率。'],['损失按正确答案评分','BCE 处理二分类概率，交叉熵处理互斥多分类；从 logits 训练时使用匹配的稳定接口。']],
+    gradient:[['看参数变一点会怎样','把一个参数略微调大或调小，观察损失随之升高还是降低。'],['梯度总结变化方向','梯度像坡面方向提示；沿相反方向走小步，通常能让当前损失下降。'],['反向传播算出每个方向','它从损失开始沿计算步骤把梯度传回参数，再交给优化器更新。']],
+    optimizer:[['先拿到参数的梯度','梯度告诉我们参数往哪边改会让损失上升。'],['选择更新规则和步长','SGD、动量和 Adam 使用不同的历史信息来稳定或调整更新。'],['做一次可计算的更新','学习率控制步子大小；更新后再用新参数处理下一批数据。']],
+    training:[['一次拿一小批样本','数据加载器把图片与标签整理成一个 batch。'],['预测、比较、求更新信号','模型产生预测，损失与标签比较，反向传播算出梯度。'],['重复训练并检查新题','更新参数后继续下一批；每轮结束在验证集检查泛化表现。']],
+    regularization:[['训练分数不是最终成绩','模型在训练图片上表现好，不代表遇到新图片也能做好。'],['对照训练和验证表现','训练误差下降而验证误差上升，可能说明模型记住了训练细节。'],['限制记忆并保留最佳状态','数据增强、权重约束、Dropout 或早停可帮助控制拟合；用验证结果选模型。']],
+    image:[['一个像素就是几个数','RGB 图片的一个像素由红、绿、蓝三个数描述。'],['整张图是按轴排好的数字','图像宽高、颜色通道和批次的顺序要与模型约定一致。'],['预处理后再交给模型','缩放、补边、换通道或归一化都要按训练时相同的规则进行。']],
+    tasks:[['先问模型需要回答什么','整张图属于哪类、每个物体在哪里、哪些像素属于目标，是不同问题。'],['答案形式跟着任务变','分类输出类别；检测输出框与类别；分割输出逐像素区域。'],['再选结构与评估方式','任务不同，标签、模型输出和衡量成绩的方法也不同。']],
+    cnn:[['小滤镜只看局部','卷积核在一个小窗口内逐项相乘再相加，形成一个输出数。'],['同一组权重滑过整张图','窗口在不同位置重复相同计算，寻找相似的边缘或纹理。'],['许多输出组成特征图','多组滤镜生成多个通道，供后续网络组合成更复杂的线索。']],
+    pooling:[['圈定一个小窗口','例如 2×2 区域里有四个数，先看清当前窗口覆盖哪里。'],['用一个数概括窗口','最大池化保留最大值，平均池化计算四个数的平均值。'],['尺寸变小也会丢细节','池化减少后续计算，但目标的精细位置也可能变得不清楚。']],
+    iou:[['用坐标写出两个框','先确认坐标原点、x/y 方向，以及框的数字代表中心还是角点。'],['找共同覆盖和总覆盖','交集是两个框重叠部分；并集是它们合起来覆盖的区域。'],['用交并比衡量重叠','交集面积除以并集面积得到 IoU，越接近 1 表示重叠越多。']],
+    dataset:[['每张图片对应答案文件','标签写明目标类别和位置，类别编号要对应名称表。'],['把像素坐标换成比例','YOLO 标签的中心位置与宽高除以图像尺寸，变成 0 到 1 附近的比例。'],['训练前检查整套目录','核对图片、标签、类别顺序和 YAML 路径，再可视化抽查框是否贴合。']],
+    augmentation:[['先只改变图片的一件事','例如左右翻转或调亮度，观察目标外观怎样变化。'],['几何变化要同步改标签','图片翻转或裁切后，框的位置和大小也要一起变换。'],['确认变化仍符合现实','增强要增加有用变化，不能把类别含义或标注关系弄错。']],
+    metrics:[['逐个对照预测与目标','正确匹配记为 TP，错误报出记为 FP，漏掉真实目标记为 FN。'],['分别看报出质量和找回比例','Precision 看报出的有多少正确；Recall 看真实目标找到多少。'],['改变门槛看取舍','门槛改变会同时影响误报和漏报；检测评估通常还汇总不同门槛下的表现。']],
+    'data-quality':[['数据要代表将来使用场景','同一段视频的许多相似帧不等于许多不同经验。'],['按来源分组后再切分','同一拍摄序列放进同一个划分，避免近重复图片同时出现在训练和验证。'],['从错误案例找缺口','按类别、大小、遮挡和场景整理失败样本，再决定补数据或改流程。']],
+    transfer:[['从已有参数开始','预训练模型已学到通用线索，可作为新任务的起点。'],['更换任务需要的输出','类别数或答案形式不同，通常要调整最后的预测部分。'],['先少改，再逐步放开','可以先冻结大部分参数训练新输出层，再按验证结果逐步微调。']],
+    quaternion:[['先约定三维坐标和方向','明确原点、坐标轴、角度单位，以及正旋转的方向。'],['欧拉角按顺序转多个轴','轴的旋转顺序会影响结果，某些姿态还会让角度表示失去一个自由度。'],['四元数用四个数表示旋转','单位四元数可组合与插值姿态；它避开欧拉角的万向节锁表示问题，但仍需理解乘法约定。']],
+    architecture:[['Backbone 从图片提线索','卷积和下采样逐层生成不同分辨率的特征。'],['Neck 融合深浅信息','路径把细位置信息和较大范围语义组合起来，形成多尺度特征。'],['Detect Head 给出候选预测','不同尺度分支分别预测位置、物体性和类别，再由后处理筛选结果。']],
+    anchors:[['网格给位置一个参照','把图片切成格子，先找到目标中心大致落在哪个位置。'],['anchor 给出宽高起点','预设尺寸帮助网络从合适大小的框开始调整。'],['训练时决定哪些候选负责学习','根据位置和尺寸匹配正样本；背景或不匹配位置按规则作为其他训练样本。']],
+    'yolo-loss':[['一个候选要回答三个问题','框的位置对不对、这里有没有物体、物体属于什么类别。'],['标签与预测形成不同损失','定位项比较框，物体性项判断目标存在，类别项比较目标类别。'],['损失合起来更新网络','各项按配置加权后反向传播；物体性目标和正样本分配以代码版本为准。']],
+    'train-yolo':[['先把环境和路径准备好','进入正确仓库目录，安装相容依赖，并确认图片和标签能读到。'],['明确写出训练设置','数据配置、起始权重、图片尺寸和 batch 都影响实际运行。'],['先小规模试跑再加量','短训练检查损失、显存、标签和验证结果，再安排正式训练。']],
+    'yolo-augment':[['区分不同增强做了什么','Mosaic 拼合多张图，HSV 改变颜色，尺寸设置改变输入分辨率。'],['图片变换时让框同行','裁切、缩放和翻转都必须同步更新目标框。'],['一次比较一种设置','固定数据与其他参数，只改变一个选项，再看验证指标和错误图片。']],
+    inference:[['先按训练规则处理输入','调整尺寸、颜色通道和值域，确保模型收到兼容的数字。'],['网络输出的是候选分数','还要把位置换算回图片坐标，并根据门槛去除低分结果。'],['合并重复框并核对原图','NMS 等后处理减少重复框，最后撤销缩放/补边并检查画框位置。']],
+    debugging:[['先明确看到的异常','例如没有预测框、类别错或训练损失变成 NaN。'],['沿数据流逐步检查','核对文件路径和标签，再看预处理、模型输出、分数门槛与后处理。'],['一次只改一个原因','保存改动前的日志和图片，用最小复现确认哪一步改变了结果。']]
+  };
+
   const prerequisites={
     'ai-foundations':[],tensor:['ai-foundations'],network:['tensor'],losses:['network'],gradient:['network','losses'],optimizer:['gradient','losses'],training:['optimizer'],regularization:['training'],
     image:['tensor'],tasks:['image'],cnn:['image','tasks'],pooling:['cnn'],iou:['tasks'],dataset:['image','iou'],augmentation:['dataset'],metrics:['iou'],
@@ -56,7 +85,7 @@
     transfer:{where:'装有 PyTorch 或对应检测仓库的 Python 环境。',input:'预训练权重、新任务类别数和训练/验证数据。',output:'冻结或微调后的参数以及验证结果。'},
   };
 
-  const advancedIndices={tensor:[1,3,4,5],network:[5,6],optimizer:[6,7],training:[6,7,8,10],tasks:[5,6,7],cnn:Array.from({length:10},(_,i)=>i+13),losses:[1,3,9,10,11]};
+  const advancedIndices={tensor:[1,3,4,5],network:[5,6],optimizer:[6,7],training:[6,7,8,10],tasks:[5,6,7],cnn:Array.from({length:10},(_,i)=>i+13),losses:[1,3,4]};
   const playgroundIndices={
     dataset:{0:'dataset-labels',4:'dataset-readiness'},'train-yolo':{2:'yolo-training-log'},architecture:{1:'architecture-scales'},network:{1:'activation-curves'},
     tensor:{1:'tensor-operations',4:'tensor-transpose',8:'tensor-explorer'},
@@ -68,10 +97,17 @@
   const allGroups=typeof groups!=='undefined'?groups:(window.groups||{});
   if(!window.lessons)window.lessons=allLessons;
   if(!window.groups)window.groups=allGroups;
+  function stableSectionId(lessonId,title,used){
+    const normalized=String(title||'').replace(/^\s*\d+\s*[.、．]\s*/,'').normalize('NFKC').trim().toLocaleLowerCase();
+    let hash=2166136261;for(let i=0;i<normalized.length;i++){hash^=normalized.charCodeAt(i);hash=Math.imul(hash,16777619);}
+    const base=lessonId+'-s-h'+(hash>>>0).toString(36);let id=base,suffix=2;while(used.has(id))id=base+'-'+suffix++;
+    used.add(id);return id;
+  }
   allLessons.forEach(lesson=>{
+    const usedSectionIds=new Set();
     lesson.sections.forEach((section,index)=>{
       section.legacyIndex=index;
-      section.id=lesson.id+'-s'+String(index+1).padStart(2,'0');
+      section.id=stableSectionId(lesson.id,section.title,usedSectionIds);
       section.playgroundId=playgroundIndices[lesson.id]?.[index]||'';
       if(advancedIndices[lesson.id]?.includes(index))section.depth='advanced';
     });
@@ -85,23 +121,26 @@
   const lossLesson=allLessons.find(lesson=>lesson.id==='losses');
   if(lossLesson){
     const original=lossLesson.sections;
-    const order=[0,8,6,2,4,5,7,1,3,...Array.from({length:Math.max(0,original.length-9)},(_,i)=>i+9)];
+    const order=[0,6,2,5,8,7,1,3,4,...Array.from({length:Math.max(0,original.length-9)},(_,i)=>i+9)];
     lossLesson.sections.splice(0,lossLesson.sections.length,...order.map(index=>original[index]));
+    lossLesson.sections.forEach((section,index)=>{section.title=section.title.replace(/^\s*\d+\s*[.、．]\s*/,String(index+1)+'. ');});
   }
   for(const [lessonId,indices] of Object.entries({gradient:[0,4,1,2,3,5,6,7],tensor:[0,2,8,6,7,1,4,5,3]})){
     const lesson=allLessons.find(item=>item.id===lessonId);if(!lesson||indices.length!==lesson.sections.length)continue;
     const original=lesson.sections.slice();lesson.sections.splice(0,lesson.sections.length,...indices.map(index=>original[index]));
   }
 
-  // Keep learning progress and section-exercise answers from the numeric-anchor format.
+  // Keep learning progress and section-exercise answers from both legacy numeric and generated-index anchors.
   for(const lesson of allLessons){
     const savedSection=state.lastSection?.[lesson.id];
-    const legacyMatch=/^section-(\d+)$/.exec(String(savedSection||''));
-    if(legacyMatch){const section=lesson.sections.find(item=>item.legacyIndex===Number(legacyMatch[1])-1);if(section)state.lastSection[lesson.id]='section-'+section.id;}
+    const escapedLessonId=lesson.id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const legacyMatch=new RegExp('^section-(?:'+escapedLessonId+'-s(\\d+)|(\\d+))$').exec(String(savedSection||''));
+    if(legacyMatch){const sectionNumber=Number(legacyMatch[1]||legacyMatch[2]);const section=lesson.sections.find(item=>item.legacyIndex===sectionNumber-1);if(section)state.lastSection[lesson.id]='section-'+section.id;}
     for(const [key,value] of Object.entries(state.exerciseAnswers||{})){
-      const match=new RegExp('^'+lesson.id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+':section:(\\d+)$').exec(key);
+      const match=new RegExp('^'+escapedLessonId+':section:(?:'+escapedLessonId+'-s(\\d+)|(\\d+))$').exec(key);
       if(!match)continue;
-      const section=lesson.sections.find(item=>item.legacyIndex===Number(match[1]));
+      const oldIndex=match[1]?Number(match[1])-1:Number(match[2]);
+      const section=lesson.sections.find(item=>item.legacyIndex===oldIndex);
       if(section){const stableKey=lesson.id+':section:'+section.id;if(!(stableKey in state.exerciseAnswers))state.exerciseAnswers[stableKey]=value;delete state.exerciseAnswers[key];}
     }
   }
@@ -121,7 +160,8 @@
   function termChip(id){return window.visionlabGlossary?.chip(id)||'';}
   function renderStart(lesson){
     const item=lesson?.foundation;if(!item)return '';
-    return '<section class="zero-start-card" aria-labelledby="zero-start-'+escapeHtml(lesson.id)+'"><div class="zero-start-heading"><span class="chapter-kicker">ZERO-FOUNDATION · 零基础起点</span><h2 id="zero-start-'+escapeHtml(lesson.id)+'">'+escapeHtml(item.title)+'</h2><p class="zero-start-question">'+escapeHtml(item.question)+'</p></div><div class="zero-start-grid"><div class="zero-start-purpose"><strong>这节要解决什么</strong><p>'+escapeHtml(item.why)+'</p></div><div class="zero-start-example"><strong>先算一个小例子</strong><p>'+escapeHtml(item.example)+'</p></div></div><div class="zero-start-terms"><strong>先认这些词</strong><div>'+item.terms.map(termChip).join('')+'</div></div></section>';
+    const steps=beginnerSteps[lesson.id]||[],stepMarkup=steps.length?'<ol class="zero-start-steps" aria-label="本课零基础学习步骤">'+steps.map((step,index)=>'<li><span aria-hidden="true">'+(index+1)+'</span><div><strong>'+escapeHtml(step[0])+'</strong><p>'+escapeHtml(step[1])+'</p></div></li>').join('')+'</ol>':'';
+    return '<section class="zero-start-card" aria-labelledby="zero-start-'+escapeHtml(lesson.id)+'"><div class="zero-start-heading"><span class="chapter-kicker">ZERO-FOUNDATION · 零基础起点</span><h2 id="zero-start-'+escapeHtml(lesson.id)+'">'+escapeHtml(item.title)+'</h2><p class="zero-start-question">'+escapeHtml(item.question)+'</p></div><div class="zero-start-grid"><div class="zero-start-purpose"><strong>这节要解决什么</strong><p>'+escapeHtml(item.why)+'</p></div><div class="zero-start-example"><strong>先算一个小例子</strong><p>'+escapeHtml(item.example)+'</p></div></div><div class="zero-start-steps-wrap"><strong>按这个顺序理解</strong>'+stepMarkup+'</div><div class="zero-start-terms"><strong>遇到新词可以点开看解释</strong><div>'+item.terms.map(termChip).join('')+'</div></div></section>';
   }
   function renderLossChain(){
     return '<section class="loss-foundation-chain" aria-labelledby="loss-foundation-title"><div class="loss-chain-heading"><span class="chapter-kicker">从原始分数走到损失</span><h2 id="loss-foundation-title">先把这条路走一遍，再看公式和代码</h2><p>用同一张“有没有猫”的图片，逐步看模型如何给答案、怎样算错得多严重。</p></div><ol class="loss-chain-steps"><li><b>1</b><div><strong>真实答案是标签</strong><p>这张图<strong>有猫</strong>，所以标签 y=1；若没猫，y=0。标签说明正确答案，不是模型预测。</p></div></li><li><b>2</b><div><strong>最后一个神经元先给原始分数</strong><p>假设输入 x=2、权重 w=1.5、偏置 b=−1：z=wx+b=2。z 叫 logit，可以是负数、正数或 0，本身不是概率。</p></div></li><li><b>3</b><div><strong>Sigmoid 把分数换成概率</strong><p>p=1/(1+e<sup>−z</sup>)。当 z=2，p≈0.881，表示模型给“有猫”约 88.1% 的概率；z=0 时概率正好是 0.5。</p></div></li><li><b>4</b><div><strong>BCE 只惩罚真实答案对应的概率</strong><p>y=1 时损失是 −ln(p)；y=0 时是 −ln(1−p)。若 p=0.8，标签 1 的损失约 0.223；标签 0 的损失约 1.609。对错误答案越自信，惩罚越大。</p></div></li><li><b>5</b><div><strong>互斥多分类改用一组分数</strong><p>猫、狗、兔三选一时，模型给 logits [2, 1, 0.1]。Softmax 后约为 [0.659, 0.243, 0.099]；若真实答案是兔，单样本 CE=−ln(0.099)≈2.31。</p></div></li><li><b>6</b><div><strong>PyTorch 的训练接口直接接原始分数</strong><p><code>BCEWithLogitsLoss</code> 接二分类 logit；<code>CrossEntropyLoss</code> 接多类 logits 和常见的类别编号。训练时不要先 argmax，也不要把 Softmax 概率误当成 logits。</p></div></li></ol><div class="loss-chain-note"><strong>现在可以开始读下面小节：</strong><span>先学习二分类与 BCE，再看 Softmax、独热标签和多分类交叉熵；信息量、熵和 KL 已放在基础链条之后，作为选学扩展。</span></div></section>';
@@ -172,7 +212,7 @@
     root.querySelector('[data-imbalance-detail]').textContent=rare?'狗：找到 8 / 10 · Recall 80%；17 次狗预测中 8 次正确 · Precision 47.1%。':'狗：找到 0 / 10 · Recall 0%；没有报狗，Precision 暂无可计算值。';
     root.querySelectorAll('[data-imbalance-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.imbalanceMode===root.dataset.mode)));
   }
-  const api={starts,codeGuides,renderStart,renderLossChain,renderBce,renderSoftmax,renderImbalance,renderLabPrimer,renderResources,initialize(){document.querySelectorAll('[data-bce-playground]').forEach(updateBce);document.querySelectorAll('[data-softmax-playground]').forEach(updateSoftmax);document.querySelectorAll('[data-imbalance-playground]').forEach(updateImbalance);}};
+  const api={starts,beginnerSteps,codeGuides,renderStart,renderLossChain,renderBce,renderSoftmax,renderImbalance,renderLabPrimer,renderResources,initialize(){document.querySelectorAll('[data-bce-playground]').forEach(updateBce);document.querySelectorAll('[data-softmax-playground]').forEach(updateSoftmax);document.querySelectorAll('[data-imbalance-playground]').forEach(updateImbalance);}};
   window.visionlabFoundation=api;
   window.initializeFoundationExamples=api.initialize;
   window.renderFoundationStart=renderStart;

@@ -75,7 +75,7 @@
       const transposeExplorer=l.id==='tensor'&&s.playgroundId==='tensor-transpose'?tensorTransposeMarkup():'';
       const lessonPlayground=window.lessonPlaygrounds?.render(l.id,s.playgroundId||i,legacyIndex)||'';
       const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,legacyIndex)||'';
-      const content=paragraphs+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i,s.id):'');
+      const content=paragraphs+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',legacyIndex,s.id):'');
       const optional=s.depth==='advanced'?'<details class="advanced-section"><summary>选学深入内容 · 点击展开</summary><div class="advanced-section-body">'+content+'</div></details>':content;
       const stableId=s.id||l.id+'-s'+String(legacyIndex+1).padStart(2,'0');
       return '<section class="text-section" id="section-'+stableId+'" data-lesson-id="'+l.id+'" data-section-id="'+stableId+'" data-section-index="'+i+'"><span class="legacy-section-anchor" id="section-'+(legacyIndex+1)+'" aria-hidden="true"></span><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+optional+'</section>';
@@ -262,6 +262,9 @@
     if(candidate==='chapter-notes')return candidate;
     const match=/^section-(\d+)$/.exec(candidate);
     if(match){const section=l.sections.find(item=>item.legacyIndex===Number(match[1])-1);return section?'section-'+section.id:'section-'+l.sections[0]?.id;}
+    const escapedLessonId=l.id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const oldGenerated=new RegExp('^section-'+escapedLessonId+'-s(\\d+)$').exec(candidate);
+    if(oldGenerated){const section=l.sections.find(item=>item.legacyIndex===Number(oldGenerated[1])-1);if(section)return 'section-'+section.id;}
     const stable=/^section-(.+)$/.exec(candidate);
     return stable&&l.sections.some(section=>section.id===stable[1])?candidate:'section-'+l.sections[0]?.id;
   }

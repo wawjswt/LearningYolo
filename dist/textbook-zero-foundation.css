@@ -8,6 +8,8 @@
   text-underline-offset:3px;cursor:help;font-style:inherit;border-radius:2px
 }
 .glossary-term:hover,.glossary-term:focus-visible{background:#f0edf8;outline:2px solid #9c8bc9;outline-offset:2px}
+code[data-glossary-open]{cursor:help;text-decoration:underline dotted #8e7cc2;text-underline-offset:3px;border-radius:2px}
+code[data-glossary-open]:hover,code[data-glossary-open]:focus-visible{outline:2px solid #9c8bc9;outline-offset:2px}
 .glossary-chip{display:inline-flex;align-items:center;gap:6px;margin:4px 5px 0 0;padding:6px 9px;border:1px solid #e4dfef;border-radius:99px;background:#fffefa;color:#554781;font:inherit;font-size:12px;cursor:pointer}
 .glossary-chip:hover,.glossary-chip:focus-visible{background:#f2eff9;border-color:#aa9bd1;outline:2px solid #aa9bd1;outline-offset:2px}
 .glossary-tooltip,.glossary-card{position:fixed;z-index:1200;box-sizing:border-box}
@@ -42,6 +44,13 @@
 .zero-start-grid>div{padding:14px 16px;border:1px solid #eae6ef;border-radius:9px;background:#fffefa}
 .zero-start-grid strong{color:#554781;font-size:12px}
 .zero-start-grid p{margin:6px 0 0;color:#536071;font-size:13px;line-height:1.8}
+.zero-start-steps-wrap{margin-top:16px}
+.zero-start-steps-wrap>strong{display:block;color:#55525f;font-size:12px}
+.zero-start-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:8px 0 0;padding:0;list-style:none;counter-reset:zero-step}
+.zero-start-steps li{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #eae6ef;border-radius:9px;background:#fffefa}
+.zero-start-steps li>span{display:grid;flex:0 0 24px;height:24px;place-items:center;border-radius:50%;background:#eee9fa;color:#6755a3;font-size:12px;font-weight:700}
+.zero-start-steps li strong{color:#414052;font-size:12px}
+.zero-start-steps li p{margin:4px 0 0;color:#536071;font-size:12px;line-height:1.7}
 .zero-start-terms{margin-top:15px}
 .zero-start-terms>strong{display:block;color:#55525f;font-size:12px}
 .zero-start-terms>div{display:flex;flex-wrap:wrap;gap:2px;margin-top:5px}
@@ -144,6 +153,7 @@
 
 @media(max-width:700px){
   .zero-start-grid{grid-template-columns:1fr}
+  .zero-start-steps{grid-template-columns:1fr}
   .bce-live-values{grid-template-columns:1fr}
   .softmax-controls{grid-template-columns:1fr}
   .lab-beginner-guide ol{grid-template-columns:1fr}

@@ -47,11 +47,12 @@
   const lessonMathOptions={delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],ignoredTags:['script','noscript','style','textarea','pre','code','option'],throwOnError:false};
   function renderLessonMath(root){if(root&&window.renderMathInElement)window.renderMathInElement(root,lessonMathOptions)}
   window.renderLessonMath=renderLessonMath;
-  function exerciseCard(l,exercise,type,index){
+  function exerciseCard(l,exercise,type,index,sectionId=''){
     const label=type==='section'?'本节练习':'章末综合题 '+(index+1);
     const indexAttribute=type==='section'?'data-section-index':'data-exercise-index';
-    const key=l.id+':'+type+':'+index,saved=state.exerciseAnswers?.[key],selected=Number.isInteger(saved)&&saved>=0&&saved<exercise.options.length?saved:null;
-    const options=exercise.options.map((option,i)=>{const active=selected===i,correct=active&&selected===exercise.answer;return '<button type="button" class="'+(active?(correct?'correct':'wrong'):'')+'" aria-pressed="'+active+'" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'">'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>'}).join('');
+    const key=l.id+':'+type+':'+(type==='section'?(sectionId||index):index),saved=state.exerciseAnswers?.[key],selected=Number.isInteger(saved)&&saved>=0&&saved<exercise.options.length?saved:null;
+    const sectionAttribute=type==='section'?' data-section-id="'+esc(sectionId||'')+'"':'';
+    const options=exercise.options.map((option,i)=>{const active=selected===i,correct=active&&selected===exercise.answer;return '<button type="button" class="'+(active?(correct?'correct':'wrong'):'')+'" aria-pressed="'+active+'" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'"'+sectionAttribute+'>'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>'}).join('');
     const feedback=selected===null?'':(selected===exercise.answer?'回答正确。':'再想一想。正确答案：'+String.fromCharCode(65+exercise.answer)+'。')+'解析：'+exercise.why;
     return '<section class="exercise-card '+type+'-exercise"><span class="exercise-label">'+label+'</span><p class="exercise-prompt">'+rich(exercise.q)+'</p><div class="exercise-options" role="group" aria-label="'+label+'">'+options+'</div><div class="quiz-result exercise-feedback" role="status" aria-live="polite">'+feedback+'</div></section>';
   }
@@ -59,21 +60,25 @@
     const placements=window.lessonFigures.placement(l);
     const placed=new Set();
     return l.sections.map((s,i)=>{
+      const legacyIndex=Number.isInteger(s.legacyIndex)?s.legacyIndex:i;
       const paragraphs=s.paragraphs.map((p,j)=>{
         const heading=s.subheadings?.[j]?'<h3 class="lesson-subheading">'+rich(s.subheadings[j])+'</h3>':'';
-        const markup=heading+'<p>'+rich(p)+'</p>'+(window.lessonBiasPlaygrounds?.renderParagraph(l.id,i,j)||'');
-        const here=placements.filter(figure=>figure.section===i&&figure.paragraph===j&&!placed.has(figure.key));
+        const markup=heading+'<p>'+rich(p)+'</p>'+(window.lessonBiasPlaygrounds?.renderParagraph(l.id,legacyIndex,j)||'');
+        const here=placements.filter(figure=>figure.section===legacyIndex&&figure.paragraph===j&&!placed.has(figure.key));
         if(here.length){here.forEach(figure=>placed.add(figure.key));return markup+here.map(figure=>window.lessonFigures.render(l,figure.key)).join('')}
         return markup;
       }).join('');
-      const fallback=placements.filter(figure=>figure.section===i&&!placed.has(figure.key)).map(figure=>{placed.add(figure.key);return window.lessonFigures.render(l,figure.key)}).join('');
+      const fallback=placements.filter(figure=>figure.section===legacyIndex&&!placed.has(figure.key)).map(figure=>{placed.add(figure.key);return window.lessonFigures.render(l,figure.key)}).join('');
       const sectionCode=s.code?'<div class="code-block"><div class="code-head"><span>Python · 本节示例</span><button class="copy" type="button" data-copy-fragment="section-code-'+l.id+'-'+i+'">复制本段代码</button></div><pre><code id="section-code-'+l.id+'-'+i+'">'+esc(s.code)+'</code></pre></div>'+(s.codeNote?'<p class="code-note">'+rich(s.codeNote)+'</p>':'') : '';
-      const tensorOperations=l.id==='tensor'&&i===1?tensorOperationsMarkup():'';
-      const tensorExplorer=l.id==='tensor'&&i===8?tensorExplorerMarkup():'';
-      const transposeExplorer=l.id==='tensor'&&i===4?tensorTransposeMarkup():'';
-      const lessonPlayground=window.lessonPlaygrounds?.render(l.id,i)||'';
-      const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,i)||'';
-      return '<section class="text-section" id="section-'+(i+1)+'" data-lesson-id="'+l.id+'" data-section-index="'+i+'"><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+paragraphs+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i):'')+'</section>';
+      const tensorOperations=l.id==='tensor'&&s.playgroundId==='tensor-operations'?tensorOperationsMarkup():'';
+      const tensorExplorer=l.id==='tensor'&&s.playgroundId==='tensor-explorer'?tensorExplorerMarkup():'';
+      const transposeExplorer=l.id==='tensor'&&s.playgroundId==='tensor-transpose'?tensorTransposeMarkup():'';
+      const lessonPlayground=window.lessonPlaygrounds?.render(l.id,s.playgroundId||i,legacyIndex)||'';
+      const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,legacyIndex)||'';
+      const content=paragraphs+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',i,s.id):'');
+      const optional=s.depth==='advanced'?'<details class="advanced-section"><summary>选学深入内容 · 点击展开</summary><div class="advanced-section-body">'+content+'</div></details>':content;
+      const stableId=s.id||l.id+'-s'+String(legacyIndex+1).padStart(2,'0');
+      return '<section class="text-section" id="section-'+stableId+'" data-lesson-id="'+l.id+'" data-section-id="'+stableId+'" data-section-index="'+i+'"><span class="legacy-section-anchor" id="section-'+(legacyIndex+1)+'" aria-hidden="true"></span><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+optional+'</section>';
     }).join('');
   }
   function tensorOperationsMarkup(){
@@ -256,18 +261,21 @@
     if(candidate==='chapter-quiz'&&l.chapterExercises?.length)return candidate;
     if(candidate==='chapter-notes')return candidate;
     const match=/^section-(\d+)$/.exec(candidate);
-    return match&&Number(match[1])<=l.sections.length?candidate:'section-1';
+    if(match){const section=l.sections.find(item=>item.legacyIndex===Number(match[1])-1);return section?'section-'+section.id:'section-'+l.sections[0]?.id;}
+    const stable=/^section-(.+)$/.exec(candidate);
+    return stable&&l.sections.some(section=>section.id===stable[1])?candidate:'section-'+l.sections[0]?.id;
   }
   function resumeSectionTitle(l,sectionId){
     if(sectionId==='chapter-review')return '本章要点';
     if(sectionId==='chapter-quiz')return '本章综合练习';
     if(sectionId==='chapter-notes')return '笔记与进度';
-    const index=Number((/^section-(\d+)$/.exec(sectionId)||[])[1])-1;
-    return l.sections[index]?sectionTitle(l.sections[index].title):sectionTitle(l.sections[0]?.title)||'第一节';
+    const legacy=/^section-(\d+)$/.exec(sectionId);
+    const section=legacy?l.sections.find(item=>item.legacyIndex===Number(legacy[1])-1):l.sections.find(item=>item.id===String(sectionId).replace(/^section-/,''));
+    return section?sectionTitle(section.title):sectionTitle(l.sections[0]?.title)||'第一节';
   }
   function home(){
     const p=progress(),next=lessons.find(l=>l.id===state.last&&!state.done.includes(l.id))||lessons.find(l=>!state.done.includes(l.id))||lessons[0];
-    const hasSavedSection=!!state.lastSection?.[next.id],nextSection=resumeSectionId(next),nextHref='#lesson/'+next.id+(hasSavedSection?'/'+nextSection:''),nextSectionTitle=resumeSectionTitle(next,nextSection),sectionNumber=/^section-(\d+)$/.exec(nextSection),nextSectionLabel=sectionNumber?(hasSavedSection?'第 '+Number(sectionNumber[1])+' 节 · ':'从第一节开始 · ')+nextSectionTitle:'接着读：'+nextSectionTitle,nextReadingHeading=hasSavedSection?'从上次的小节接着读':'从第一节开始学习',heroActionLabel=hasSavedSection?'继续学习 · '+nextSectionTitle:(p.done?'继续学习':'从第一章开始');
+    const hasSavedSection=!!state.lastSection?.[next.id],nextSection=resumeSectionId(next),nextHref='#lesson/'+next.id+(hasSavedSection?'/'+nextSection:''),nextSectionTitle=resumeSectionTitle(next,nextSection),sectionNumber=/^section-(\d+)$/.exec(nextSection),nextSectionLabel=hasSavedSection?'第 '+(next.sections.findIndex(s=>'section-'+s.id===nextSection)+1)+' 节 · '+nextSectionTitle:'从第一节开始 · '+nextSectionTitle,nextReadingHeading=hasSavedSection?'从上次的小节接着读':'从第一节开始学习',heroActionLabel=hasSavedSection?'继续学习 · '+nextSectionTitle:(p.done?'继续学习':'从第一章开始');
     return heading('从像素开始，读懂视觉模型。','一套循序渐进的中文教材：先建立深度学习直觉，再走进计算机视觉，最后读懂并训练 YOLOv5。','VISIONLAB · 图文学习路径')
     +'<section class="welcome-panel"><div><span class="chapter-kicker">YOUR TEXTBOOK FOR DEEP LEARNING</span><h2>把公式、代码和图像，<br>连成一条能走通的路。</h2><p>每章先说明要解决的问题，再逐步展开概念、推导直觉和可运行示例。读完一节，你可以自测、记笔记，并从下一章接着学习。</p><a class="primary" href="'+nextHref+'">'+heroActionLabel+' <span>→</span></a><a class="welcome-secondary" href="#path">查看完整目录</a></div><div class="welcome-art" aria-hidden="true"><span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span><div class="art-core">AI<br><small>VISION</small></div><span class="art-node node-one">像素</span><span class="art-node node-two">特征</span><span class="art-node node-three">检测</span><span class="art-line line-one"></span><span class="art-line line-two"></span></div></section>'
     +'<section class="overview-strip"><div><span>课程章节</span><strong>'+lessons.length+'<small>章</small></strong></div><div><span>学习阶段</span><strong>03<small>阶</small></strong></div><div><span>我的进度</span><strong>'+p.pct+'<small>%</small></strong></div><div class="progress-wide"><div class="progress-label"><span>已完成 '+p.done+' / '+lessons.length+' 章</span><span>'+p.pct+'%</span></div><div class="progress-bar"><i style="width:'+p.pct+'%"></i></div></div></section>'
@@ -279,8 +287,8 @@
   function courseList(items){
     if(!items.length)return '<div class="empty">未找到“'+esc(query)+'”。换个关键词试试。</div>';
     if(query)return '<ol class="chapter-list search-results">'+items.map(hit=>{
-      const l=hit.lesson,index=lessons.indexOf(l)+1,section=hit.sectionIndex;
-      const href='#lesson/'+l.id+(section===null?'':'/section-'+(section+1));
+      const l=hit.lesson,index=lessons.indexOf(l)+1,section=hit.sectionIndex,sectionData=section===null?null:l.sections[section];
+      const href='#lesson/'+l.id+(sectionData?'/section-'+sectionData.id:'');
       return '<li><a class="chapter-row search-result '+l.group+'" href="'+href+'"><span class="chapter-index">'+String(index).padStart(2,'0')+'</span><span class="chapter-row-copy search-result-copy"><span class="search-match-label">'+hit.label+'</span><strong>'+l.title+'</strong>'+(hit.sectionTitle?'<span class="search-match-section">'+(section===null?'相关内容':'第 '+(section+1)+' 节 · ')+hit.sectionTitle+'</span>':'')+(hit.excerpt?'<span class="search-match-excerpt">'+esc(hit.excerpt)+'</span>':'')+'</span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">→</span></a></li>';
     }).join('')+'</ol>';
     return '<ol class="chapter-list">'+items.map(l=>'<li><a class="chapter-row '+l.group+'" href="#lesson/'+l.id+'"><span class="chapter-index">'+String(lessons.indexOf(l)+1).padStart(2,'0')+'</span><span class="chapter-row-copy"><strong>'+l.title+'</strong><small>'+l.desc+'</small></span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">'+(state.done.includes(l.id)?'✓':'→')+'</span></a></li>').join('')+'</ol>';
@@ -310,12 +318,15 @@
       const title=Array.isArray(section)?section[0]:section.title||'';
       const paragraphs=Array.isArray(section)?section.slice(1):section.paragraphs||[];
       const matchingParagraph=paragraphs.find(paragraph=>normalized(paragraph).includes(term))||paragraphs[0]||'';
+      const entry={...section,legacyIndex:Number.isInteger(section.legacyIndex)?section.legacyIndex:index};
       consider(1,'小节标题命中',title,index,title,matchingParagraph);
+      if(best?.sectionIndex===index)best.sectionData=entry;
       paragraphs.forEach(paragraph=>consider(3,'正文命中',paragraph,index,title,paragraph));
     });
     const additional=[lesson.worked?.title,lesson.worked?.prompt,lesson.worked?.solution,lesson.quiz?.q,...(lesson.quiz?.options||[])];
     additional.filter(Boolean).forEach(text=>consider(4,'例题或自测命中',text,null,'',text));
     if(lesson.code)consider(5,'代码命中',lesson.code,null,'','');
+    if(best&&best.sectionIndex!==null)best.sectionData=lesson.sections[best.sectionIndex];
     return best?{lesson,...best}:null;
   }
   function matched(){
@@ -326,10 +337,12 @@
   }
   function courses(){
     const items=matched();
+    const glossaryMatches=query?window.visionlabGlossary?.search(query)||[]:[];
     const subtitle=query?'按标题、小节和正文匹配；点击结果可直达命中位置。':'按学习路线阅读，或搜索课程、概念与代码。每章提供目标、图解和练习。';
-    const count=query?'找到 '+items.length+' 条相关结果':'共 '+items.length+' 章 · '+lessons.length+' 章完整课程';
+    const count=query?'找到 '+items.length+' 个课程位置与 '+glossaryMatches.length+' 个术语':'共 '+items.length+' 章 · '+lessons.length+' 章完整课程';
+    const terms=glossaryMatches.length?'<section class="glossary-search-results"><h2>概念词典</h2><ul>'+glossaryMatches.map(item=>'<li><a href="'+esc(item.learnMore)+'"><strong>'+esc(item.title)+'</strong><span>'+esc(item.plainExplanation)+'</span><small>打开相关课程 ↗</small></a></li>').join('')+'</ul></section>':'';
     return heading(query?'搜索结果：'+esc(query):'课程目录',subtitle,'THE TEXTBOOK')
-      +filters()+'<p class="catalog-count">'+count+'</p>'+courseList(items);
+      +filters()+'<p class="catalog-count">'+count+'</p>'+terms+courseList(items);
   }
   function path(){
     return heading('从基础出发，走向 YOLOv5 实战。','路线由概念、模型与实践三阶段组成。阶段内的顺序对应前置知识关系，也可以点击目录中的任意章节跳读。','LEARNING ROADMAP')
@@ -337,7 +350,8 @@
       +Object.entries(groups).map(([key,g],i)=>{const items=lessons.filter(l=>l.group===key),done=items.filter(l=>state.done.includes(l.id)).length;return '<section class="roadmap-stage '+key+'"><div class="roadmap-stage-head"><div><span>STAGE 0'+(i+1)+' · '+g.label+'</span><h2>'+g.name+'</h2><p>'+g.desc+'</p></div><div class="stage-progress">'+done+' / '+items.length+'<small>章完成</small></div></div>'+courseList(items)+'</section>'}).join('');
   }
   function objectiveBox(l){
-    return '<section class="learning-contract"><div><h2>学完本章，你将能够</h2><ul>'+l.goals.map(g=>'<li>'+g+'</li>').join('')+'</ul></div><p><strong>先修知识</strong><span>'+rich(l.prereq||'可从上一章接着阅读；不需要提前掌握本领域全部数学。')+'</span></p></section>';
+    const links=l.prereqLinks?.length?'<div class="prerequisite-links"><strong>需要补基础？从这里开始：</strong><ul>'+l.prereqLinks.map(item=>'<li><a href="#lesson/'+esc(item.id)+'">'+esc(item.title)+' ↗</a></li>').join('')+'</ul></div>':'';
+    return '<section class="learning-contract"><div><h2>学完本章，你将能够</h2><ul>'+l.goals.map(g=>'<li>'+rich(g)+'</li>').join('')+'</ul></div><p><strong>先修知识</strong><span>'+rich(l.prereq||'可从上一章接着阅读；不需要提前掌握本领域全部数学。')+'</span>'+links+'</p></section>';
   }
   function workedExampleMarkup(l){
     if(!l.worked)return '';
@@ -424,13 +438,16 @@
     state.last=id;save();
     const index=lessons.indexOf(l),next=lessons[index+1],prev=lessons[index-1];
     const tocCollapsed=state.tocCollapsed===true;
-    const tocItems=l.sections.map((s,i)=>'<li><a href="#section-'+(i+1)+'">'+sectionTitle(s.title)+'</a></li>').join('')
+    const tocItems=l.sections.map(s=>'<li><a href="#section-'+s.id+'">'+sectionTitle(s.title)+'</a></li>').join('')
       +(l.keypoints?'<li><a href="#chapter-review">本章要点</a></li>':'')
       +(l.chapterExercises?.length?'<li><a href="#chapter-quiz">本章综合练习</a></li>':'')
       +'<li><a href="#chapter-notes">笔记与进度</a></li>';
+    const foundation=window.renderFoundationStart?.(l)||'';
+    const lossFoundation=l.id==='losses'?(window.renderLossFoundationChain?.()||''):'';
     const articleContent=articleSections(l);
     const examples=workedExampleMarkup(l);
-    const code=l.code?'<section class="text-section code-section"><div class="code-block"><div class="code-head"><span>'+esc(l.language||'代码示例')+' · 建议逐行阅读</span><button class="copy" data-copy="'+l.id+'">复制代码</button></div><pre><code>'+esc(l.code)+'</code></pre></div><p class="code-note">'+(l.language==='源码流程示意'?'这段内容是源码逻辑摘要，不是可独立运行的脚本；请按注释中的文件与方法名对照仓库。':'先运行原始示例并观察结果，再一次只改变一个输入或参数。'+(l.group==='yolo'?'YOLOv5 命令行选项会随仓库版本变化，请用本地脚本的帮助信息核对。':'每做一步，先预测输入与输出形状，再用实际结果核对。'))+'</p></section>':'';
+    const codeGuide=l.codeGuide?'<aside class="code-orientation"><strong>运行前先看</strong><dl><div><dt>在哪里运行</dt><dd>'+rich(l.codeGuide.where)+'</dd></div><div><dt>要准备什么</dt><dd>'+rich(l.codeGuide.input)+'</dd></div><div><dt>看什么结果</dt><dd>'+rich(l.codeGuide.output)+'</dd></div></dl></aside>':'';
+    const code=l.code?'<section class="text-section code-section"><div class="code-block"><div class="code-head"><span>'+esc(l.language||'代码示例')+' · 建议逐行阅读</span><button class="copy" data-copy="'+l.id+'">复制代码</button></div><pre><code>'+esc(l.code)+'</code></pre></div>'+codeGuide+'<p class="code-note">'+(l.language==='源码流程示意'?'这段内容是源码逻辑摘要，不是可独立运行的脚本；请按注释中的文件与方法名对照仓库。':'先运行原始示例并观察结果，再一次只改变一个输入或参数。'+(l.group==='yolo'?'YOLOv5 命令行选项会随仓库版本变化，请用本地脚本的帮助信息核对。':'每做一步，先预测输入与输出形状，再用实际结果核对。'))+'</p></section>':'';
     const quiz=l.chapterExercises?.length?'<section class="chapter-quiz" id="chapter-quiz"><span class="chapter-kicker">CHAPTER REVIEW · 章末综合练习</span><h2>本章综合练习</h2><p>结合本章概念完成练习；每题作答后查看解析。</p>'+l.chapterExercises.map((exercise,i)=>exerciseCard(l,exercise,'chapter',i)).join('')+'</section>':'';
     const keypoints=l.keypoints?'<section class="keypoint-review"><span class="chapter-kicker">CHAPTER REVIEW</span><h2>本章要点</h2><ul>'+l.keypoints.map(x=>'<li>'+x+'</li>').join('')+'</ul></section>':'';
     const sourceItems=Array.isArray(l.sources)&&l.sources.length?l.sources:(l.source?[{url:l.source,label:'官方文档与参考资料'}]:[]);const source=sourceItems.length?'<p class="source-note">延伸阅读：'+sourceItems.map(item=>'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(item.label)+' ↗</a>').join(' · ')+'。概念解释为本课程整理；实现细节请以对应版本文档为准。</p>':'';
@@ -438,7 +455,7 @@
     return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(index+1).padStart(2,'0')+' 章　/　'+lessons.length+' 章</span></div>'
       +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span>'+videoLinks+'</div></header>'
       +'<div class="chapter-layout"><aside class="chapter-toc'+(tocCollapsed?' is-collapsed':'')+'" aria-label="本章导航"><div class="chapter-toc-heading"><strong>本章导航</strong><button class="chapter-toc-toggle" type="button" data-toggle-toc aria-expanded="'+(!tocCollapsed)+'" aria-controls="chapter-toc-list">'+(tocCollapsed?'展开':'收起')+'</button></div><ol id="chapter-toc-list"'+(tocCollapsed?' hidden':'')+'>'+tocItems+'</ol></aside>'
-      +'<div class="chapter-body">'+objectiveBox(l)+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
+      +'<div class="chapter-body">'+objectiveBox(l)+foundation+lossFoundation+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
       +'<section class="chapter-notes" id="chapter-notes"><span class="chapter-kicker">MY STUDY NOTES</span><h2>写下你的思考</h2><p>用自己的话总结一个概念，或记下尚未解决的问题。笔记保存在当前浏览器。</p><textarea class="note-input" id="lesson-note" placeholder="例如：我现在可以用自己的话解释…… / 我还不确定的是……" aria-label="课程笔记">'+esc(state.notes[id]||'')+'</textarea><div class="lesson-actions"><button class="secondary" data-save-note="'+id+'">保存笔记</button><span id="note-status" class="saved" role="status"></span><button class="primary complete-button" data-complete="'+id+'">'+(state.done.includes(id)?'已完成 · 点击撤销':'标记本章已完成 ✓')+'</button></div></section>'
       +'<nav class="chapter-pagination">'+(prev?'<a href="#lesson/'+prev.id+'"><small>上一章</small><strong>← '+prev.title+'</strong></a>':'<a href="#path"><small>学习路线</small><strong>浏览课程阶段 →</strong></a>')+(next?'<a class="pagination-next" href="#lesson/'+next.id+'"><small>接下来</small><strong>'+next.title+' →</strong></a>':'<a class="pagination-next" href="#path"><small>全部完成</small><strong>回顾完整学习路线 →</strong></a>')+'</nav></div></div></article>';
   }
@@ -449,15 +466,19 @@
     if(route==='courses')filter=id&&groups[id]?id:'all';
     const names={home:'学习概览',courses:'课程目录',path:'学习路线',lab:'交互实验室',notes:'我的笔记',resources:'资源导航',lesson:'教材阅读'};
     const crumb=route==='lesson'?(lessons.find(l=>l.id===id)||{}).title||'教材阅读':names[route]||'学习概览';
-    const content=route==='home'?home():route==='courses'?courses():route==='path'?path():route==='lesson'?lesson(id):route==='lab'?(window.renderInteractiveLab?window.renderInteractiveLab():lab()):route==='notes'?notes():route==='resources'?resources():home();
+    let content=route==='home'?home():route==='courses'?courses():route==='path'?path():route==='lesson'?lesson(id):route==='lab'?(window.renderInteractiveLab?window.renderInteractiveLab():lab()):route==='notes'?notes():route==='resources'?(window.renderFoundationResources?.()||resources()):home();
+    if(route==='lab'&&window.renderFoundationLabPrimer&&content.includes('<div class="lab-tabs"'))content=content.replace('<div class="lab-tabs"',window.renderFoundationLabPrimer()+'<div class="lab-tabs"');
     document.getElementById('crumb').textContent=crumb;
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     document.querySelectorAll('[data-course-count]').forEach(badge=>{badge.textContent=String(lessons.length);badge.setAttribute('aria-label',lessons.length+' 节课程')});
     document.getElementById('content').innerHTML=content;
     renderLessonMath(document.getElementById('content'));
+    window.visionlabGlossary?.init();
+    window.visionlabGlossary?.decorate(document.getElementById('content'));
     initializeConceptGuides();
     initializeWorkedExamples();
     window.lessonPlaygrounds?.initialize();
+    window.initializeFoundationExamples?.();
     window.lessonBiasPlaygrounds?.initialize();
     initializeTensorLearning();
     if(route==='lesson'&&targetSection)document.getElementById(targetSection)?.scrollIntoView({behavior:'auto',block:'start'});

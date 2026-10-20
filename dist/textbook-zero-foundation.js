@@ -63,6 +63,22 @@
     image:['tensor'],tasks:['image'],cnn:['image','tasks'],pooling:['cnn'],iou:['tasks'],dataset:['image','iou'],augmentation:['dataset'],metrics:['iou'],
     'data-quality':['dataset','metrics'],transfer:['cnn','training'],quaternion:[],architecture:['cnn','pooling'],anchors:['architecture','dataset'],'yolo-loss':['losses','anchors'],'train-yolo':['dataset','architecture','yolo-loss'],'yolo-augment':['train-yolo','dataset'],inference:['train-yolo','architecture'],debugging:['inference','metrics']
   };
+  const prerequisiteSections={
+    tensor:{'ai-foundations':'先看输入'},network:{tensor:'数据先有形状'},losses:{network:'神经元是带参数的函数'},
+    gradient:{network:'神经元是带参数的函数',losses:'损失函数是可计算的学习目标'},
+    optimizer:{gradient:'一次更新的完整时间顺序',losses:'损失函数是可计算的学习目标'},training:{optimizer:'梯度是信号'},
+    regularization:{training:'用曲线判断训练发生了什么'},image:{tensor:'数据先有形状'},tasks:{image:'图像不是一个固定格式'},
+    cnn:{image:'图像不是一个固定格式',tasks:'视觉任务决定答案的粒度'},pooling:{cnn:'用一个小滤波器'},iou:{tasks:'视觉任务决定答案的粒度'},
+    dataset:{image:'图像不是一个固定格式',iou:'先把边界框表示清楚'},augmentation:{dataset:'标注协议先于训练参数'},
+    metrics:{iou:'算一个具体例子'},'data-quality':{dataset:'数据划分要阻断泄漏',metrics:'Precision 与 Recall'},
+    transfer:{cnn:'用一个小滤波器',training:'训练模式与评估模式'},architecture:{cnn:'用一个小滤波器',pooling:'池化把邻域压缩'},
+    anchors:{architecture:'一次检测经过三个功能阶段',dataset:'标注协议先于训练参数'},
+    'yolo-loss':{losses:'损失函数是可计算的学习目标',anchors:'网格位置提供候选参考点'},
+    'train-yolo':{dataset:'开训前的五项体检',architecture:'本地 YAML 中的 C3 与 SPPF','yolo-loss':'检测要同时学位置'},
+    'yolo-augment':{'train-yolo':'先把训练命令理解成实验记录',dataset:'图片与标签一一对应'},
+    inference:{'train-yolo':'日志、损失与 checkpoint',architecture:'从配置走到一次前向预测'},
+    debugging:{inference:'推理把图像送回训练过的模型',metrics:'Precision 与 Recall'}
+  };
   const codeGuides={
     tensor:{where:'装有 PyTorch 的 Python 环境。',input:'代码里创建的小型数值张量。',output:'每一步打印的形状、数值或索引结果。'},
     gradient:{where:'装有 PyTorch 的 Python 环境。',input:'一组输入、目标值和可训练参数。',output:'损失、梯度，以及更新后的参数。'},
@@ -85,11 +101,10 @@
     transfer:{where:'装有 PyTorch 或对应检测仓库的 Python 环境。',input:'预训练权重、新任务类别数和训练/验证数据。',output:'冻结或微调后的参数以及验证结果。'},
   };
 
-  const advancedIndices={tensor:[1,3,4,5],network:[5,6],optimizer:[6,7],training:[6,7,8,10],tasks:[5,6,7],cnn:Array.from({length:10},(_,i)=>i+13),losses:[1,3,4]};
   const playgroundIndices={
     dataset:{0:'dataset-labels',4:'dataset-readiness'},'train-yolo':{2:'yolo-training-log'},architecture:{1:'architecture-scales'},network:{1:'activation-curves'},
     tensor:{1:'tensor-operations',4:'tensor-transpose',8:'tensor-explorer'},
-    losses:{1:'loss-regression',2:'loss-softmax',3:'loss-information',4:'loss-entropy',5:'loss-cross-entropy',6:'loss-bce',7:'loss-imbalance',8:'loss-update'},
+    losses:{},
     optimizer:{0:'optimizer-update'},pooling:{0:'pooling-window'},training:{3:'training-loop'},tasks:{1:'task-output-map'},augmentation:{0:'augmentation-transform'},anchors:{1:'anchor-matching'},'yolo-loss':{3:'yolo-loss-breakdown'},
     quaternion:{1:'quaternion-rotation',4:'euler-rotation',5:'gimbal-lock',6:'rotation-comparison'}
   };
@@ -103,31 +118,89 @@
     const base=lessonId+'-s-h'+(hash>>>0).toString(36);let id=base,suffix=2;while(used.has(id))id=base+'-'+suffix++;
     used.add(id);return id;
   }
+  function buildPrerequisiteLinks(lesson){
+    return (prerequisites[lesson.id]||[]).map(id=>{
+      const item=allLessons.find(candidate=>candidate.id===id);if(!item)return null;
+      const prefix=prerequisiteSections[lesson.id]?.[id];
+      const section=prefix?item.sections.find(candidate=>String(candidate.title||'').replace(/^\s*\d+\s*[.、．]\s*/,'').startsWith(prefix)):null;
+      return {id,title:item.title,href:'#lesson/'+id+(section&&section.id?'/section-'+section.id:'')};
+    }).filter(Boolean);
+  }
   allLessons.forEach(lesson=>{
     const usedSectionIds=new Set();
     lesson.sections.forEach((section,index)=>{
       section.legacyIndex=index;
       section.id=stableSectionId(lesson.id,section.title,usedSectionIds);
       section.playgroundId=playgroundIndices[lesson.id]?.[index]||'';
-      if(advancedIndices[lesson.id]?.includes(index))section.depth='advanced';
+      section.depth='';
     });
     lesson.foundation=starts[lesson.id];
-    lesson.prereqLinks=(prerequisites[lesson.id]||[]).map(id=>{const item=allLessons.find(candidate=>candidate.id===id);return item?{id,title:item.title}:null;}).filter(Boolean);
+    lesson.prereqLinks=[];
     if(codeGuides[lesson.id])lesson.codeGuide=codeGuides[lesson.id];
     else if(lesson.code)lesson.codeGuide={where:lesson.language==='源码流程示意'?'阅读本章对应的源码文件；这里的摘要帮助你定位方法和数据流。':lesson.group==='yolo'?'在 YOLOv5 仓库根目录的终端运行，并先激活配置好的 Python 环境。':'在本地 Python 环境运行；先确认代码中 import 的库已经安装。',input:'逐行确认示例实际使用的变量、图片或文件路径；路径从当前工作目录开始核对。',output:'先看最后的 print、返回值或生成文件，再对照本章图解检查数值与形状。'};
   });
+  // Build links only after every lesson has received its stable section IDs.
+  allLessons.forEach(lesson=>{lesson.prereqLinks=buildPrerequisiteLinks(lesson);});
 
   // The beginner reading chain presents binary output and BCE before the Softmax / CE chain.
   const lossLesson=allLessons.find(lesson=>lesson.id==='losses');
   if(lossLesson){
     const original=lossLesson.sections;
-    const order=[0,6,2,5,8,7,1,3,4,...Array.from({length:Math.max(0,original.length-9)},(_,i)=>i+9)];
+    const order=[0,1,7,3,6,8,9,2,4,5,...Array.from({length:Math.max(0,original.length-10)},(_,i)=>i+10)];
     lossLesson.sections.splice(0,lossLesson.sections.length,...order.map(index=>original[index]));
     lossLesson.sections.forEach((section,index)=>{section.title=section.title.replace(/^\s*\d+\s*[.、．]\s*/,String(index+1)+'. ');});
   }
-  for(const [lessonId,indices] of Object.entries({gradient:[0,4,1,2,3,5,6,7],tensor:[0,2,8,6,7,1,4,5,3]})){
+  for(const [lessonId,indices] of Object.entries({gradient:[0,4,1,2,3,5,6,7],tensor:[0,2,8,6,7,1,4,5,3],cnn:[0,4,1,2,3,...Array.from({length:18},(_,i)=>i+5)]})){
     const lesson=allLessons.find(item=>item.id===lessonId);if(!lesson||indices.length!==lesson.sections.length)continue;
     const original=lesson.sections.slice();lesson.sections.splice(0,lesson.sections.length,...indices.map(index=>original[index]));
+  }
+
+  // Bind optional material and loss-course interactives by section title after
+  // every reorder. Numeric positions silently hid core material or moved demos.
+  const titleOf=section=>String(section?.title||'').replace(/^\s*\d+\s*[.、．]\s*/,'').trim();
+  const optimizerLesson=allLessons.find(lesson=>lesson.id==='optimizer');
+  const batchSection=optimizerLesson?.sections.find(section=>titleOf(section).startsWith('Batch 与权重衰减'));
+  if(batchSection?.paragraphs?.length>=2){
+    const weightDecayParagraph=batchSection.paragraphs[1];
+    batchSection.paragraphs=[batchSection.paragraphs[0],'把训练集固定为 N 个样本，batch 从 B 增到 2B 后，每轮更新次数通常约减半。即便 epoch 相同，优化器走过的次数和学习率计划进度也可能不同，所以比较时要同时记录样本数、更新数和实际学习率曲线。'];
+    batchSection.advancedBlocks=[...(batchSection.advancedBlocks||[]),{title:'权重衰减与 AdamW 的进阶细节',paragraphs:[weightDecayParagraph]}];
+  }
+  if(optimizerLesson){
+    optimizerLesson.starterCode='# 先用一个数字看清普通 SGD 的更新\nweight = 1.0\ngradient = 2.0\nlearning_rate = 0.1\n\n# 新参数 = 旧参数 - 学习率 × 梯度\nweight = weight - learning_rate * gradient\nprint(weight)  # 0.8';
+    optimizerLesson.codeGuide={where:'无需安装 PyTorch；可在普通 Python 解释器中运行，也可以逐行手算。',input:'旧参数 1.0、梯度 +2.0、学习率 0.1。',output:'参数更新到 0.8；这个最小例子只演示一次 SGD 更新，不代表完整训练循环。'};
+  }
+  const optionalSections={
+    tensor:['连续性：什么时候需要复制数据','内存、shape、张量内存步幅与 offset 如何协作'],
+    network:['SiLU 与 GELU：','SwiGLU：','比较 SwiGLU'],
+    optimizer:['权重衰减、L2 惩罚和 AdamW','按优化器实际更新次数安排调度与裁剪'],
+    training:['推理文件与续训检查点','点选一个后缀','PyTorch 常见保存后缀','量化不是文件后缀','文件后缀、文件格式与量化','切换本地模型和托管 API','本地推理与云端 API','尾批与平均损失','梯度累积的最后一组'],
+    tasks:['关键点任务：','图像生成与图像复原：','Backbone + Neck / Decoder'],
+    cnn:['LeNet-5：','AlexNet：','VGG：','残差连接：','把残差块接对：','用计算跟踪感受野：','理论感受野与有效感受野：','小目标与大目标：','交互延伸：'],
+    losses:['一个结果越少见，带来的信息越多','信息量：越不可能','熵与交叉熵：','把“数据本身的不确定','手算分类误差信号：','从 logits 到参数更新','mean、sum 和形状广播：','极端 logits：']
+  };
+  for(const lesson of allLessons){
+    for(const section of lesson.sections){
+      const title=titleOf(section);
+      if((optionalSections[lesson.id]||[]).some(prefix=>title.startsWith(prefix)))section.depth='advanced';
+    }
+  }
+  const lossLessonAfterReorder=allLessons.find(lesson=>lesson.id==='losses');
+  if(lossLessonAfterReorder){
+    const stableLossDemos=[
+      ['回归损失对大误差','loss-regression'],
+      ['Softmax 把互斥类别分数','loss-softmax'],
+      ['信息量：越不可能','loss-information'],
+      ['熵与交叉熵：','loss-entropy'],
+      ['独热标签与多分类交叉熵','loss-cross-entropy'],
+      ['二分类、多分类与多标签','loss-bce'],
+      ['类别不平衡与损失数值','loss-imbalance'],
+      ['从 logits 到参数更新','loss-update']
+    ];
+    for(const section of lossLessonAfterReorder.sections)section.playgroundId='';
+    for(const [prefix,playgroundId] of stableLossDemos){
+      const section=lossLessonAfterReorder.sections.find(candidate=>titleOf(candidate).startsWith(prefix));
+      if(section)section.playgroundId=playgroundId;
+    }
   }
 
   // Keep learning progress and section-exercise answers from both legacy numeric and generated-index anchors.
@@ -146,7 +219,7 @@
   }
 
   // Put dependent lessons after the concepts they use.
-  const order=['ai-foundations','tensor','network','losses','gradient','optimizer','training','regularization','image','tasks','cnn','pooling','iou','dataset','augmentation','metrics','data-quality','transfer','quaternion','architecture','anchors','yolo-loss','train-yolo','yolo-augment','inference','debugging'];
+  const order=['ai-foundations','tensor','network','losses','gradient','optimizer','training','regularization','image','tasks','cnn','pooling','iou','dataset','augmentation','metrics','data-quality','transfer','architecture','anchors','yolo-loss','train-yolo','yolo-augment','inference','debugging','quaternion'];
   const byId=new Map(allLessons.map(lesson=>[lesson.id,lesson]));
   if(order.length===allLessons.length)allLessons.splice(0,allLessons.length,...order.map(id=>byId.get(id)).filter(Boolean));
   const transfer=allLessons.find(lesson=>lesson.id==='transfer');if(transfer)transfer.group='cv';
@@ -164,9 +237,20 @@
     return '<section class="zero-start-card" aria-labelledby="zero-start-'+escapeHtml(lesson.id)+'"><div class="zero-start-heading"><span class="chapter-kicker">ZERO-FOUNDATION · 零基础起点</span><h2 id="zero-start-'+escapeHtml(lesson.id)+'">'+escapeHtml(item.title)+'</h2><p class="zero-start-question">'+escapeHtml(item.question)+'</p></div><div class="zero-start-grid"><div class="zero-start-purpose"><strong>这节要解决什么</strong><p>'+escapeHtml(item.why)+'</p></div><div class="zero-start-example"><strong>先算一个小例子</strong><p>'+escapeHtml(item.example)+'</p></div></div><div class="zero-start-steps-wrap"><strong>按这个顺序理解</strong>'+stepMarkup+'</div><div class="zero-start-terms"><strong>遇到新词可以点开看解释</strong><div>'+item.terms.map(termChip).join('')+'</div></div></section>';
   }
   function renderLossChain(){
-    return '<section class="loss-foundation-chain" aria-labelledby="loss-foundation-title"><div class="loss-chain-heading"><span class="chapter-kicker">从原始分数走到损失</span><h2 id="loss-foundation-title">先把这条路走一遍，再看公式和代码</h2><p>用同一张“有没有猫”的图片，逐步看模型如何给答案、怎样算错得多严重。</p></div><ol class="loss-chain-steps"><li><b>1</b><div><strong>真实答案是标签</strong><p>这张图<strong>有猫</strong>，所以标签 y=1；若没猫，y=0。标签说明正确答案，不是模型预测。</p></div></li><li><b>2</b><div><strong>最后一个神经元先给原始分数</strong><p>假设输入 x=2、权重 w=1.5、偏置 b=−1：z=wx+b=2。z 叫 logit，可以是负数、正数或 0，本身不是概率。</p></div></li><li><b>3</b><div><strong>Sigmoid 把分数换成概率</strong><p>p=1/(1+e<sup>−z</sup>)。当 z=2，p≈0.881，表示模型给“有猫”约 88.1% 的概率；z=0 时概率正好是 0.5。</p></div></li><li><b>4</b><div><strong>BCE 只惩罚真实答案对应的概率</strong><p>y=1 时损失是 −ln(p)；y=0 时是 −ln(1−p)。若 p=0.8，标签 1 的损失约 0.223；标签 0 的损失约 1.609。对错误答案越自信，惩罚越大。</p></div></li><li><b>5</b><div><strong>互斥多分类改用一组分数</strong><p>猫、狗、兔三选一时，模型给 logits [2, 1, 0.1]。Softmax 后约为 [0.659, 0.243, 0.099]；若真实答案是兔，单样本 CE=−ln(0.099)≈2.31。</p></div></li><li><b>6</b><div><strong>PyTorch 的训练接口直接接原始分数</strong><p><code>BCEWithLogitsLoss</code> 接二分类 logit；<code>CrossEntropyLoss</code> 接多类 logits 和常见的类别编号。训练时不要先 argmax，也不要把 Softmax 概率误当成 logits。</p></div></li></ol><div class="loss-chain-note"><strong>现在可以开始读下面小节：</strong><span>先学习二分类与 BCE，再看 Softmax、独热标签和多分类交叉熵；信息量、熵和 KL 已放在基础链条之后，作为选学扩展。</span></div></section>';
-  }
-  function sigmoid(value){return value>=0?1/(1+Math.exp(-value)):Math.exp(value)/(1+Math.exp(value));}
+    const lesson=allLessons.find(item=>item.id==='losses');
+    const steps=[
+      {prefix:'二分类、多分类与多标签',title:'先看标签和题型',text:'标签是标准答案；先判断是“是/否”、单选，还是可多选。'},
+      {prefix:'二分类、多分类与多标签',title:'从原始分数到概率',text:'二分类用 Sigmoid；互斥多分类把整组 logits 交给 Softmax。'},
+      {prefix:'Softmax 把互斥类别分数',title:'按正确答案计算惩罚',text:'二分类看 BCE；单标签多分类看真实类别的交叉熵。'},
+      {prefix:'独热标签与多分类交叉熵',title:'最后选择训练接口',text:'根据输入是概率还是 logits 选择 PyTorch 接口；代码细节在对应小节。'}
+    ];
+    const links=steps.map((step,index)=>{
+      const section=lesson?.sections.find(item=>String(item.title||'').replace(/^\s*\d+\s*[.、．]\s*/,'').startsWith(step.prefix));
+      const href=section?.id?'#lesson/losses/section-'+section.id:'#lesson/losses';
+      return '<li><b aria-hidden="true">'+(index+1)+'</b><a href="'+escapeHtml(href)+'"><strong>'+escapeHtml(step.title)+'</strong><p>'+escapeHtml(step.text)+'</p></a></li>';
+    }).join('');
+    return '<section class="loss-foundation-chain" aria-labelledby="loss-foundation-title"><div class="loss-chain-heading"><span class="chapter-kicker">本章阅读地图</span><h2 id="loss-foundation-title">从标签，按顺序走到训练接口</h2><p>上面的零基础讲解已经逐步算过这些概念；点击一格可直接跳到正文对应小节。</p></div><ol class="loss-chain-steps">'+links+'</ol><div class="loss-chain-note"><strong>推荐顺序</strong><span>标签与题型 → 原始分数与概率 → BCE / 交叉熵 → PyTorch 接口。信息量、熵、KL、梯度和极端数值列为选学内容。</span></div></section>';
+  }  function sigmoid(value){return value>=0?1/(1+Math.exp(-value)):Math.exp(value)/(1+Math.exp(value));}
   function updateBce(root){
     const slider=root.querySelector('[data-bce-logit]');if(!slider)return;
     const z=Number(slider.value),p=sigmoid(z),y=Number(root.dataset.target||1),safe=Math.min(1-1e-12,Math.max(1e-12,p)),loss=-(y*Math.log(safe)+(1-y)*Math.log1p(-safe));
@@ -229,6 +313,7 @@
         if(sectionId==='loss-softmax')return renderSoftmax();
         if(sectionId==='loss-imbalance')return renderImbalance();
         if(Object.prototype.hasOwnProperty.call(map,sectionId))return existingRender(lessonId,map[sectionId]);
+        return '';
       }
       return existingRender(lessonId,legacyIndex);
     };

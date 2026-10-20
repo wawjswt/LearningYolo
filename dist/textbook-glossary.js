@@ -27,6 +27,8 @@
   add('training-set','训练集（training set）','用于计算学习信号并更新模型参数的数据部分。','像平时用来练习的题目。',['训练集','training set']);
   add('validation-set','验证集（validation set）','训练期间用来比较方案和检查效果、但不直接更新参数的数据部分。','像阶段测验，帮助判断目前学得怎样。',['验证集','validation set','val']);
   add('test-set','测试集（test set）','最后用于独立检查模型效果、尽量不参与调参的数据部分。','像留到最后才打开的期末考卷。',['测试集','test set']);
+  add('hard-negative','困难负例（hard negative）','真实标签是背景或不含目标，但外观容易被模型误判为目标的训练样本。','像树影乍看像一辆车，却需要认真辨认后才知道只是背景。',['困难负例','hard negative','hard negatives'],'data-quality');
+  add('class-imbalance','类别不平衡（class imbalance）','不同类别的样本或标注数量差别较大；少数类别的数据较少，模型可能更难学会识别它们。','像练习册里某一类题很少，学生就较少有机会练习那一类。',['类别不平衡','class imbalance','类别数量失衡'],'data-quality');
   add('batch','批次（batch）','一次一起送进模型计算的一小组样本。','像一次端到老师面前批改的一摞作业。',['批次','批量','batch']);
   add('epoch','训练轮次（epoch）','训练过程把训练集完整使用一遍的计数单位。','像把整本练习册从头到尾做完一遍。',['epoch','训练轮次','轮次']);
   add('iteration','迭代步（iteration / step）','一次参数更新所对应的训练步骤；一个轮次可能包含很多步。','像每批练习批改后改一次学习方法。',['iteration','迭代','step','训练步']);
@@ -56,6 +58,7 @@
   add('mae','平均绝对误差（Mean Absolute Error，MAE）','把每个预测误差的绝对值取平均。','像按偏离目标的距离收取固定单价。',['MAE','Mean Absolute Error','平均绝对误差'],'losses');
   add('huber','Huber 损失（Huber loss）','小误差时采用平方惩罚，大误差时改为较缓的线性惩罚。','像小偏差按距离平方计费，偏差太大后改成固定单价。',['Huber','HuberLoss','Huber loss','Smooth L1','SmoothL1Loss'],'losses');
   add('natural-exponential','自然指数函数（exp / e 的幂）','把数值变成 e 的相应次方；Softmax 用它把分数变为正数并放大差距。','像一种会快速增长的刻度尺。',['exp','指数','指数函数','自然指数','exponential','e^']);
+  add('floor-function','向下取整函数（floor）','把一个数向更小的整数方向取整；例如 floor(2.7)=2、floor(−2.7)=−3。','像读楼层时只记当前位置已经完整经过的整数层。',['floor','floor function','向下取整','向下取整函数','下取整']);
   add('e-constant','自然常数 e','约等于 2.718 的固定数学常数，自然指数与自然对数都以它为基础。','像一把固定单位尺上的常数刻度。',['自然常数','数学常数 e']);
   add('logarithm','对数（logarithm）','对数回答“一个底数要乘方多少次才能得到这个数”。','像反过来问：底数要重复相乘几次，才到目标数字？',['对数','logarithm','log']);
   add('natural-log','自然对数（natural logarithm，ln）','以 e 为底的对数；概率越低，负自然对数越大。','像把概率的稀少程度换成一把递增的惊讶刻度。',['自然对数','ln','natural logarithm'],'losses');
@@ -71,16 +74,23 @@
   add('broadcasting','广播（broadcasting）','运算时把长度为 1 或缺失的轴按规则重复扩展，以便形状兼容。','像把一条统一规则复制到每一行，但要先确认行列能对齐。',['广播','broadcasting','广播机制','broadcast'],'tensor');
   add('gradient-descent','梯度下降（gradient descent）','沿梯度相反方向小步调整参数，尝试降低损失。','像沿着坡度最陡的下坡方向，一步步走向低处。',['梯度下降','gradient descent','GD']);
   add('backpropagation','反向传播（backpropagation）','按链式法则把输出误差对各层参数的影响逐层算回去。','像从总账倒查每个环节各自贡献了多少误差。',['反向传播','backpropagation','backprop']);
-  add('optimizer','优化器（optimizer）','根据梯度决定模型参数如何更新的算法。','像根据方向箭头和步幅规则，决定下一步怎么走。',['优化器','optimizer']);
+  add('optimizer','优化器（optimizer）','读取当前变化信号，并按规则决定模型里的数字如何更新。','像参考方向箭头和每次改动大小，决定下一步怎么走。',['优化器','optimizer']);
   add('sgd','随机梯度下降（Stochastic Gradient Descent，SGD）','使用一个样本或一批样本估计梯度并更新参数的基本方法。','像每次根据一小批练习的表现调整学习方向。',['SGD','Stochastic Gradient Descent','随机梯度下降'],'optimizer');
   add('momentum','动量（momentum）','把过去的更新方向累积起来，让当前参数更新更平滑。','像推购物车时保留一点惯性，减少左右来回晃动。',['动量','momentum'],'optimizer');
   add('adam','Adam 优化器（Adaptive Moment Estimation）','结合梯度的平滑平均和平方大小的平滑平均来调整每个参数的更新。','像既参考最近的行进方向，也看每条路近期起伏有多大。',['Adam','Adaptive Moment Estimation'],'optimizer');
+  add('adam-first-moment','Adam 的一阶矩估计 m','把当前梯度和过去记录平滑合并，近似表示近期的平均方向；它不是单个梯度。','像每次记录风向时都留一半旧记录、加入一半新观察，方向变化不会立刻被一次阵风带跑。',['一阶矩','一阶矩估计','一阶矩 m','m_t','mₜ'],'optimizer');
+  add('adam-second-moment','Adam 的二阶原始矩估计 v','把梯度逐项平方后再平滑平均，用来表示近期梯度大小；它没有减去平均值，因此不等于统计方差。','像记录每一步起伏的强弱但不记方向，之后可知道最近的变化幅度。',['二阶矩','二阶原始矩','二阶矩估计','v_t','vₜ'],'optimizer');
+  add('adam-bias-correction','Adam 的偏差修正（bias correction）','Adam 的移动记录从 0 开始，早期数值会被压低；偏差修正按当前步数把这种初始影响校正回来。','像空白记录本刚开始只有少量观测，先按已经记下的次数校准平均值。',['偏差修正','偏差校正','bias correction'],'optimizer');
+  add('ema-decay-coefficient','指数平均的衰减系数 β','β 决定保留多少旧记录，1−β 决定加入多少当前数值；β 越大，历史影响通常保留得越久。','像调节记忆旋钮：数值越大越相信旧记录，越小越快跟随新变化。',['衰减系数 β','指数衰减系数','β₁','β₂'],'optimizer',{contextNote:'Adam 通常用 β₁ 控制梯度平均 m，用 β₂ 控制平方梯度平均 v；本课为方便手算暂令两者相等。'});
+  add('adam-initial-state','Adam 移动记录的初始值（m₀ / v₀）','m₀ 与 v₀ 表示训练开始前的一阶和二阶移动记录，常从 0 开始；后续每一步会逐渐把新梯度信息写入记录。','像一本刚翻开的空记录本，第一页先填 0，再按规则加入每次新观察。',['m₀','v₀','m0','v0','Adam 初始状态'],'optimizer');
   add('learning-rate','学习率（learning rate）','控制每次参数更新步子大小的设置。','像每一步跨多远：过大容易越过目标，过小会走得很慢。',['学习率','learning rate','lr'],'optimizer');
   add('weight-decay','权重衰减（weight decay）','训练中限制参数持续变大的更新方式之一，用来减少复杂拟合。','像给旋钮的极端偏移加上温和的回拉力。',['权重衰减','weight decay','weight_decay'],'optimizer');
   add('regularization','正则化（regularization）','用训练策略或目标限制模型只记住训练例子的倾向。','像在背答案之外，也要求学生学会通用方法。',['正则化','regularization'],'regularization');
   add('overfitting','过拟合（overfitting）','模型在训练样本上表现很好，却在新样本上表现变差。','像把练习题答案背下来，换一道题就不会做。',['过拟合','overfitting'],'regularization');
   add('underfitting','欠拟合（underfitting）','模型连训练数据里的主要规律都还没学会。','像还没掌握基础方法，熟题也做不对。',['欠拟合','underfitting'],'regularization');
   add('dropout','随机失活（Dropout）','训练时随机暂时关闭部分神经元输出，减少模型依赖某一小组单元。','像练习时轮流遮住一部分提示，避免只记住某个提示。',['Dropout','dropout','随机失活'],'regularization');
+  add('early-stopping','早停（early stopping）','如果验证集上的目标指标连续多次没有改善，就结束训练；通常保留验证表现最佳时的模型状态。','像每次练习后都做小测，连续几次没有进步就先停下，并保存成绩最好那次的解题稿。',['早停','提前停止','early stopping'],'regularization',{contextNote:'早停观察验证集，不应反复用最终测试集来决定停止轮次。'});
+  add('patience','耐心值（patience）','早停允许验证指标连续多少次未改善；通常按验证检查次数计数，而不是固定等同于 epoch 数。','像规定最多允许连续几次小测没有新纪录，再决定暂停练习。',['patience','早停耐心值'],'regularization');
   add('batch-normalization','批量归一化（Batch Normalization，BatchNorm / BN）','按通道整理中间数值的尺度，再用可学习参数调整。训练和评估时统计方式不同。','像先把每组测量值换成相近尺度，再允许模型重新调整。',['BatchNorm','BatchNorm1d','BatchNorm2d','Batch Normalization','BN','批量归一化'],'network');
 
   // 数字、张量与图像
@@ -92,7 +102,7 @@
   add('shape','形状（shape）','按顺序列出每条轴有多少个位置。','像说明一个盒子里有几层、每层几行、每行几格。',['shape','形状'],'tensor');
   add('dimension','维度（dimension）','张量中轴的数量；在编程里也常用于说某条轴的长度，需看上下文。','像货架有几种排列方向；具体每格数量另看尺寸。',['维度','dimension','dim'],'tensor');
   add('index','索引（index）','用位置编号找到数组或张量中的元素；Python 通常从 0 开始编号。','像图书馆书架上的位置号。',['索引','index'],'tensor');
-  add('stride','步幅（stride）','沿一条轴前进一个索引时，底层存储位置要跨过的元素数。','像在一排座位上每次隔几张椅子再坐下。',['stride','步幅'],'tensor',{contextNote:'张量内存步幅与卷积/池化窗口的移动步幅意思不同；本卡面向张量存储。'});
+  add('stride','张量内存步幅（tensor stride）','沿张量的一条轴移动一个索引时，底层存储位置需要跨过的元素数；它描述数据在内存中的排布。','像在仓库货架上从一个逻辑位置走到下一个位置，需要跨过几格。',['tensor stride','memory stride','storage stride','张量内存步幅','张量存储步幅','内存步幅'],'tensor',{contextNote:'这里说的是内存地址怎样跳格，不是卷积或池化窗口在图像上移动的距离。'});
   add('storage','底层存储（storage）','实际保存张量元素的一段内存区域。','像仓库里实际摆放货物的货架。',['storage','底层存储'],'tensor');
   add('offset','存储偏移（storage offset）','张量的逻辑第一个元素从底层存储的哪个位置开始读取。','像从货架第几个格子开始清点。',['offset','storage_offset','存储偏移'],'tensor');
   add('contiguous','连续布局（contiguous）','元素的内存排列顺序符合张量当前默认轴顺序的布局。','像书页按阅读顺序连续摆放，翻页时不必跳来跳去。',['contiguous','连续张量','连续布局'],'tensor');
@@ -112,13 +122,14 @@
   add('dtype','数据类型（dtype）','说明张量里存放整数、小数或其他类型的数据，以及这些值如何表示。','像标明盒子里放的是整数积木还是小数液体。',['dtype','数据类型'],'tensor');
   add('device','计算设备（device）','张量所在或运算发生的位置，例如 CPU 或 GPU。','像选择在哪张工作台上处理材料。',['device','计算设备'],'tensor');
   add('cpu','中央处理器（Central Processing Unit，CPU）','通用计算部件，擅长执行多种程序任务。','像多技能的总控工作台。',['CPU','Central Processing Unit']);
+  add('virtual-environment','Python 虚拟环境（virtual environment）','为一个项目隔离 Python 和软件包版本的独立运行目录。','像给每门实验课准备各自的工具箱，避免不同项目互相换错工具。',['虚拟环境','Python 虚拟环境','virtual environment','venv'],'train-yolo');
   add('gpu','图形处理器（Graphics Processing Unit，GPU）','可并行处理大量相似数字运算的计算设备，常用于深度学习。','像许多工人同时做同一种计算。',['GPU','Graphics Processing Unit']);
   add('vram','显存（video memory / VRAM）','GPU 上用于暂存模型、图像和中间结果的内存。','像放在 GPU 工作台旁、可快速取用的桌面空间。',['显存','VRAM','video memory'],'training');
   add('fp16','半精度浮点（FP16）','一种 16 位浮点数格式，通常能降低内存和计算开销，但可表示范围较小。','像刻度更少的轻量尺，省空间但极端数值更容易超范围。',['FP16','F16','float16'],'training');
   add('amp','自动混合精度（Automatic Mixed Precision，AMP）','在合适的运算中混用不同浮点精度，以节省资源并维持训练稳定性。','像大多数测量用轻便尺，关键测量再换更精细的尺。',['AMP','Automatic Mixed Precision','自动混合精度'],'training');
 
   // 网络与视觉模型
-  add('fully-connected','全连接层 / Linear（fully connected layer）','让输入中的每个数都参与每个输出数的加权求和。','像每个输入线索都能给每个答案候选贡献分数。',['全连接层','Linear','nn.Linear','fully connected'],'network');
+  add('fully-connected','全连接层 / Linear（fully connected layer）','让输入中的每个数都参与每个输出数的加权求和。','像每个输入线索都能给每个答案候选贡献分数。',['全连接','全连接层','Linear','nn.Linear','fully connected'],'network');
   add('weight','权重（weight）','乘在输入数前面的可训练数字，决定这条输入对输出的影响。','像混合配方里每种材料所占的比例。',['权重','weight'],'network');
   add('bias','偏置（bias）','加在加权求和结果上的可训练常数，可以整体移动输出。','像给整条刻度线加一个统一的起始偏移。',['偏置','bias'],'network');
   add('affine','仿射变换（affine transformation）','先做线性组合，再加一个偏置的计算，例如 z=w·x+b。','像先按比例缩放，再整体平移。',['仿射','仿射变换','affine'],'network');
@@ -131,16 +142,18 @@
   add('convolution','卷积（convolution）','用同一组小权重在图像不同位置重复计算，提取局部模式。','像拿同一块模板在整张图片上逐处比对。',['卷积','convolution'],'cnn');
   add('kernel','卷积核 / 滤波器（kernel / filter）','一小组卷积权重，用于检测边缘、纹理等局部组合。','像一块可学习的小印章，扫过图像寻找相似图案。',['卷积核','滤波器','kernel','filter'],'cnn');
   add('feature-map','特征图（feature map）','卷积等计算后得到的一张数值图，表示某种模式在各位置的响应。','像一张热度图，亮处代表某种线索更明显。',['特征图','feature map'],'cnn');
-  add('conv-stride','卷积步幅（convolution stride）','卷积窗口每次移动的像素格数；步幅越大，输出空间尺寸通常越小。','像模板每次向前跨几格。',['stride=','卷积步幅','convolution stride'],'cnn');
+  add('conv-stride','卷积步幅（convolution stride）','卷积核每次在图像或特征图上移动的格数；步幅越大，本层输出的空间位置通常越少。','像用模板找图案时，每次向前跨一格还是跨好几格。',['stride=','卷积步幅','convolution stride'],'cnn');
+  add('spatial-stride','空间步幅（spatial stride）','相邻卷积/池化窗口或输出特征网格位置之间相隔的格数；跨多层时，总采样间隔由各层步幅共同决定。','像沿图像网格每隔几格观察一次；层层缩小后，最终网格的每一格会对应原图上更大的间隔。',['stride','window stride','步幅','窗口步幅','空间步幅','卷积窗口步幅','池化步幅','网格步幅','采样步长','特征步幅','feature stride','total stride','sampling stride'],'cnn');
   add('padding','填充（padding）','在输入边缘补上数值，控制卷积窗口能访问哪些边界位置及输出尺寸。','像在画纸外侧补空白边，方便模板扫到边缘。',['padding','填充'],'cnn');
   add('dilation','空洞率（dilation）','卷积核内部元素之间隔开的位置数，用较少权重查看更大的区域。','像用带间隔的梳子，一次触到更宽的范围。',['dilation','空洞率'],'cnn');
   add('pooling','池化（pooling）','在小区域里汇总数值，常用来缩小特征图的宽和高。','像把一小块区域用最高分或平均分代表。',['池化','pooling','MaxPool','MaxPool2d','AvgPool','AvgPool2d'],'pooling');
+  add('global-average-pooling','全局平均池化（Global Average Pooling）','把每个通道的整个空间特征图分别取平均，通常把每通道缩成一个数。','像把每张不同大小的线索地图各算一个平均强度，留下每张图的一份总览。',['全局平均池化','Global Average Pooling','GAP'],'pooling');
   add('receptive-field','感受野（receptive field）','某个输出位置能通过网络影响或看到的输入范围。','像观察员从所在位置能看见的那片区域。',['感受野','receptive field'],'cnn');
   add('downsampling','下采样（downsampling）','减少特征图的空间位置数量，降低后续计算量。','像把大图缩小成较少格子的预览图。',['下采样','downsampling'],'cnn');
   add('depthwise-convolution','逐通道卷积（depthwise convolution）','每个输入通道分别使用卷积核，不在该步骤里混合通道。','像每张颜色胶片各自先做一次局部检查。',['depthwise convolution','逐通道卷积'],'cnn');
 
   // 三维旋转
-  add('euler-angles','欧拉角（Euler angles）','用依次绕三个指定轴转动的角度表示三维朝向；必须说明旋转顺序和坐标约定。','像先转方向盘、再抬头、再侧倾；顺序一变，最终朝向通常也变。',['欧拉角','Euler angles'],'quaternion');
+  add('euler-angles','欧拉角（Euler angles）','用依次绕三个指定轴转动的角度表示三维朝向；必须说明旋转顺序和坐标约定。','像先转方向盘、再抬头、再侧倾；顺序一变，最终朝向通常也变。',['欧拉角','Euler angles','Euler angle'],'quaternion');
   add('quaternion','四元数（quaternion）','用四个数编码三维旋转的一种表示；旋转四元数通常先归一化。','像用一组可组合的四个旋钮记录三维朝向。',['四元数','quaternion'],'quaternion');
   add('axis-angle','轴角表示（axis-angle）','用一条旋转轴和绕该轴转过的角度描述一次三维旋转。','像指明绕哪根箭头旋转、转几度。',['轴角','轴角表示','axis-angle'],'quaternion');
   add('rotation-matrix','旋转矩阵（rotation matrix）','用矩阵乘法把向量转到新的方向，并保持长度与夹角。','像一张方向换算表，把旧坐标换成旋转后的坐标。',['旋转矩阵','rotation matrix'],'quaternion');
@@ -189,12 +202,14 @@
   add('precision','精确率（Precision）','所有被模型报出的预测中，有多少是正确的。','像问“我报出来的目标里，有多少真的找对了？”',['Precision','精确率'],'metrics');
   add('recall','召回率（Recall）','所有真实目标中，有多少被模型正确找到了。','像问“照片里的真实目标，我找回了多少？”',['Recall','召回率'],'metrics');
   add('f1','F1 分数（F1 score）','Precision 与 Recall 的调和平均，用一个数折中反映二者。','像同时考察误报控制和漏检控制的综合成绩。',['F1','F1 score','F1 分数'],'metrics');
-  add('ap','平均精度（Average Precision，AP）','把不同置信度门槛下的 Precision 和 Recall 汇总成一项类别指标。','像沿着不同及格线记录的准确表现，再汇总成一张成绩单。',['AP','Average Precision','平均精度'],'metrics');
-  add('map','平均平均精度（mean Average Precision，mAP）','对多个类别的 AP 求平均；具体结果还取决于 IoU 门槛等评估协议。','像先给每门课算成绩，再对各门课取平均。',['mAP','mean Average Precision','平均平均精度'],'metrics');
+  add('ap','平均精度（Average Precision，AP）','对一个类别，把“报出的结果有多准”和“找回目标有多少”随分数门槛变化的表现汇总成一个分数。','像把一道题从严格判分到宽松判分时的表现连成一条线，再看整条线下的面积。',['AP','Average Precision','平均精度'],'metrics');
+  add('map','平均精度均值（mean Average Precision，mAP）','为每个类别分别算一个检测成绩，再把各类别成绩取平均；结果还会受框匹配门槛等设定影响。','像先给每门课单独评分，再把各门课的成绩取平均。',['mAP','mean Average Precision','平均平均精度','平均精度均值'],'metrics');
+  add('precision-envelope','Precision 包络线（Precision envelope）','计算曲线面积时，从当前点向后找能达到的最高正确比例，并用它作为这一段阶梯的高度。','像画阶梯路时，每一段都参考前方还能达到的最高台阶，避免一处低谷把后面的成绩也拉低。',['Precision envelope','precision envelope','Precision 包络线','精确率包络线','查准率包络线'],'metrics',{contextNote:'这是部分 AP 评估方法使用的曲线补齐办法；不同评估方法的采样与计算规则可能不同。'});
 
   // 数据、训练工程与部署
   add('yaml','YAML 配置文件（YAML Ain’t Markup Language）','用缩进组织的文本配置文件，常保存数据路径、类别名称等设置。','像一张按层级填写的实验设置表。',['YAML','yaml'],'dataset');
-  add('path','文件路径（path）','指出文件或文件夹在电脑中的位置。','像写清楚一本书在图书馆的楼层、书架和格子号。',['路径','path'],'dataset');
+  add('path','路径（path）','指出文件或文件夹在电脑中的位置；在计算图里也可指数据经过的一串步骤，具体含义看上下文。','像地图上的路线；在电脑里也可以是一份文件的地址。',['路径','文件路径','相对路径','绝对路径','file path','path'],'dataset');
+  add('computation-path','计算路径（computational path）','数据沿着一串运算步骤向前流动的路线；不同路线可以并行后再合并。','像一道生产线里的不同传送带，物品按步骤加工后在指定位置汇合。',['计算路径','前向路径','主路径','捷径路径','数据流路径','computation path'],'network');
   add('command-line','命令行界面（Command-Line Interface，CLI）','通过输入文字命令运行程序并传递参数的界面。','像用文字给机器逐条下达指令。',['命令行','CLI','Command-Line Interface','终端命令'],'train-yolo');
   add('working-directory','工作目录（working directory）','程序运行时默认查找相对路径文件的起点文件夹。','像打开文件柜时当前站的位置，之后的相对方向都从这里算。',['工作目录','working directory','当前目录'],'train-yolo');
   add('pretrained-weights','预训练权重（pretrained weights）','模型先前在其他数据上训练得到、可用于新任务起步的一组参数。','像从已经练过基本功的选手开始，再训练新项目。',['预训练权重','pretrained weights'],'transfer');
@@ -220,7 +235,7 @@
   add('semantic-segmentation','语义分割（semantic segmentation）','为图像中的每个像素预测类别，但不区分同类目标各自是哪一个实例。','像给整张地图逐格涂上“道路、草地、天空”等区域颜色。',['语义分割','semantic segmentation'],'tasks');
   add('instance-segmentation','实例分割（instance segmentation）','给每个目标分别找出像素轮廓，并区分同一类别中的不同个体。','像在合照里给每个人各画一圈轮廓，而不把同类人合成一片。',['实例分割','instance segmentation'],'tasks');
   add('keypoint','关键点（keypoint）','用坐标标记物体上的一个有意义位置，例如人体关节或物体角点。','像在人体骨架图上标出肩、肘、膝等位置。',['关键点','keypoint','landmark'],'tasks');
-  add('tracking','目标跟踪（object tracking）','在连续视频帧中关联同一个目标，判断它在不同时间出现的位置。','像在人群连续照片里持续认出同一个人。',['目标跟踪','追踪','跟踪','tracking'],'tasks');
+  add('tracking','目标跟踪（object tracking）','在连续视频帧中关联同一个目标，判断它在不同时间出现的位置。','像在人群连续照片里持续认出同一个人。',['目标跟踪','object tracking','tracking'],'tasks');
   add('pose-estimation','姿态估计（pose estimation）','根据关键点或骨架结构估计人体或物体的姿势。','像根据肩、肘、膝的位置推断一个人正在做什么动作。',['姿态估计','pose estimation'],'tasks');
   add('depth-estimation','深度估计（depth estimation）','预测图像各位置到相机或观察者的远近。','像给平面照片添上一张“每个位置离镜头多远”的地图。',['深度估计','depth estimation'],'tasks');
   add('gan','生成对抗网络（Generative Adversarial Network，GAN）','由生成器产生样本、判别器判断真伪并相互训练的一类生成模型。','像一个出题者不断仿造样品，另一个检查员努力识别真伪。',['GAN','Generative Adversarial Network','生成对抗网络'],'tasks');
@@ -245,6 +260,9 @@
   add('glu','门控线性单元（Gated Linear Unit，GLU）','把一条线性变换结果与另一条经门函数控制的结果逐项相乘，以调节信息通过多少。','像一条水管提供信息，另一条水管控制阀门开度，两者相乘后决定流量。',['GLU','Gated Linear Unit'],'network');
   add('gpt2','GPT-2 语言模型','以 Transformer 解码器为基础、通过预测下一个词元生成文本的语言模型。','像根据已经写出的文字，一步步猜接下来最合适的词。',['GPT-2','GPT 2'],'ai-foundations');
   add('hsv','HSV 颜色表示','用色相、饱和度和明度三个量描述颜色的一种方式。','像先选色环上的颜色，再调颜色浓淡和明暗。',['HSV','Hue Saturation Value'],'image');
+  add('hue','色相（hue）','颜色环上表示颜色类别的位置，例如偏红、偏绿或偏蓝。','像绕着色轮转动指针，选择颜色家族。',['色相','hue','Hue'],'augmentation');
+  add('saturation','饱和度（saturation）','描述颜色鲜艳程度的量；降低时颜色会趋向灰，升高时颜色更浓。','像调颜料里彩色颜料的浓淡。',['饱和度','saturation','Saturation'],'augmentation');
+  add('hsv-value','HSV 明度（value，V）','HSV 颜色表示里的明暗量；调低会让颜色变暗，调高会让画面变亮。','像调灯光亮度旋钮，不改变物体的位置。',['明度','明度 V','Value V','HSV V'],'augmentation');
   add('jpeg','JPEG 图像格式','常见的有损图像压缩格式，通过近似部分图像细节来减小文件体积。','像缩小照片文件时略微简化不太显眼的细节。',['JPEG','JPG'],'image');
   add('pytorch','PyTorch 深度学习框架','用于构建神经网络、执行张量运算和训练模型的 Python 软件库。','像搭建并训练数值模型的一套积木和实验台。',['PyTorch','torch'],'ai-foundations');
   add('scipy','SciPy 科学计算库','提供优化、统计、信号处理等常用科学计算功能的 Python 软件库。','像科学计算工具箱里放着的一组现成仪器。',['SciPy'],'ai-foundations');
@@ -309,9 +327,10 @@
     const q=String(query||'').trim().toLocaleLowerCase();if(!q)return [];
     return items.filter(item=>[item.title,...item.aliases,item.plainExplanation].some(value=>String(value).toLocaleLowerCase().includes(q))).slice(0,8);
   }
-  function eligible(node){
+  function eligible(node,allowGlossaryCard=false){
     const parent=node.parentElement;
-    return parent&&!parent.closest('script,style,textarea,pre,code,option,svg,math,a,button,.katex,.glossary-term,.glossary-card,.glossary-chip,[contenteditable="true"]');
+    const blocked='script,style,textarea,pre,code,option,svg,math,a,button,.katex,.glossary-term,.glossary-chip,[contenteditable="true"]'+(allowGlossaryCard?'':',.glossary-card');
+    return parent&&!parent.closest(blocked);
   }
   function allowedAlias(alias,text,end){return !(alias==='激活'&&/^(?:环境|账号|账户|设备|用户)/.test(String(text||'').slice(end)));}
   function firstTerm(text){const source=String(text||'');matcher.lastIndex=0;let match,result=null;while((match=matcher.exec(source))){const start=match.index+match[1].length,end=start+match[2].length;if(allowedAlias(match[2],source,end)){result=lookup(match[2]);break;}if(match[0].length===0)matcher.lastIndex++;}matcher.lastIndex=0;return result;}
@@ -335,10 +354,11 @@
       const item=firstTerm(source);if(item)addTooltipHint(element,item);
     });
   }
-  function decorate(root){
+  function decorate(root,options={}){
     if(!root||!matcher)return;
+    const allowGlossaryCard=options.allowGlossaryCard===true;
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-    const nodes=[];while(walker.nextNode())if(eligible(walker.currentNode)&&matcher.test(walker.currentNode.nodeValue)){matcher.lastIndex=0;nodes.push(walker.currentNode)}
+    const nodes=[];while(walker.nextNode())if(eligible(walker.currentNode,allowGlossaryCard)&&matcher.test(walker.currentNode.nodeValue)){matcher.lastIndex=0;nodes.push(walker.currentNode)}
     nodes.forEach(node=>{
       const source=node.nodeValue;matcher.lastIndex=0;let cursor=0,match,fragment=document.createDocumentFragment(),changed=false;
       while((match=matcher.exec(source))){
@@ -352,7 +372,7 @@
       }
       if(changed){fragment.append(document.createTextNode(source.slice(cursor)));node.parentNode?.replaceChild(fragment,node);}
     });
-    decorateHintTargets(root);
+    if(!allowGlossaryCard)decorateHintTargets(root);
   }
   function init(){
     if(window.visionlabGlossary?.initialized)return;
@@ -362,15 +382,34 @@
     const tooltip=document.createElement('div');tooltip.id='visionlab-term-tooltip';tooltip.className='glossary-tooltip';tooltip.setAttribute('role','tooltip');tooltip.hidden=true;document.body.append(tooltip);
     const card=document.createElement('section');card.id='visionlab-term-card';card.className='glossary-card';card.setAttribute('role','dialog');card.setAttribute('aria-modal','false');card.setAttribute('aria-labelledby','glossary-card-title');card.hidden=true;
     document.body.append(card);
-    let active=null,returnFocus=null,hideTimer=0;
+    let active=null,returnFocus=null,hideTimer=0,nestedFocusSequence=0;const cardStack=[];
     const position=(element,target)=>{const r=target.getBoundingClientRect(),w=Math.min(360,window.innerWidth-24),h=element.getBoundingClientRect().height||120,left=Math.min(window.innerWidth-w-12,Math.max(12,r.left)),below=r.bottom+8,top=below+h<=window.innerHeight-12?below:Math.max(12,r.top-h-8);element.style.left=left+'px';element.style.top=top+'px';};
-    const showShort=(target)=>{const item=byId[target.dataset.termId||target.dataset.glossaryOpen||target.dataset.glossaryTooltip];if(!item)return;active=target;tooltip.textContent=item.title+'：'+item.plainExplanation;tooltip.hidden=false;position(tooltip,target);const described=(target.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean);if(!described.includes('visionlab-term-tooltip'))described.push('visionlab-term-tooltip');target.setAttribute('aria-describedby',described.join(' '));};
+    const showShort=(target)=>{const item=byId[target.dataset.termId||target.dataset.glossaryOpen||target.dataset.glossaryTooltip];if(!item)return;clearTimeout(hideTimer);hideTimer=0;active=target;tooltip.textContent=item.title+'：'+item.plainExplanation;tooltip.hidden=false;position(tooltip,target);const described=(target.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean);if(!described.includes('visionlab-term-tooltip'))described.push('visionlab-term-tooltip');target.setAttribute('aria-describedby',described.join(' '));};
     const hideShort=()=>{tooltip.hidden=true;if(active){const id=active.dataset.termId||active.dataset.glossaryOpen||active.dataset.glossaryTooltip;if(id){const described=(active.getAttribute('aria-describedby')||'').split(/\s+/).filter(value=>value&&value!=='visionlab-term-tooltip');const description='glossary-description-'+id;if(!described.includes(description))described.push(description);active.setAttribute('aria-describedby',described.join(' '));}}active=null;};
-    const close=restore=>{card.hidden=true;document.querySelectorAll('[aria-expanded="true"][data-term-id],[aria-expanded="true"][data-glossary-open]').forEach(node=>node.setAttribute('aria-expanded','false'));if(restore&&returnFocus?.isConnected)returnFocus.focus({preventScroll:true});returnFocus=null;};
-    const open=(target,id)=>{const item=byId[id];if(!item)return;clearTimeout(hideTimer);hideShort();returnFocus=target;target.setAttribute('aria-expanded','true');card.innerHTML='<button class="glossary-close" type="button" aria-label="关闭术语解释">×</button><span class="chapter-kicker">术语小卡</span><h2 id="glossary-card-title">'+escapeHtml(item.title)+'</h2><p class="glossary-plain">'+escapeHtml(item.plainExplanation)+'</p><div class="glossary-metaphor"><strong>生活比喻</strong><p>'+escapeHtml(item.metaphor)+'</p></div>'+(item.contextNote?'<p class="glossary-context">'+escapeHtml(item.contextNote)+'</p>':'')+(item.formalDefinition?'<details class="glossary-formal"><summary>再看一步</summary><p>'+escapeHtml(item.formalDefinition)+'</p></details>':'')+'<a class="glossary-learn-more" href="'+escapeHtml(item.learnMore)+'">去课程里继续学 ↗</a>';
-      card.hidden=false;position(card,target);card.querySelector('.glossary-close').focus({preventScroll:true});};
-    const onPointerOver=event=>{const target=event.target.closest?.('[data-term-id],[data-glossary-open],[data-glossary-tooltip]');if(target&&!card.contains(target))showShort(target);};
-    const onPointerOut=event=>{const target=event.target.closest?.('[data-term-id],[data-glossary-open],[data-glossary-tooltip]');if(target&&!target.contains(event.relatedTarget)&&!card.hidden){return}if(target&&!target.contains(event.relatedTarget))hideTimer=setTimeout(hideShort,90);};
+    const close=(restore,all=false)=>{
+      if(!all&&cardStack.length){
+        const previous=cardStack.pop();card.innerHTML=previous.html;returnFocus=previous.origin;
+        const nestedTarget=card.querySelector('[data-glossary-focus-key="'+previous.focusKey+'"]');
+        if(nestedTarget){nestedTarget.removeAttribute('data-glossary-focus-key');nestedTarget.setAttribute('aria-expanded','false');}
+        if(restore&&nestedTarget?.isConnected)nestedTarget.focus({preventScroll:true});
+        return;
+      }
+      const origin=returnFocus;card.hidden=true;cardStack.length=0;
+      document.querySelectorAll('[aria-expanded="true"][data-term-id],[aria-expanded="true"][data-glossary-open]').forEach(node=>node.setAttribute('aria-expanded','false'));
+      if(restore&&origin?.isConnected)origin.focus({preventScroll:true});returnFocus=null;
+    };
+    const open=(target,id)=>{
+      const item=byId[id];if(!item)return;clearTimeout(hideTimer);hideShort();
+      if(card.hidden||!card.contains(target)){cardStack.length=0;returnFocus=target;}
+      else{const focusKey='glossary-focus-'+(++nestedFocusSequence);target.setAttribute('data-glossary-focus-key',focusKey);cardStack.push({html:card.innerHTML,origin:returnFocus,focusKey});}
+      target.setAttribute('aria-expanded','true');
+      card.innerHTML='<button class="glossary-close" type="button" aria-label="关闭术语解释">×</button><span class="chapter-kicker">术语小卡</span><h2 id="glossary-card-title">'+escapeHtml(item.title)+'</h2><p class="glossary-plain">'+escapeHtml(item.plainExplanation)+'</p><div class="glossary-metaphor"><strong>生活比喻</strong><p>'+escapeHtml(item.metaphor)+'</p></div>'+(item.contextNote?'<p class="glossary-context">'+escapeHtml(item.contextNote)+'</p>':'')+(item.formalDefinition?'<details class="glossary-formal"><summary>再看一步</summary><p>'+escapeHtml(item.formalDefinition)+'</p></details>':'')+'<a class="glossary-learn-more" href="'+escapeHtml(item.learnMore)+'">去课程里继续学 ↗</a>';
+      card.querySelectorAll('.glossary-plain,.glossary-metaphor,.glossary-context,.glossary-formal').forEach(region=>decorate(region,{allowGlossaryCard:true}));
+      card.querySelectorAll('[data-term-id="'+id+'"],[data-glossary-open="'+id+'"]').forEach(node=>node.replaceWith(document.createTextNode(node.textContent||'')));
+      card.hidden=false;position(card,returnFocus||target);card.querySelector('.glossary-close').focus({preventScroll:true});
+    };
+    const onPointerOver=event=>{const target=event.target.closest?.('[data-term-id],[data-glossary-open],[data-glossary-tooltip]');if(target)showShort(target);};
+    const onPointerOut=event=>{const target=event.target.closest?.('[data-term-id],[data-glossary-open],[data-glossary-tooltip]');if(target&&!target.contains(event.relatedTarget)&&!tooltip.contains(event.relatedTarget))hideTimer=setTimeout(hideShort,90);};
     const onFocusIn=event=>{const target=event.target.closest?.('[data-term-id],[data-glossary-open],[data-glossary-tooltip]');if(target)showShort(target);};
     document.addEventListener('pointerover',onPointerOver);
     document.addEventListener('pointerout',onPointerOut);
@@ -380,15 +419,15 @@
       const tooltipOnly=event.target.closest?.('[data-glossary-tooltip]');if(tooltipOnly&&!tooltipOnly.matches('[data-term-id],[data-glossary-open]'))hideShort();
       const target=event.target.closest?.('[data-term-id],[data-glossary-open]');
       if(target){event.preventDefault();event.stopPropagation();open(target,target.dataset.termId||target.dataset.glossaryOpen);return;}
-      if(event.target.closest('.glossary-learn-more')){close(false);return;}
-      if(!card.hidden&&!card.contains(event.target))close(false);
+      if(event.target.closest('.glossary-learn-more')){close(false,true);return;}
+      if(!card.hidden&&!card.contains(event.target))close(false,true);
     },true);
     document.addEventListener('keydown',event=>{
       const target=event.target.closest?.('[data-term-id],[data-glossary-open]');
       if(target&&(event.key==='Enter'||event.key===' ')){event.preventDefault();event.stopPropagation();open(target,target.dataset.termId||target.dataset.glossaryOpen);return;}
       if(event.key==='Escape'&&!card.hidden){event.preventDefault();close(true);}
     });
-    document.addEventListener('mouseover',event=>{if(event.target.closest('.glossary-card'))clearTimeout(hideTimer);});
+    document.addEventListener('mouseover',event=>{if(event.target.closest('#visionlab-term-tooltip'))clearTimeout(hideTimer);});
     window.addEventListener('resize',()=>{if(active&&!tooltip.hidden)position(tooltip,active);if(!card.hidden&&returnFocus)position(card,returnFocus);});
     window.addEventListener('scroll',()=>{if(active&&!tooltip.hidden)position(tooltip,active);if(!card.hidden&&returnFocus)position(card,returnFocus);},{passive:true});
     const content=document.getElementById('content');if(content){decorate(content);new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===Node.TEXT_NODE)decorate(node.parentElement);else if(node.nodeType===Node.ELEMENT_NODE)decorate(node);}))).observe(content,{childList:true,subtree:true,characterData:true});}

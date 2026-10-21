@@ -197,6 +197,7 @@
     adam:{name:'Adam',color:'#cf7659',hint:'Adam 对梯度的一阶、二阶移动平均做自适应缩放。它能调整不同参数的步幅，但仍需检查学习率和验证效果。'}
   };
   const objective=(x,y)=>0.075*x*x+2*y*y;
+  const optimizerLossFmt=value=>value>0&&value<0.01?value.toExponential(2):fmt(value);
   function optimizerPath(method,lr,steps){
     let x=4,y=3,vx=0,vy=0,mx=0,my=0,sx=0,sy=0;const path=[[x,y,objective(x,y)]];
     for(let t=1;t<=steps;t++){
@@ -215,7 +216,7 @@
   }
 
   function optimizerMarkup(){
-    return '<section class="lesson-playground optimizer-playground" data-optimizer-playground data-optimizer="sgd" aria-labelledby="optimizer-playground-title"><div class="playground-heading"><div><span class="playground-kicker">互动图解 · 优化器走法</span><h3 id="optimizer-playground-title">同一座“损失山谷”，不同优化器怎样下坡？</h3><p>保持起点、函数和步数相同，切换优化器，再调学习率观察轨迹。</p></div><button type="button" class="playground-reset" data-optimizer-reset>恢复默认</button></div><div class="optimizer-methods" role="group" aria-label="高亮一种优化器">'+Object.entries(optimizerSpecs).map(([id,spec])=>'<button type="button" data-optimizer-choose="'+id+'" aria-pressed="'+String(id==='sgd')+'"><i style="--method-color:'+spec.color+'"></i>'+spec.name+'</button>').join('')+'</div><div class="optimizer-layout"><div class="playground-chart optimizer-chart" data-optimizer-chart></div><div class="optimizer-controls"><label class="playground-range"><span>学习率 η <output data-optimizer-rate-value>0.20</output></span><input type="range" min="0.02" max="0.45" step="0.01" value="0.20" data-optimizer-rate aria-label="优化器学习率"></label><label class="playground-range"><span>更新步数 <output data-optimizer-step-value>10</output></span><input type="range" min="0" max="24" step="1" value="10" data-optimizer-step aria-label="优化器更新步数"></label><div class="optimizer-current" data-optimizer-current></div><div class="optimizer-score-table" data-optimizer-table></div></div></div><p class="playground-insight" data-optimizer-hint role="status" aria-live="polite"></p><p class="playground-footnote">教学模拟：固定二维函数 L(x,y)=0.075x²+2y²，初点为 (4,3)。它用来比较更新规则，不代表某个真实神经网络的训练结果；实际表现需在目标数据上验证。</p></section>';
+    return '<section class="lesson-playground optimizer-playground" data-optimizer-playground data-optimizer="sgd" data-optimizer-chart-mode="parameters" aria-labelledby="optimizer-playground-title"><div class="playground-heading"><div><span class="playground-kicker">互动图解 · 优化器走法</span><h3 id="optimizer-playground-title">同一座“损失山谷”，不同优化器怎样下坡？</h3><p>调整学习率和训练步数，比较参数走过的路径，或切到损失曲线观察长期变化。</p></div><button type="button" class="playground-reset" data-optimizer-reset>恢复默认</button></div><div class="optimizer-methods" role="group" aria-label="高亮一种优化器">'+Object.entries(optimizerSpecs).map(([id,spec])=>'<button type="button" data-optimizer-choose="'+id+'" aria-pressed="'+String(id==='sgd')+'"><i style="--method-color:'+spec.color+'"></i>'+spec.name+'</button>').join('')+'</div><div class="optimizer-layout"><div class="optimizer-chart-panel"><div class="optimizer-chart-switch" role="group" aria-label="选择图表"><button type="button" data-optimizer-view="parameters" aria-pressed="true">参数轨迹</button><button type="button" data-optimizer-view="loss" aria-pressed="false">损失变化</button></div><div class="playground-chart optimizer-chart" data-optimizer-chart></div><p class="optimizer-chart-note" data-optimizer-chart-note>横轴和纵轴分别是参数 x、y；颜色表示不同优化器，圆点标出当前步数的位置。</p></div><div class="optimizer-controls"><label class="playground-range"><span>学习率 η <output data-optimizer-rate-value>0.20</output></span><input type="range" min="0.02" max="0.45" step="0.01" value="0.20" data-optimizer-rate aria-label="优化器学习率"></label><label class="playground-range"><span>更新步数 <output data-optimizer-step-value>10 / 200</output></span><input type="range" min="0" max="200" step="1" value="10" data-optimizer-step aria-label="优化器更新步数，最多 200 步"></label><div class="optimizer-step-actions" role="group" aria-label="继续运行优化器"><span>继续运行</span><button type="button" data-optimizer-step-add="1">+1 步</button><button type="button" data-optimizer-step-add="10">+10 步</button><button type="button" data-optimizer-step-add="50">+50 步</button></div><div class="optimizer-current" data-optimizer-current></div><div class="optimizer-score-table" data-optimizer-table></div></div></div><p class="playground-insight" data-optimizer-hint role="status" aria-live="polite"></p><p class="playground-footnote">教学模拟：固定二维函数 L(x,y)=0.075x²+2y²，初点为 (4,3)。它用来比较更新规则，不代表某个真实神经网络的训练结果；实际表现需在目标数据上验证。损失变化图纵轴用 log₁₀(L) 表示；沿纵轴每下降 1 个单位，损失缩小到原来的十分之一。极小损失和参数用科学计数法显示，避免把接近零误读为零。</p></section>';
   }
 
   function optimizerChart(paths,selected){
@@ -232,17 +233,32 @@
     out+='</g><circle cx="'+X(0)+'" cy="'+Y(0)+'" r="4" fill="#283b37"/>'+svgText(X(0)+10,Y(0)-9,'最低点 (0,0)',10,'start','#53635e');return out+'</svg>';
   }
 
+  function optimizerLossChart(paths,selected,steps){
+    const W=760,H=380,L=66,R=20,T=22,B=319,pw=W-L-R,ph=B-T,xmax=Math.max(steps,1),all=Object.values(paths).flat(),logLoss=value=>Math.log10(Math.max(value,1e-12)),logs=all.map(point=>logLoss(point[2])),ymin=Math.min(-4,Math.min(...logs)-.5),ymax=Math.max(...logs)+.35;
+    const X=step=>L+step/xmax*pw,Y=value=>B-(value-ymin)/(ymax-ymin)*ph;let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="不同优化器的损失随更新步数变化，纵轴使用以 10 为底的对数刻度"><rect x="'+L+'" y="'+T+'" width="'+pw+'" height="'+ph+'" fill="#fffefa"/>';
+    const tickCount=steps===0?0:Math.min(5,steps);for(let i=0;i<=tickCount;i++){const value=tickCount?Math.round(steps*i/tickCount):0;out+='<line x1="'+X(value)+'" y1="'+T+'" x2="'+X(value)+'" y2="'+B+'" stroke="#eeece6"/>'+svgText(X(value),B+18,String(value),10)}
+    const yStep=Math.max(1,Math.ceil((ymax-ymin)/5)),firstTick=Math.ceil(ymin/yStep)*yStep;for(let value=firstTick;value<=ymax;value+=yStep){const exponent=String(value).replace(/-/g,'⁻').replace(/\d/g,d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[Number(d)]);out+='<line x1="'+L+'" y1="'+Y(value)+'" x2="'+(W-R)+'" y2="'+Y(value)+'" stroke="#eeece6"/>'+svgText(L-10,Y(value)+4,'10'+exponent,10,'end','#66727b')}
+    out+=svgText((L+W-R)/2,B+39,'更新步数',11,'middle','#626e79')+svgText(14,T+5,'损失 L（对数）',11,'start','#626e79')+'<defs><clipPath id="optimizer-loss-clip"><rect x="'+L+'" y="'+T+'" width="'+pw+'" height="'+ph+'"/></clipPath></defs><g clip-path="url(#optimizer-loss-clip)">';
+    Object.entries(optimizerSpecs).forEach(([id,spec])=>{const path=paths[id];if(!path.length)return;const points=path.map((point,index)=>X(index).toFixed(1)+','+Y(logLoss(point[2])).toFixed(1)).join(' '),last=path[path.length-1];out+='<polyline points="'+points+'" fill="none" stroke="'+spec.color+'" stroke-width="'+(id===selected?3.4:2)+'" stroke-opacity="'+(id===selected?1:.62)+'" stroke-linecap="round" stroke-linejoin="round"/>';if(id===selected)out+='<circle cx="'+X(path.length-1)+'" cy="'+Y(logLoss(last[2]))+'" r="7" fill="'+spec.color+'" stroke="#fffefa" stroke-width="2.5"/>'});
+    out+='</g>';return out+'</svg>';
+  }
+
   function updateOptimizer(root){
     const selected=root.dataset.optimizer||'sgd',lr=Number(root.querySelector('[data-optimizer-rate]').value),steps=Number(root.querySelector('[data-optimizer-step]').value),paths={};
     Object.keys(optimizerSpecs).forEach(id=>paths[id]=optimizerPath(id,lr,steps));
-    root.querySelector('[data-optimizer-rate-value]').textContent=fmt(lr);root.querySelector('[data-optimizer-step-value]').textContent=String(steps);
-    root.querySelector('[data-optimizer-chart]').innerHTML=optimizerChart(paths,selected);
+    const view=root.dataset.optimizerChartMode||'parameters';root.querySelector('[data-optimizer-rate-value]').textContent=fmt(lr);root.querySelector('[data-optimizer-step-value]').textContent=steps+' / 200';
+    root.querySelector('[data-optimizer-chart]').innerHTML=view==='loss'?optimizerLossChart(paths,selected,steps):optimizerChart(paths,selected);
+    root.querySelectorAll('[data-optimizer-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.optimizerView===view)));
+    root.querySelector('[data-optimizer-chart-note]').textContent=view==='loss'?'横轴是更新步数，纵轴是损失的 log₁₀ 值；同一竖直距离代表损失按比例变化，圆点标出当前优化器的结果。':'横轴和纵轴分别是参数 x、y；颜色表示不同优化器，圆点标出当前步数的位置。';
     root.querySelectorAll('[data-optimizer-choose]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.optimizerChoose===selected)));
     const selectedEnd=paths[selected][paths[selected].length-1]||[4,3,objective(4,3)];
-    root.querySelector('[data-optimizer-current]').innerHTML='<span>当前高亮 · '+optimizerSpecs[selected].name+'</span><strong>L='+fmt(selectedEnd[2])+'</strong><small>(x, y)=('+fmt(selectedEnd[0])+', '+fmt(selectedEnd[1])+')</small>';
-    root.querySelector('[data-optimizer-table]').innerHTML='<div class="optimizer-table-heading"><span>相同设置下的结果</span><small>第 '+steps+' 步</small></div>'+Object.entries(optimizerSpecs).map(([id,spec])=>{const p=paths[id][paths[id].length-1]||[4,3,objective(4,3)];return '<div class="optimizer-row" style="--method-color:'+spec.color+'"><span><i></i>'+spec.name+'</span><b>'+fmt(p[2])+'</b><small>损失</small></div>'}).join('');
+    const optimizerParamFmt=value=>value!==0&&Math.abs(value)<0.01?value.toExponential(2):fmt(value);
+    root.querySelector('[data-optimizer-current]').innerHTML='<span>当前高亮 · '+optimizerSpecs[selected].name+'</span><strong>L='+optimizerLossFmt(selectedEnd[2])+'</strong><small>(x, y)=('+optimizerParamFmt(selectedEnd[0])+', '+optimizerParamFmt(selectedEnd[1])+')</small>';
+    const stopped=Object.values(paths).some(path=>path.length-1<steps);
+    root.querySelector('[data-optimizer-table]').innerHTML='<div class="optimizer-table-heading"><span>相同设置下的结果</span><small>目标 '+steps+' 步</small></div>'+Object.entries(optimizerSpecs).map(([id,spec])=>{const path=paths[id],p=path[path.length-1]||[4,3,objective(4,3)],actual=path.length-1;return '<div class="optimizer-row" style="--method-color:'+spec.color+'"><span><i></i>'+spec.name+'</span><b>'+optimizerLossFmt(p[2])+'</b><small>'+(actual<steps?'越界停止 · 第 '+actual+' 步':'第 '+actual+' 步')+'</small></div>'}).join('');
     const methodHint=optimizerSpecs[selected].hint;const rateHint=lr>=0.34?' 学习率偏大时，注意看陡峭方向是否出现摆动或越过低点。':lr<=0.06?' 当前步幅较小，路径稳定但下降较慢。':'';
-    root.querySelector('[data-optimizer-hint]').textContent=methodHint+rateHint;
+    root.querySelector('[data-optimizer-hint]').textContent=methodHint+rateHint+(stopped?' 有优化器的参数越出图示范围，模拟已提前停止；结果栏会标出实际完成步数。':'');
+    root.querySelectorAll('[data-optimizer-step-add]').forEach(button=>button.disabled=steps>=200);
   }
 
   const poolValues=[[1,3,2,0],[4,6,1,2],[1,2,5,3],[0,1,7,8]];
@@ -955,10 +971,14 @@
     if(multiclassTarget){const root=multiclassTarget.closest('[data-multiclass-playground]');root.dataset.target=multiclassTarget.dataset.multiclassTarget;updateMulticlass(root);return}
     const multiclassReset=event.target.closest('[data-multiclass-reset]');
     if(multiclassReset){const root=multiclassReset.closest('[data-multiclass-playground]');root.dataset.target='2';root.querySelectorAll('[data-multiclass-logit]').forEach((input,i)=>input.value=[2,1,0.1][i]);updateMulticlass(root);return}
+    const optimizerView=event.target.closest('[data-optimizer-view]');
+    if(optimizerView){const root=optimizerView.closest('[data-optimizer-playground]');root.dataset.optimizerChartMode=optimizerView.dataset.optimizerView;updateOptimizer(root);return}
+    const optimizerStepAdd=event.target.closest('[data-optimizer-step-add]');
+    if(optimizerStepAdd){const root=optimizerStepAdd.closest('[data-optimizer-playground]'),input=root.querySelector('[data-optimizer-step]');input.value=String(Math.min(200,Number(input.value)+Number(optimizerStepAdd.dataset.optimizerStepAdd)));updateOptimizer(root);return}
     const optimizerChoice=event.target.closest('[data-optimizer-choose]');
     if(optimizerChoice){const root=optimizerChoice.closest('[data-optimizer-playground]');root.dataset.optimizer=optimizerChoice.dataset.optimizerChoose;updateOptimizer(root);return}
     const optimizerReset=event.target.closest('[data-optimizer-reset]');
-    if(optimizerReset){const root=optimizerReset.closest('[data-optimizer-playground]');root.dataset.optimizer='sgd';root.querySelector('[data-optimizer-rate]').value='0.20';root.querySelector('[data-optimizer-step]').value='10';updateOptimizer(root)}
+    if(optimizerReset){const root=optimizerReset.closest('[data-optimizer-playground]');root.dataset.optimizer='sgd';root.dataset.optimizerChartMode='parameters';root.querySelector('[data-optimizer-rate]').value='0.20';root.querySelector('[data-optimizer-step]').value='10';updateOptimizer(root)}
     const poolMethod=event.target.closest('[data-pool-method-choice]');
     if(poolMethod){const root=poolMethod.closest('[data-pooling-playground]');root.dataset.poolMethod=poolMethod.dataset.poolMethodChoice;updatePooling(root);return}
     const poolStride=event.target.closest('[data-pool-stride-choice]');

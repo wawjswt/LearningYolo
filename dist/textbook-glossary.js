@@ -323,12 +323,94 @@
 
   const byId=Object.fromEntries(items.map(item=>[item.id,item]));
   const aliases=items.flatMap(item=>item.aliases.map(alias=>({alias,item}))).sort((a,b)=>b.alias.length-a.alias.length);
+  // Only these audited whole terms suppress their embedded child terms. A
+  // child term remains available everywhere else, including next to a whole
+  // term in the same sentence.
+  const atomicCompoundRelations=[
+    ['二分类','binary-classification',['classification']],
+    ['多分类','multiclass-classification',['classification']],
+    ['多类别分类','multiclass-classification',['classification']],
+    ['多标签分类','multilabel-classification',['classification','label']],
+    ['内部协变量偏移','internal-covariate-shift',['covariate','variable']],
+    ['二元交叉熵','bce',['cross-entropy']],
+    ['偏导数','partial-derivative',['derivative']],
+    ['激活函数','activation',['function']],
+    ['损失函数','loss',['function']],
+    ['随机梯度下降','sgd',['gradient','gradient-descent']],
+    ['多标签','multilabel-classification',['label']],
+    ['自然对数','natural-log',['logarithm']],
+    ['交叉熵损失','cross-entropy',['loss']],
+    ['旋转矩阵','rotation-matrix',['matrix']],
+    ['扩散模型','diffusion-model',['model']],
+    ['批量归一化','batch-normalization',['normalization']],
+    ['超参数','hyperparameter',['parameter']],
+    ['主路径','computation-path',['path']],
+    ['前向路径','computation-path',['path']],
+    ['计算路径','computation-path',['path']],
+    ['全局平均池化','global-average-pooling',['pooling']],
+    ['正确类别概率','cross-entropy-example',['probability']],
+    ['真实类概率','cross-entropy-example',['probability']],
+    ['负样本','negative-sample',['sample']],
+    ['正样本','positive-sample',['sample']],
+    ['实例分割','instance-segmentation',['segmentation']],
+    ['语义分割','semantic-segmentation',['segmentation']],
+    ['卷积步幅','conv-stride',['spatial-stride']],
+    ['内存步幅','stride',['spatial-stride']],
+    ['张量内存步幅','stride',['spatial-stride']],
+    ['连续张量','contiguous',['tensor']],
+    ['预训练权重','pretrained-weights',['training','weight']],
+    ['协变量','covariate',['variable']],
+    ['中间变量','intermediate-variable',['variable']],
+    ['协变量偏移','internal-covariate-shift',['covariate','variable']],
+    ['模型权重文件','model-weights-file',['weight']],
+  ];
   const escapeRegExp=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const alternation=aliases.map(entry=>escapeRegExp(entry.alias)).join('|');
-  const matcher=alternation?new RegExp('(^|[^A-Za-z0-9_])('+alternation+')(?=$|[^A-Za-z0-9_])','giu'):null;
+  // Check ASCII word boundaries without consuming adjacent characters: Chinese
+  // glossary terms commonly touch one another (输入输出), or meet English
+  // technical tokens without a space (输出logits).
+  const matcher=alternation?new RegExp('('+alternation+')','giu'):null;
+  const aliasLookup=new Map(aliases.map(entry=>[entry.alias.toLocaleLowerCase(),entry.item]));
+  const compoundSurfacesByChild=new Map();
+  for(const [surface,termId,childIds] of atomicCompoundRelations){
+    if(!byId[termId]?.aliases.includes(surface))continue;
+    for(const childId of childIds){
+      if(!byId[childId])continue;
+      if(!compoundSurfacesByChild.has(childId))compoundSurfacesByChild.set(childId,[]);
+      compoundSurfacesByChild.get(childId).push(surface);
+    }
+  }
   const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  function lookup(alias){return aliases.find(entry=>entry.alias.toLocaleLowerCase()===String(alias).toLocaleLowerCase())?.item||null}
-  function termsIn(text){const source=String(text||''),found=new Map();matcher.lastIndex=0;let match;while((match=matcher.exec(source))){const end=match.index+match[1].length+match[2].length;if(!allowedAlias(match[2],source,end)){if(match[0].length===0)matcher.lastIndex++;continue;}const item=lookup(match[2]);if(item)found.set(item.id,item);if(match[0].length===0)matcher.lastIndex++;}matcher.lastIndex=0;return [...found.values()]}
+  function lookup(alias){return aliasLookup.get(String(alias).toLocaleLowerCase())||null}
+  function blockedByCompound(itemId,text,start,end){
+    const surfaces=compoundSurfacesByChild.get(itemId);if(!surfaces)return false;
+    for(const surface of surfaces){
+      let at=text.indexOf(surface,Math.max(0,start-surface.length+1));
+      while(at!==-1&&at<=start){if(at+surface.length>=end)return true;at=text.indexOf(surface,at+1);}
+    }
+    return false;
+  }
+  function allowedAlias(alias,text,start,end,item=lookup(alias)){
+    if(item&&blockedByCompound(item.id,text,start,end))return false;
+    return !(alias==='激活'&&/^(?:环境|账号|账户|设备|用户)/.test(text.slice(end)));
+  }
+  function matchesIn(text){
+    const source=String(text||''),matches=[];if(!matcher)return matches;
+    matcher.lastIndex=0;let match;
+    while((match=matcher.exec(source))){
+      const start=match.index,end=start+match[1].length,alias=match[1];
+      const startsAsciiWord=/[A-Za-z0-9_]/.test(alias[0]);
+      const endsAsciiWord=/[A-Za-z0-9_]/.test(alias[alias.length-1]);
+      if(startsAsciiWord&&start>0&&/[A-Za-z0-9_]/.test(source[start-1]))continue;
+      if(endsAsciiWord&&end<source.length&&/[A-Za-z0-9_]/.test(source[end]))continue;
+      const item=lookup(alias);if(!item||!allowedAlias(alias,source,start,end,item))continue;
+      matches.push({start,end,alias,item});
+      if(match[0].length===0)matcher.lastIndex++;
+    }
+    matcher.lastIndex=0;return matches;
+  }
+  function termsIn(text){const found=new Map();for(const match of matchesIn(text))if(!found.has(match.item.id))found.set(match.item.id,match.item);return [...found.values()]}
+  function firstTerm(text){return matchesIn(text)[0]?.item||null}
   function chip(id,label){const item=byId[id];if(!item)return '';return '<button class="glossary-chip" type="button" data-glossary-open="'+escapeHtml(id)+'" aria-haspopup="dialog">'+escapeHtml(label||item.title)+'<span aria-hidden="true">ⓘ</span></button>'}
   function renderSearch(query){
     const q=String(query||'').trim().toLocaleLowerCase();if(!q)return [];
@@ -336,11 +418,9 @@
   }
   function eligible(node,allowGlossaryCard=false){
     const parent=node.parentElement;
-    const blocked='script,style,textarea,pre,code,option,svg,math,a,button,.katex,.glossary-term,.glossary-chip,[contenteditable="true"]'+(allowGlossaryCard?'':',.glossary-card');
+    const blocked='script,style,textarea,pre,code,option,svg,math,a,button,label,select,input,.katex,.MathJax,mjx-container,.glossary-term,.glossary-chip,[contenteditable="true"]'+(allowGlossaryCard?'':',.glossary-card');
     return parent&&!parent.closest(blocked);
   }
-  function allowedAlias(alias,text,end){const source=String(text||'');if(alias==='变量'&&source.slice(end-alias.length-1,end)==='协变量')return false;return !(alias==='激活'&&/^(?:环境|账号|账户|设备|用户)/.test(source.slice(end)));}
-  function firstTerm(text){const source=String(text||'');matcher.lastIndex=0;let match,result=null;while((match=matcher.exec(source))){const start=match.index+match[1].length,end=start+match[2].length;if(allowedAlias(match[2],source,end)){result=lookup(match[2]);break;}if(match[0].length===0)matcher.lastIndex++;}matcher.lastIndex=0;return result;}
   function addTooltipHint(element,item){
     if(!element||!item||element.dataset.termId||element.dataset.glossaryOpen||element.classList?.contains('glossary-chip'))return;
     if(element.matches?.('code')){element.dataset.glossaryOpen=item.id;element.setAttribute('aria-haspopup','dialog');element.setAttribute('aria-expanded','false');element.setAttribute('aria-label',item.title+'。按回车或点击查看详细解释。');element.tabIndex=0;}
@@ -361,24 +441,53 @@
       const item=firstTerm(source);if(item)addTooltipHint(element,item);
     });
   }
+  const blockTags=new Set(['P','LI','DD','DT','H1','H2','H3','H4','H5','H6','TH','TD','FIGCAPTION','SUMMARY','BLOCKQUOTE','DIV','SECTION','ARTICLE','MAIN','HEADER','FOOTER','ASIDE','UL','OL','TABLE','TR','THEAD','TBODY','TFOOT','FORM','FIELDSET']);
+  const protectedTags='script,style,textarea,pre,code,option,svg,math,a,button,label,select,input,.katex,.MathJax,mjx-container,.glossary-term,.glossary-chip,[contenteditable="true"]';
+  function collectTextRuns(root,allowGlossaryCard){
+    const runs=[];let current=[];
+    const flush=()=>{if(current.length){runs.push(current);current=[];}};
+    const visit=node=>{
+      if(node.nodeType===Node.TEXT_NODE){if(eligible(node,allowGlossaryCard))current.push(node);else flush();return;}
+      if(node.nodeType===Node.ELEMENT_NODE){
+        const isRoot=node===root;
+        if(!isRoot&&node.matches(protectedTags+(allowGlossaryCard?'':',.glossary-card'))){flush();return;}
+        if(!isRoot&&node.tagName==='BR'){flush();return;}
+        const boundary=!isRoot&&blockTags.has(node.tagName);if(boundary)flush();
+        Array.from(node.childNodes).forEach(visit);
+        if(boundary)flush();return;
+      }
+      Array.from(node.childNodes||[]).forEach(visit);
+    };
+    visit(root);flush();return runs;
+  }
+  function textPoint(nodes,index,isEnd){
+    let offset=0;
+    for(let i=0;i<nodes.length;i++){
+      const length=nodes[i].nodeValue.length,end=offset+length;
+      if(index<end||(!isEnd&&index===offset)||(isEnd&&index===end))return {node:nodes[i],offset:index-offset};
+      offset=end;
+    }
+    return null;
+  }
+  function decorateTextRun(nodes){
+    const source=nodes.map(node=>node.nodeValue).join(''),matches=matchesIn(source);
+    for(let i=matches.length-1;i>=0;i--){
+      const match=matches[i],start=textPoint(nodes,match.start,false),end=textPoint(nodes,match.end,true);
+      if(!start||!end||!start.node.isConnected||!end.node.isConnected)continue;
+      const range=document.createRange();range.setStart(start.node,start.offset);range.setEnd(end.node,end.offset);
+      const mark=document.createElement('dfn');mark.className='glossary-term';mark.dataset.termId=match.item.id;mark.tabIndex=0;mark.setAttribute('aria-label',match.item.title+'。按回车或点击查看解释。');mark.setAttribute('aria-haspopup','dialog');mark.setAttribute('aria-describedby','glossary-description-'+match.item.id);
+      mark.append(range.extractContents());range.insertNode(mark);
+    }
+  }
+  function mutationRoot(node,fallback){
+    let element=node.nodeType===Node.ELEMENT_NODE?node:node.parentElement;
+    while(element&&element!==fallback){if(blockTags.has(element.tagName)||element.matches(protectedTags))return element;element=element.parentElement;}
+    return fallback||element;
+  }
   function decorate(root,options={}){
     if(!root||!matcher)return;
     const allowGlossaryCard=options.allowGlossaryCard===true;
-    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-    const nodes=[];while(walker.nextNode())if(eligible(walker.currentNode,allowGlossaryCard)&&matcher.test(walker.currentNode.nodeValue)){matcher.lastIndex=0;nodes.push(walker.currentNode)}
-    nodes.forEach(node=>{
-      const source=node.nodeValue;matcher.lastIndex=0;let cursor=0,match,fragment=document.createDocumentFragment(),changed=false;
-      while((match=matcher.exec(source))){
-        const start=match.index+match[1].length,end=start+match[2].length;
-        if(!allowedAlias(match[2],source,end))continue;
-        const item=lookup(match[2]);if(!item)continue;
-        if(start<cursor)continue;
-        fragment.append(document.createTextNode(source.slice(cursor,start)));
-        const mark=document.createElement('dfn'),interactive=node.parentElement?.closest('a,button');mark.className='glossary-term';mark.dataset.termId=item.id;mark.tabIndex=0;mark.setAttribute('aria-label',item.title+'。按回车或点击查看解释。');mark.setAttribute('aria-haspopup','dialog');mark.setAttribute('aria-describedby','glossary-description-'+item.id);mark.textContent=source.slice(start,end);if(interactive){const ids=(interactive.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean);if(!ids.includes('glossary-description-'+item.id))ids.push('glossary-description-'+item.id);interactive.setAttribute('aria-describedby',ids.join(' '));}fragment.append(mark);cursor=end;changed=true;
-        if(match[0].length===0)matcher.lastIndex++;
-      }
-      if(changed){fragment.append(document.createTextNode(source.slice(cursor)));node.parentNode?.replaceChild(fragment,node);}
-    });
+    collectTextRuns(root,allowGlossaryCard).forEach(decorateTextRun);
     if(!allowGlossaryCard)decorateHintTargets(root);
   }
   function init(){
@@ -437,9 +546,12 @@
     document.addEventListener('mouseover',event=>{if(event.target.closest('#visionlab-term-tooltip'))clearTimeout(hideTimer);});
     window.addEventListener('resize',()=>{if(active&&!tooltip.hidden)position(tooltip,active);if(!card.hidden&&returnFocus)position(card,returnFocus);});
     window.addEventListener('scroll',()=>{if(active&&!tooltip.hidden)position(tooltip,active);if(!card.hidden&&returnFocus)position(card,returnFocus);},{passive:true});
-    const content=document.getElementById('content');if(content){decorate(content);new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===Node.TEXT_NODE)decorate(node.parentElement);else if(node.nodeType===Node.ELEMENT_NODE)decorate(node);}))).observe(content,{childList:true,subtree:true,characterData:true});}
+    const content=document.getElementById('content');if(content){decorate(content);new MutationObserver(records=>records.forEach(record=>{
+      if(record.type==='characterData'){decorate(mutationRoot(record.target,content));return;}
+      record.addedNodes.forEach(node=>{if(node.nodeType===Node.TEXT_NODE||node.nodeType===Node.ELEMENT_NODE)decorate(mutationRoot(node,content));});
+    })).observe(content,{childList:true,subtree:true,characterData:true});}
     window.visionlabGlossary.initialized=true;
   }
-  window.visionlabGlossary={items,byId,lookup,chip,search:renderSearch,decorate,init};
+  window.visionlabGlossary={items,byId,lookup,chip,search:renderSearch,matchesIn,termsIn,firstTerm,decorate,init};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

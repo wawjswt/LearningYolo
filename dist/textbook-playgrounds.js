@@ -902,9 +902,9 @@
     if(lessonId==='anchors'&&sectionIndex===1)return anchorMarkup();
     if(lessonId==='yolo-loss'&&sectionIndex===3)return yoloLossMarkup();
     if(lessonId==='quaternion'&&sectionIndex===1)return quaternionMarkup();
-    if(lessonId==='quaternion'&&sectionIndex===4)return eulerCompareMarkup();
-    if(lessonId==='quaternion'&&sectionIndex===5)return eulerGimbalMarkup();
-    if(lessonId==='quaternion'&&sectionIndex===6)return eulerComparisonMarkup();
+    if(lessonId==='euler-angles'&&sectionIndex===0)return eulerCompareMarkup();
+    if(lessonId==='euler-angles'&&sectionIndex===1)return eulerGimbalMarkup();
+    if(lessonId==='quaternion-compare'&&sectionIndex===0)return eulerComparisonMarkup();
     return '';
   }
   function initialize(){

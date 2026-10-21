@@ -5,7 +5,7 @@
   if(!catalog||!curriculum)return;
   const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const stripNumber=v=>String(v||'').replace(/^\s*(?:\d+[.、]|[一二三四五六七八九十]+[、.])\s*/, '').trim();
-  const unit=(id,title,sections,time,desc)=>({id,title,sections,time,desc});
+  const unit=(id,title,sections,time,desc,options={})=>({id,title,sections,time,desc,...options});
   const source=(from,units)=>({from,units});
   const plan={
     dl:[
@@ -138,9 +138,10 @@
         unit('augmentation-evaluation','图像增强 2：颜色变化与验证检查',[2,3],15,'认识颜色增强的作用，并用验证集检查增强是否符合真实场景。')
       ]),
       source('quaternion',[
-        unit('quaternion','三维旋转 1：向量、轴角与四元数',[0,1,2],20,'从绕轴旋转开始，读懂单位四元数怎样紧凑表示三维姿态。'),
-        unit('quaternion-compose','三维旋转 2：旋转顺序、欧拉角与万向节锁',[3,4,5],20,'用连续转动的例子理解旋转次序、欧拉角和万向节锁。'),
-        unit('quaternion-compare','三维旋转 3：四元数、矩阵与实现约定',[6,7],15,'比较常见旋转表示，并核对坐标系、乘法方向和单位化等实现约定。')
+        unit('euler-angles','三维旋转 1：欧拉角与旋转顺序',[4,5],20,'从三个方向角开始，比较旋转顺序，并用图示理解万向节锁。',{prereq:'会辨认 x、y、z 三个空间方向即可；角度单位和旋转顺序会在本课说明。',chapterExercises:[{q:'用欧拉角记录一个朝向时，除了三个角的数值，还必须说明什么？',options:['旋转轴与旋转顺序等约定','图像的 RGB 颜色顺序','神经网络的层数'],answer:0,why:'三个角本身不足以唯一说明姿态；要明确绕哪些轴、按什么顺序转，以及使用的坐标和角度单位。'}]}),
+        unit('quaternion','三维旋转 2：向量、轴角与四元数',[0,1,2],20,'从绕轴旋转开始，读懂单位四元数怎样紧凑表示三维姿态。'),
+        unit('quaternion-compose','三维旋转 3：多次旋转怎样组合',[3],15,'把一次旋转接在另一次后面，观察乘法顺序为什么会改变最终朝向。'),
+        unit('quaternion-compare','三维旋转 4：四元数、矩阵与实现约定',[6,7],15,'比较常见旋转表示，并核对坐标系、乘法方向和单位化等实现约定。')
       ])
     ]
   };
@@ -171,8 +172,8 @@
         const goals=sectionNames.slice(0,2).map(name=>'理解“'+name+'”在本课中解决什么问题。');
         if(goals.length<2)goals.push('结合图示或算例，说清输入、关键步骤和结果之间的关系。');
         const l={...base,id:spec.id,title:spec.title,desc:spec.desc,sections,time:spec.time,level:base.curriculumOptional?'选学':'基础',
-          goals,keypoints:goals,prereq:base.prereq,prereqLinks:[],curriculumIntro:spec.desc,curriculumKey:key,
-          curriculumOptional:false,curriculumPhase:'',chapterExercises:isLast?(base.chapterExercises||[]):[],
+          goals,keypoints:goals,prereq:spec.prereq||base.prereq,prereqLinks:[],curriculumIntro:spec.desc,curriculumKey:key,
+          curriculumOptional:false,curriculumPhase:'',chapterExercises:spec.chapterExercises||(isLast?(base.chapterExercises||[]):[]),
           quiz:isLast?base.quiz:undefined,worked:isFirst?base.worked:undefined,code:isFirst?(base.code||''):'',starterCode:isFirst?(base.starterCode||''):'',
           language:isFirst?(base.language||'Python'):'课堂图解',visual:isFirst?(base.visual||''):'',figureKeys:isFirst?(base.figureKeys||[]):[],
           foundation:{...(base.foundation||{}),title:spec.title,question:spec.desc,why:'完成本课后，你可以用自己的话说明“'+spec.title+'”的含义，以及它和前后知识的关系。',
@@ -203,7 +204,7 @@
       {id:'cv-start',title:'阶段一 · 先确定任务与图像表示',why:'先明确机器需要交付哪种答案，再理解图片如何变成数字输入。',ids:['tasks','tasks-models','tasks-beyond-detection','image','image-preprocessing'],check:'能区分分类、检测和分割，并说明图像的通道、形状与数值。'},
       {id:'cv-cnn',title:'阶段二 · 从卷积走到视觉网络',why:'先计算卷积和池化，再看经典网络、残差、多尺度和迁移学习。',ids:['cnn','cnn-shapes','pooling','pooling-tradeoffs','cnn-priors','cnn-priors-limits','cnn-architectures','cnn-alexnet','cnn-vgg','cnn-residual','cnn-residual-shapes','receptive-field','feature-pyramid','transfer','fine-tuning'],check:'能画出卷积块并追踪尺寸，说明深层网络如何融合不同尺度特征。'},
       {id:'cv-detection',title:'阶段三 · 框、指标、数据与增强',why:'从边界框和 IoU 开始，接着学习检测评估，再准备和检查数据。',ids:['iou','iou-calculation','metrics','metrics-map','dataset','dataset-split','dataset-check','data-quality','data-diagnosis','augmentation','augmentation-evaluation'],check:'能用 IoU 比较预测框，并列出训练前的数据检查与评估步骤。'},
-      {id:'cv-electives',title:'选学 · 三维姿态与旋转表示',why:'视觉主线之外，补充三维旋转的数学表示和工程约定。',ids:['quaternion','quaternion-compose','quaternion-compare'],check:'能解释欧拉角顺序和四元数的用途，并指出实现时需约定坐标系。',optional:true}
+      {id:'cv-electives',title:'选学 · 三维姿态与旋转表示',why:'先用欧拉角学会描述朝向和旋转顺序，再学习四元数与矩阵；可以按兴趣选学。',ids:['euler-angles','quaternion','quaternion-compose','quaternion-compare'],check:'能读懂一组欧拉角所依赖的顺序约定，解释万向节锁，并比较四元数和矩阵的用途。',optional:true}
     ]
   };
   const optionalIds=new Set(phaseDefinitions.dl.concat(phaseDefinitions.cv).filter(p=>p.optional).flatMap(p=>p.ids));
@@ -292,7 +293,7 @@
     'gradient':'gradient','backpropagation':'gradient-chain-rule','chain-rule':'gradient-chain-rule','optimizer':'optimizer','learning-rate':'optimizer','batch':'training-loop','epoch':'training-loop',
     'convolution':'cnn','feature-map':'cnn','kernel':'cnn','stride':'cnn-shapes','padding':'cnn-shapes','pooling':'pooling','lenet':'cnn-architectures','alexnet':'cnn-alexnet','vgg':'cnn-vgg',
     'residual-network':'cnn-residual','receptive-field':'receptive-field','fpn':'feature-pyramid','pan':'feature-pyramid','bounding-box':'iou','iou':'iou','precision':'metrics','recall':'metrics','mean-average-precision':'metrics-map','nms':'metrics-map',
-    'data-leakage':'data-quality','data-augmentation':'augmentation','transfer-learning':'transfer','pretraining':'transfer','quaternion':'quaternion','euler-angle':'quaternion-compose','rotation-matrix':'quaternion-compare','gimbal-lock':'quaternion-compose'
+    'data-leakage':'data-quality','data-augmentation':'augmentation','transfer-learning':'transfer','pretraining':'transfer','quaternion':'quaternion','euler-angle':'euler-angles','rotation-order':'euler-angles','gimbal-lock':'euler-angles','rotation-matrix':'quaternion-compare'
   };
   for(const [term,id] of Object.entries(termTargets)){const item=window.visionlabGlossary?.byId?.[term];if(item)item.learnMore='#lesson/'+id;}
   if(migrated&&typeof save==='function')save();

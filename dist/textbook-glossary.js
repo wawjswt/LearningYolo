@@ -12,6 +12,7 @@
   add('model','模型（model）','模型是一套带有可调整数字的计算规则，用输入算出结果。','像一台可以调旋钮的机器：放入数据，得到答案。',['模型','model']);
   add('function','函数（function）','函数按规定的计算方式把输入变成输出。','像一台果汁机：放入材料，按固定步骤得到饮品。',['函数','function']);
   add('variable','变量（variable）','程序里用名字保存、以后还可以读取的值。','像贴了标签的盒子，盒中数字可以换。',['变量','variable']);
+  add('covariate','协变量（covariate）','统计和机器学习中的一个完整术语，指模型用来解释、预测或控制结果的输入因素；在监督学习里常与输入特征相对应。它不是“协同变化”的拆词，也不等同于程序里泛指的变量，具体含义要看建模语境。','分析房价时，面积、楼层等信息可以作为协变量，帮助解释房价为什么不同。',['协变量','covariate','covariates'],'ai-foundations',{contextNote:'“协变量”是一个完整概念。它和“变量”有词形上的包含关系，但术语含义不同。'});
   add('input','输入（input）','交给模型处理的数据，例如一张图片或一串测量值。','像题目给出的已知条件。',['输入','input']);
   add('output','输出（output）','模型根据输入算出的结果，可能是分数、类别、坐标或数值。','像做完题后写下的答案。',['输出','output']);
   add('sample','样本（sample）','数据集中的一个例子，例如一张图片及其标注。','像练习册里的一道题。',['样本','sample']);
@@ -95,6 +96,7 @@
   add('early-stopping','早停（early stopping）','如果验证集上的目标指标连续多次没有改善，就结束训练；通常保留验证表现最佳时的模型状态。','像每次练习后都做小测，连续几次没有进步就先停下，并保存成绩最好那次的解题稿。',['早停','提前停止','early stopping'],'regularization',{contextNote:'早停观察验证集，不应反复用最终测试集来决定停止轮次。'});
   add('patience','耐心值（patience）','早停允许验证指标连续多少次未改善；通常按验证检查次数计数，而不是固定等同于 epoch 数。','像规定最多允许连续几次小测没有新纪录，再决定暂停练习。',['patience','早停耐心值'],'regularization');
   add('batch-normalization','批量归一化（Batch Normalization，BatchNorm / BN）','按通道整理中间数值的尺度，再用可学习参数调整。训练和评估时统计方式不同。','像先把每组测量值换成相近尺度，再允许模型重新调整。',['BatchNorm','BatchNorm1d','BatchNorm2d','Batch Normalization','BN','批量归一化'],'network');
+  add('internal-covariate-shift','内部协变量偏移（internal covariate shift）','BatchNorm 原始论文用这个术语描述训练过程中，前面层参数不断更新，导致某一层收到的输入分布也随之变化。它是论文提出的动机解释之一，不应简化成 BatchNorm 唯一且已定论的作用机制。','流水线前一站调整了处理方式，下一站收到的材料规格也跟着变，后续步骤需要继续适应。',['内部协变量偏移','协变量偏移','internal covariate shift'],'network',{contextNote:'经典统计里的“协变量偏移”通常指输入分布 P(X) 改变而 P(Y|X) 保持不变；BatchNorm 论文中的 internal covariate shift 是关于神经网络层输入分布随训练变化的说法，两者名称相关，但不能不加区分地当成同一个定义。'});
 
   // 数字、张量与图像
   add('scalar','标量（scalar）','只有一个数值、没有轴的数据。','像一个温度读数。',['标量','scalar'],'tensor');
@@ -337,7 +339,7 @@
     const blocked='script,style,textarea,pre,code,option,svg,math,a,button,.katex,.glossary-term,.glossary-chip,[contenteditable="true"]'+(allowGlossaryCard?'':',.glossary-card');
     return parent&&!parent.closest(blocked);
   }
-  function allowedAlias(alias,text,end){return !(alias==='激活'&&/^(?:环境|账号|账户|设备|用户)/.test(String(text||'').slice(end)));}
+  function allowedAlias(alias,text,end){const source=String(text||'');if(alias==='变量'&&source.slice(end-alias.length-1,end)==='协变量')return false;return !(alias==='激活'&&/^(?:环境|账号|账户|设备|用户)/.test(source.slice(end)));}
   function firstTerm(text){const source=String(text||'');matcher.lastIndex=0;let match,result=null;while((match=matcher.exec(source))){const start=match.index+match[1].length,end=start+match[2].length;if(allowedAlias(match[2],source,end)){result=lookup(match[2]);break;}if(match[0].length===0)matcher.lastIndex++;}matcher.lastIndex=0;return result;}
   function addTooltipHint(element,item){
     if(!element||!item||element.dataset.termId||element.dataset.glossaryOpen||element.classList?.contains('glossary-chip'))return;

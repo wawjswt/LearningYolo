@@ -334,6 +334,22 @@
   add('whitening','白化（whitening）','一般指调整数据尺度与相关性的预处理；本地AutoAnchor的K-means阶段具体按宽、高各自标准差缩放。','像比较不同单位的测量值前，先换到可比较的刻度。',['白化','whitening'],'anchors');
   add('albumentations','Albumentations图像增强库','提供图像及其标注同步变换的Python工具库，可作为可选增强流程接入。','像一套会同时修改照片和框位置的图片编辑工具箱。',['Albumentations'],'augmentation');
 
+  add('sliding-window','滑动窗口（sliding window）','让固定大小的观察区域逐步移动，在多个位置检查图像内容的方法。','像拿一张开着小窗的纸在大照片上移动，逐块看有没有目标。',['滑动窗口','sliding window'],'detection-intro');
+  add('two-stage-detection','两阶段检测（two-stage detection）','先生成候选区域，再对候选区域分类和精修框的一类检测流程。','像先圈出值得细看的区域，再逐个仔细检查。',['两阶段','two-stage detection'],'detection-two-stage');
+  add('one-stage-detection','一阶段检测（one-stage detection）','直接从图像特征在多个位置生成检测预测，不另设候选区域分类精修阶段的一类流程。','像在整张地图的许多位置直接写出候选答案。',['一阶段','one-stage detection'],'detection-one-stage');
+  add('region-proposal','候选区域（region proposal）','检测流程先提出的、可能包含目标的区域，尚未确定最终类别和准确边界。','像巡查前圈出的重点地点，还要继续核实。',['候选区域','region proposal'],'detection-two-stage');
+  add('selective-search','选择性搜索（Selective Search）','根据颜色、纹理等图像线索合并区域并产生候选框的方法，曾用于早期区域检测器。','像先把相似的小拼图片合成可能属于同一物体的大块。',['Selective Search','选择性搜索'],'detection-two-stage');
+  add('rpn','区域建议网络（Region Proposal Network，RPN）','在共享特征上学习提出候选区域的网络组件，典型用于Faster R-CNN。','像一位先指出哪里值得仔细检查的助手。',['RPN','Region Proposal Network','区域建议网络'],'detection-two-stage');
+  add('roi','感兴趣区域（Region of Interest，RoI）','图像或特征图中需要进一步处理的一块区域。','像阅读地图时圈出准备放大查看的一片位置。',['RoI','Region of Interest','感兴趣区域'],'detection-two-stage');
+  add('roi-pooling','RoI池化（RoI Pooling）','把不同大小候选区域的特征划成固定数量的格子，并在格内池化，得到固定尺寸输出。','像把大小不同的地图区域都整理成相同格数的摘要。',['RoI Pooling','RoI池化'],'detection-two-stage');
+  add('r-cnn','R-CNN（Regions with CNN features）','对候选区域提取卷积特征并进行类别判断和框修正的早期区域检测方法。','像先裁出许多重点小照片，再逐张分析。',['R-CNN'],'detection-two-stage');
+  add('fast-r-cnn','Fast R-CNN','先计算整图共享特征，再按候选区域提取特征进行分类和框回归的检测方法。','像先准备一张详细地图，再从地图上取各区域摘要。',['Fast R-CNN'],'detection-two-stage');
+  add('faster-r-cnn','Faster R-CNN','用RPN产生候选区域，再用区域检测头分类和精修框的两阶段检测方法。','像同一套巡检系统先建议重点地点，再对地点逐个核实。',['Faster R-CNN'],'detection-two-stage');
+  add('dense-prediction','密集预测（dense prediction）','在特征图许多位置同时输出框、类别或其他任务数字的预测组织方式。','像在地图的许多格子里同时填入候选答案。',['密集预测','dense prediction'],'detection-one-stage');
+  add('ssd','SSD（Single Shot MultiBox Detector）','在多种尺度特征图上利用默认框直接预测类别与框调整的一阶段检测方法。','像在几种缩放比例的地图上同时使用多种尺寸模板找目标。',['SSD','Single Shot MultiBox Detector'],'detection-one-stage');
+  add('anchor-free','无锚框设计（anchor-free）','不依赖预设Anchor宽高模板组织框预测的一类设计，仍需要定位表示和训练目标分配。','像直接指出中心或边界，而不是先拿几种固定尺寸模板套上去。',['Anchor-free','anchor-free'],'detection-one-stage');
+  add('preprint','预印本（preprint）','在正式会议或期刊发表之前公开的论文版本，其公开年份可能与会议年份不同。','像正式出版前先公开给同行阅读的稿本。',['预印本','preprint'],'yolo-evolution');
+
   const byId=Object.fromEntries(items.map(item=>[item.id,item]));
   const aliases=items.flatMap(item=>item.aliases.map(alias=>({alias,item}))).sort((a,b)=>b.alias.length-a.alias.length);
   // Only these audited whole terms suppress their embedded child terms. A

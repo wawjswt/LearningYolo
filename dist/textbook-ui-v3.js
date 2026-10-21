@@ -282,17 +282,18 @@
     +'<a class="pipeline-home-promo" href="#lab"><span class="pipeline-home-icon" aria-hidden="true">↗</span><span><small>INTERACTIVE CASE · 7 STEPS</small><strong>从一张图，走完一次目标检测</strong><em>跟着真实框、候选框和评估指标，逐步看懂完整流程。</em></span><b>开始完整案例 →</b></a>'
     +'<section class="reading-note"><span>✳</span><p><strong>建议这样学习</strong><br>先读每章目标与图解，再按小节顺序学习；遇到公式时，联系旁边的直觉说明。代码可以复制到本地尝试，自测和笔记帮助你确认真正掌握的部分。</p></section>';
   }
-  function courseList(items){
+  function courseList(items,grouped=true){
     if(!items.length)return '<div class="empty">未找到“'+esc(query)+'”。换个关键词试试。</div>';
     if(query)return '<ol class="chapter-list search-results">'+items.map(hit=>{
       const l=hit.lesson,index=lessons.indexOf(l)+1,section=hit.sectionIndex,sectionData=section===null?null:l.sections[section];
       const href='#lesson/'+l.id+(sectionData?'/section-'+sectionData.id:'');
       return '<li><a class="chapter-row search-result '+l.group+'" href="'+href+'"><span class="chapter-index">'+String(index).padStart(2,'0')+'</span><span class="chapter-row-copy search-result-copy"><span class="search-match-label">'+hit.label+'</span><strong>'+l.title+'</strong>'+(hit.sectionTitle?'<span class="search-match-section">'+(section===null?'相关内容':'第 '+(section+1)+' 节 · ')+hit.sectionTitle+'</span>':'')+(hit.excerpt?'<span class="search-match-excerpt">'+esc(hit.excerpt)+'</span>':'')+'</span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">→</span></a></li>';
     }).join('')+'</ol>';
-    return '<ol class="chapter-list">'+items.map(l=>'<li><a class="chapter-row '+l.group+'" href="#lesson/'+l.id+'"><span class="chapter-index">'+String(lessons.indexOf(l)+1).padStart(2,'0')+'</span><span class="chapter-row-copy"><strong>'+l.title+'</strong><small>'+l.desc+'</small></span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">'+(state.done.includes(l.id)?'✓':'→')+'</span></a></li>').join('')+'</ol>';
+    if(grouped&&items.every(l=>l.group==='yolo')&&window.visionlabYoloCurriculum)return window.visionlabYoloCurriculum.renderCatalog(items,list=>courseList(list,false));
+    return '<ol class="chapter-list">'+items.map(l=>'<li><a class="chapter-row '+l.group+'" href="#lesson/'+l.id+'"><span class="chapter-index">'+String(l.yoloNumber||lessons.indexOf(l)+1).padStart(2,'0')+'</span><span class="chapter-row-copy"><strong>'+l.title+'</strong><small>'+l.desc+'</small></span><span class="chapter-row-meta"><span class="level-pill">'+l.level+'</span><span>约 '+l.time+' 分钟</span></span><span class="chapter-status">'+(state.done.includes(l.id)?'✓':'→')+'</span></a></li>').join('')+'</ol>';
   }
   function filters(){
-    return '<div class="textbook-filters">'+[['all','全部章节'],['dl','深度学习'],['cv','计算机视觉'],['yolo','YOLOv5 实战']].map(([id,name])=>'<a class="'+(filter===id?'selected':'')+'"'+(filter===id?' aria-current="page"':'')+' href="#courses'+(id==='all'?'':'/'+id)+'">'+name+'</a>').join('')+'</div>';
+    return '<div class="textbook-filters">'+[['all','全部章节'],['dl','深度学习'],['cv','计算机视觉'],['yolo','YOLOv5 系统课程']].map(([id,name])=>'<a class="'+(filter===id?'selected':'')+'"'+(filter===id?' aria-current="page"':'')+' href="#courses'+(id==='all'?'':'/'+id)+'">'+name+'</a>').join('')+'</div>';
   }
   function normalized(value){return String(value||'').toLocaleLowerCase().replace(/\s+/g,' ').trim()}
   function excerpt(value,term){
@@ -336,10 +337,10 @@
   function courses(){
     const items=matched();
     const glossaryMatches=query?window.visionlabGlossary?.search(query)||[]:[];
-    const subtitle=query?'按标题、小节和正文匹配；点击结果可直达命中位置。':'按学习路线阅读，或搜索课程、概念与代码。每章提供目标、图解和练习。';
-    const count=query?'找到 '+items.length+' 个课程位置与 '+glossaryMatches.length+' 个术语':'共 '+items.length+' 章 · '+lessons.length+' 章完整课程';
+    const subtitle=query?'按标题、小节和正文匹配；点击结果可直达命中位置。':filter==='yolo'?'从检测背景开始，按仓库、网络、训练、部署的顺序学习；每阶段都有明确目标与验收问题。':'按学习路线阅读，或搜索课程、概念与代码。每章提供目标、图解和练习。';
+    const count=query?'找到 '+items.length+' 个课程位置与 '+glossaryMatches.length+' 个术语':filter==='yolo'?'YOLOv5专题 · '+items.length+'课 · 5个阶段':'共 '+items.length+' 章 · '+lessons.length+' 章课程';
     const terms=glossaryMatches.length?'<section class="glossary-search-results"><h2>概念词典</h2><ul>'+glossaryMatches.map(item=>'<li><a href="'+esc(item.learnMore)+'"><strong>'+esc(item.title)+'</strong><span>'+esc(item.plainExplanation)+'</span><small>打开相关课程 ↗</small></a></li>').join('')+'</ul></section>':'';
-    return heading(query?'搜索结果：'+esc(query):'课程目录',subtitle,'THE TEXTBOOK')
+    return heading(query?'搜索结果：'+esc(query):filter==='yolo'?'YOLOv5 系统课程':'课程目录',subtitle,'THE TEXTBOOK')
       +filters()+'<p class="catalog-count">'+count+'</p>'+terms+courseList(items);
   }
   function path(){
@@ -455,14 +456,16 @@
     const keypoints=l.keypoints?'<section class="keypoint-review"><span class="chapter-kicker">CHAPTER REVIEW</span><h2>本章要点</h2><ul>'+l.keypoints.map(x=>'<li>'+x+'</li>').join('')+'</ul></section>':'';
     const sourceItems=Array.isArray(l.sources)&&l.sources.length?l.sources:(l.source?[{url:l.source,label:'官方文档与参考资料'}]:[]);const source=sourceItems.length?'<p class="source-note">延伸阅读：'+sourceItems.map(item=>'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(item.label)+' ↗</a>').join(' · ')+'。概念解释为本课程整理；实现细节请以对应版本文档为准。</p>':'';
     const videoLinks=[...(l.videoUrl?[{url:l.videoUrl,label:l.videoLabel||'可选视频资料'}]:[]),...(l.relatedVideos||[])].map(video=>'<a class="chapter-video-link" href="'+esc(video.url)+'" target="_blank" rel="noopener noreferrer">'+esc(video.label||'可选外部视频资料')+' ↗</a>').join('');
-    return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(index+1).padStart(2,'0')+' 章　/　'+lessons.length+' 章</span></div>'
+    return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(l.yoloNumber||index+1).padStart(2,'0')+' '+(l.yoloNumber?'课　/　24 课':'章　/　'+lessons.length+' 章')+'</span></div>'
       +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span>'+videoLinks+'</div></header>'
       +'<div class="chapter-layout"><aside class="chapter-toc'+(tocCollapsed?' is-collapsed':'')+'" aria-label="本章导航"><div class="chapter-toc-heading"><strong>本章导航</strong><button class="chapter-toc-toggle" type="button" data-toggle-toc aria-expanded="'+(!tocCollapsed)+'" aria-controls="chapter-toc-list">'+(tocCollapsed?'展开':'收起')+'</button></div><ol id="chapter-toc-list"'+(tocCollapsed?' hidden':'')+'>'+tocItems+'</ol></aside>'
-      +'<div class="chapter-body">'+objectiveBox(l)+foundation+beginnerWorkshop+beginnerDepth+lossFoundation+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
+      +'<div class="chapter-body">'+(window.visionlabYoloCurriculum?.renderContext(l)||'')+objectiveBox(l)+foundation+beginnerWorkshop+beginnerDepth+lossFoundation+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
       +'<section class="chapter-notes" id="chapter-notes"><span class="chapter-kicker">MY STUDY NOTES</span><h2>写下你的思考</h2><p>用自己的话总结一个概念，或记下尚未解决的问题。笔记保存在当前浏览器。</p><textarea class="note-input" id="lesson-note" placeholder="例如：我现在可以用自己的话解释…… / 我还不确定的是……" aria-label="课程笔记">'+esc(state.notes[id]||'')+'</textarea><div class="lesson-actions"><button class="secondary" data-save-note="'+id+'">保存笔记</button><span id="note-status" class="saved" role="status"></span><button class="primary complete-button" data-complete="'+id+'">'+(state.done.includes(id)?'已完成 · 点击撤销':'标记本章已完成 ✓')+'</button></div></section>'
       +'<nav class="chapter-pagination">'+(prev?'<a href="#lesson/'+prev.id+'"><small>上一章</small><strong>← '+prev.title+'</strong></a>':'<a href="#path"><small>学习路线</small><strong>浏览课程阶段 →</strong></a>')+(next?'<a class="pagination-next" href="#lesson/'+next.id+'"><small>接下来</small><strong>'+next.title+' →</strong></a>':'<a class="pagination-next" href="#path"><small>全部完成</small><strong>回顾完整学习路线 →</strong></a>')+'</nav></div></div></article>';
   }
   function render(){
+    const curriculumRedirect=window.visionlabYoloCurriculum?.resolveRoute(location.hash);
+    if(curriculumRedirect)history.replaceState({},'',location.pathname+location.search+curriculumRedirect);
     const parts=location.hash.slice(1).split('/'),route=parts[0]||'home',id=parts[1];
     const currentLesson=route==='lesson'?lessons.find(l=>l.id===id):null;
     const targetSection=currentLesson&&(parts[2]||state.lastSection?.[id])?resumeSectionId(currentLesson,parts[2]):null;
@@ -589,7 +592,7 @@
     const anchor=event.target.closest('a[href^="#"]');
     if(!anchor)return;
     const destination=anchor.getAttribute('href').slice(1);
-    if(destination.startsWith('section-')||destination==='chapter-review'||destination==='chapter-notes'){
+    if(destination.startsWith('section-')||destination.startsWith('yc-phase-')||destination==='chapter-review'||destination==='chapter-notes'){
       event.preventDefault();
       const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       document.getElementById(destination)?.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});

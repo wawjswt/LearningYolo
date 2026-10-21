@@ -42,3 +42,39 @@
 .bias-playground .bn-affine-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
 .bn-primer button:focus-visible,.bn-sample-inputs input:focus-visible,.bn-table-wrap:focus-visible{outline:2px solid #8d72ba;outline-offset:3px}
 @media(max-width:700px){.bn-sample-inputs,.bn-step-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}.bias-playground .bn-affine-controls{grid-template-columns:1fr}.text-section>.lesson-subheading{font-size:16px}.bn-readouts strong{font-size:15px}}
+.bn-why-playground{border-left-color:#6e59a5;background:linear-gradient(135deg,#fbf9ff 0%,#fffefa 58%,#fff8f2 100%)}
+.bn-why-playground .playground-heading{align-items:flex-start}
+.bn-why-playground .playground-heading h3{max-width:760px}
+.bn-why-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:16px 0 8px;padding:14px 16px;border:1px solid #e7e2ef;border-radius:8px;background:#fffefa}
+.bn-why-controls .playground-range{margin:0}
+.bn-why-formula{margin:0 0 16px;color:#625780;font-size:13px}
+.bn-why-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.bn-why-chart-card{min-width:0;padding:14px;border:1px solid #e8e3db;border-radius:8px;background:rgba(255,255,255,.88)}
+.bn-why-chart-card h4,.bn-why-neuron h4,.bn-why-explanation h4{margin:0 0 7px;color:#2e3946;font-size:15px}
+.bn-why-chart-card>p{margin:0 0 10px;color:#6c7782;font-size:12px;line-height:1.7}
+.bn-why-chart{overflow-x:auto;border:1px solid #ece8e0;border-radius:6px;background:#fff}
+.bn-why-chart svg{display:block;width:100%;min-width:470px;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+.bn-why-stat-list{display:grid;gap:5px;margin-top:10px}
+.bn-why-stat-list p{display:grid;grid-template-columns:74px minmax(0,1fr);gap:8px;margin:0;padding:7px 8px;border-radius:5px;background:#f7f5f1;font-size:11px;line-height:1.65;font-variant-numeric:tabular-nums}
+.bn-why-stat-list p b{color:#4c5662}
+.bn-why-stat-list p span{overflow-wrap:anywhere;color:#606a76}
+.bn-why-normalized{border-color:#ddd5ed;background:#fcfbff}
+.bn-why-neuron{margin-top:16px;padding:16px;border:1px solid #e4deef;border-radius:8px;background:#fff}
+.bn-why-neuron-heading{margin-bottom:12px}
+.bn-why-neuron-heading p{margin:7px 0 0;color:#64707c;font-size:12px;line-height:1.8}
+.bn-why-table-wrap{overflow-x:auto;border:1px solid #ebe7df;border-radius:6px}
+.bn-why-table{width:100%;min-width:810px;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+.bn-why-table caption{padding:8px 10px;color:#64707c;text-align:left}
+.bn-why-table th,.bn-why-table td{padding:9px 10px;border-top:1px solid #eeeae3;text-align:left;vertical-align:top}
+.bn-why-table thead th{background:#f5f2ec;color:#55616d;font-weight:650}
+.bn-why-table tbody th{min-width:155px;color:#4d426c;background:#faf9fc}
+.bn-why-table code{white-space:nowrap;color:#514276;font-size:11px}
+.bn-why-live{margin:10px 0 0;padding:10px 12px;border-left:3px solid #cf7659;background:#fbf4ee;color:#525d68;font-size:12px;line-height:1.75}
+.bn-why-explanation{margin-top:16px;padding:15px 17px;border:1px solid #e5e0d7;border-radius:8px;background:#f8f6f1}
+.bn-why-explanation ol{margin:8px 0 12px;padding-left:21px;color:#505d68;font-size:12px;line-height:1.85}
+.bn-why-explanation li+li{margin-top:5px}
+.bn-why-caveat,.bn-why-history{margin:9px 0 0;color:#586570;font-size:12px;line-height:1.8}
+.bn-why-caveat{padding:9px 11px;border-left:3px solid #7b68a7;background:#f1eef7}
+.bn-why-playground button:focus-visible,.bn-why-playground input:focus-visible,.bn-why-table-wrap:focus-visible{outline:2px solid #8d72ba;outline-offset:3px}
+@media(max-width:1500px){.bn-why-chart-grid{grid-template-columns:1fr}.bn-why-chart svg{min-width:0}}
+@media(max-width:560px){.bn-why-controls{grid-template-columns:1fr;gap:12px;padding:12px}.bn-why-stat-list p{grid-template-columns:1fr;gap:2px}.bn-why-playground .playground-heading{display:block}.bn-why-playground .playground-reset{margin-top:8px}.bn-why-chart svg{min-width:440px}}

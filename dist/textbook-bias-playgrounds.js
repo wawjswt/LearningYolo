@@ -130,16 +130,65 @@
     root.querySelector('[data-bn-primer-chart]').innerHTML=svg+'</svg>';
     root.querySelector('[data-bn-primer-chart]').setAttribute('aria-label',bnSteps[stage]+'，四个样本数值依次为 '+shown.map(precise).join('、')+'；数轴会随当前数据范围调整。');
   }
+  function batchNormWhyMarkup(){
+    return '<section class="lesson-playground bias-playground bn-why-playground" data-bn-why aria-labelledby="bn-why-title">'+
+      '<div class="playground-heading"><div><span class="playground-kicker">数据对照 · 同一通道，两个小批次</span><h3 id="bn-why-title">没有 BN，后面一层会收到多大差别的输入？</h3><p>先从一组具体数字看起。Batch A 固定为 [1, 3, 5, 7]；Batch B 由它放大、平移得到。调滑杆，观察不做 BN 与做 BN 时的数值分布。</p></div><button type="button" class="playground-reset" data-bn-why-reset>恢复示例</button></div>'+
+      '<div class="bn-why-controls"><label class="playground-range"><span>B 的放大倍数 s <output data-bn-why-scale-value>3.00</output></span><input type="range" min="0.5" max="4" step="0.25" value="3" data-bn-why-scale aria-label="调整第二批特征的放大倍数"></label><label class="playground-range"><span>B 的整体偏移 c <output data-bn-why-shift-value>8.00</output></span><input type="range" min="-5" max="15" step="1" value="8" data-bn-why-shift aria-label="调整第二批特征的整体偏移"></label></div>'+
+      '<p class="bn-why-formula">构造关系：<code>B = s × A + c</code>。默认时，A = [1, 3, 5, 7]，B = [11, 17, 23, 29]。</p>'+
+      '<div class="bn-why-chart-grid"><article class="bn-why-chart-card"><h4>不做 BN：原始特征直接往后传</h4><p>纵轴是这个通道的特征值；两批的中心和跨度明显不同。</p><div class="bn-why-chart" data-bn-why-raw-chart></div><div class="bn-why-stat-list"><p><b>Batch A</b><span data-bn-why-raw-a></span></p><p><b>Batch B</b><span data-bn-why-raw-b></span></p></div></article>'+
+      '<article class="bn-why-chart-card bn-why-normalized"><h4>训练时做 BN：按批次重新定中心、调尺度</h4><p>每批各自减去均值、除以标准差；图中默认 γ=1、β=0。</p><div class="bn-why-chart" data-bn-why-norm-chart></div><div class="bn-why-stat-list"><p><b>Batch A</b><span data-bn-why-norm-a></span></p><p><b>Batch B</b><span data-bn-why-norm-b></span></p></div></article></div>'+
+      '<section class="bn-why-neuron" aria-labelledby="bn-why-neuron-title"><div class="bn-why-neuron-heading"><div><span class="playground-kicker">把差异传给同一个后续神经元</span><h4 id="bn-why-neuron-title">固定下一层参数，再看 Sigmoid 输出和局部导数</h4><p>假设下一层始终用 <code>z = 0.5x + 1</code>，再算 <code>σ(z)=1/(1+e^(−z))</code>。导数 <code>σ′(z)=σ(z)(1−σ(z))</code> 越接近 0，这个位置传回去的局部梯度越弱。</p></div></div><div class="bn-why-table-wrap" tabindex="0" role="region" aria-label="不同批次经过下游神经元后的数值对照"><table class="bn-why-table" data-bn-why-results></table></div><p class="bn-why-live" data-bn-why-live role="status" aria-live="polite"></p></section>'+
+      '<div class="bn-why-explanation"><h4>不加 BN 可能带来的影响</h4><ol><li><b>后续层的输入尺度会变：</b>同一组权重面对不同中心、不同范围的特征，输出幅度也会跟着变。</li><li><b>非线性函数的工作区间会变：</b>例子中的 Sigmoid 在 Batch B 上接近饱和，局部导数更小；若用 ReLU，输入跨过 0 的位置变化也可能改变哪些样本有梯度。</li><li><b>优化可能更难调：</b>前面层改变特征后，后面层要继续适应；部分网络会对初始化、学习率更敏感，收敛更慢或波动更大。</li></ol><p class="bn-why-caveat"><b>准确边界：</b>这说明一种可能发生的影响，不代表“没有 BN 就一定训练失败”或“加了 BN 就一定更好”。网络结构、初始化、数据、优化器和批次大小都会影响结果；不少模型不使用 BN 也能训练。BN 也不会保证输出服从正态分布或落在 0～1。</p><p class="bn-why-history">BatchNorm 的原始论文用“减少内部协变量偏移”解释它的作用；后续研究也提出优化景观更平滑等解释。具体机制仍不宜简化成唯一原因，可在课程的延伸阅读中查看原论文与后续研究。</p></div>'+
+      '<p class="playground-footnote">这是一个可复算的单通道数值示例，用来单独观察中心与尺度变化，不是某个真实训练集的实测记录，也不表示上游每次更新都只是简单的缩放和平移。图中按训练模式、当前小批次统计，方差按样本数 m 取平均并加 ε=0.00001；真实 BatchNorm2d 会对每个通道汇总 N、H、W 位置，评估时默认改用运行统计量。</p></section>';
+  }
+  function batchNormWhyChart(series,normalized){
+    const values=series.flatMap(item=>item.values),low=Math.min(...values),high=Math.max(...values),span=Math.max(high-low,1);
+    const ymin=normalized?-1.6:Math.floor((low-span*0.14)*10)/10;
+    const ymax=normalized?1.6:Math.ceil((high+span*0.14)*10)/10;
+    const ticks=Array.from({length:5},(_,i)=>Number((ymin+(ymax-ymin)*i/4).toFixed(2)));
+    const frame=plotFrame(560,292,58,18,22,207,0.5,4.5,ymin,ymax,[1,2,3,4],ticks,'样本序号','特征值');
+    let out=frame.out.replace('role="img">','role="img" aria-label="'+(normalized?'两个小批次分别经过 BatchNorm 后的通道数值对照':'BatchNorm 前两个小批次的通道数值对照')+'">');
+    series.forEach((item,seriesIndex)=>{
+      const shift=series.length>1?(seriesIndex===0?-0.055:0.055):0;
+      item.values.forEach((value,i)=>{
+        out+='<circle cx="'+frame.X(i+1+shift).toFixed(1)+'" cy="'+frame.Y(value).toFixed(1)+'" r="6.5" fill="'+item.color+'" stroke="#fff" stroke-width="2"><title>'+item.label+'，样本 '+(i+1)+'：'+fmt(value)+'</title></circle>';
+      });
+    });
+    out+=legend(series.map(item=>({label:item.label,color:item.color,width:175})),278)+'</svg>';
+    return out;
+  }
+  function updateBatchNormWhy(root){
+    const scale=Number(root.querySelector('[data-bn-why-scale]').value),shift=Number(root.querySelector('[data-bn-why-shift]').value);
+    const a=[1,3,5,7],b=a.map(value=>scale*value+shift),statsA=normalizeBatch(a),statsB=normalizeBatch(b),normA=statsA.output,normB=statsB.output;
+    const vector=(values,digits=2)=>'['+values.map(value=>Number(value.toFixed(digits)).toFixed(digits)).join(', ')+']';
+    const rawSD=stats=>Math.sqrt(stats.variance),normStats=values=>{const s=normalizeBatch(values);return {mean:s.mean,sd:Math.sqrt(s.variance)}};
+    const normAStats=normStats(normA),normBStats=normStats(normB);
+    root.querySelector('[data-bn-why-scale-value]').textContent=fmt(scale);
+    root.querySelector('[data-bn-why-shift-value]').textContent=fmt(shift);
+    root.querySelector('[data-bn-why-raw-chart]').innerHTML=batchNormWhyChart([{label:'Batch A',values:a,color:'#7864ad'},{label:'Batch B',values:b,color:'#cf7659'}],false);
+    root.querySelector('[data-bn-why-norm-chart]').innerHTML=batchNormWhyChart([{label:'Batch A 经 BN',values:normA,color:'#7864ad'},{label:'Batch B 经 BN',values:normB,color:'#cf7659'}],true);
+    root.querySelector('[data-bn-why-raw-a]').textContent='数值 '+vector(a)+' · μ='+fmt(statsA.mean)+' · σ='+fmt(rawSD(statsA));
+    root.querySelector('[data-bn-why-raw-b]').textContent='数值 '+vector(b)+' · μ='+fmt(statsB.mean)+' · σ='+fmt(rawSD(statsB));
+    root.querySelector('[data-bn-why-norm-a]').textContent='输出 '+vector(normA)+' · μ='+fmt(normAStats.mean)+' · σ='+fmt(normAStats.sd);
+    root.querySelector('[data-bn-why-norm-b]').textContent='输出 '+vector(normB)+' · μ='+fmt(normBStats.mean)+' · σ='+fmt(normBStats.sd);
+    const sigmoid=x=>1/(1+Math.exp(-x)),resultRow=(label,values)=>{const z=values.map(x=>0.5*x+1),p=z.map(sigmoid),d=p.map(x=>x*(1-x));return '<tr><th scope="row">'+label+'</th><td><code>'+vector(values)+'</code></td><td><code>'+vector(z)+'</code></td><td><code>'+vector(p,3)+'</code></td><td><code>'+vector(d,4)+'</code></td></tr>'};
+    root.querySelector('[data-bn-why-results]').innerHTML='<caption>z=0.5x+1 固定不变；每格按样本 1→4 排列</caption><thead><tr><th scope="col">进入下一层前</th><th scope="col">输入 x</th><th scope="col">预激活 z</th><th scope="col">Sigmoid 输出 σ(z)</th><th scope="col">局部导数 σ′(z)</th></tr></thead><tbody>'+resultRow('Batch A · 不做 BN',a)+resultRow('Batch B · 不做 BN',b)+resultRow('Batch A · 做 BN',normA)+resultRow('Batch B · 做 BN',normB)+'</tbody>';
+    const minDerivative=values=>Math.min(...values.map(x=>{const p=sigmoid(0.5*x+1);return p*(1-p)}));
+    root.querySelector('[data-bn-why-live]').textContent='当前 B = '+fmt(scale)+' × A + '+fmt(shift)+'。同一下一层的 Sigmoid 最小局部导数：Batch A 不做 BN 为 '+minDerivative(a).toFixed(4)+'，Batch B 不做 BN 为 '+minDerivative(b).toFixed(4)+'，Batch A、B 分别做 BN 后为 '+minDerivative(normA).toFixed(4)+'、'+minDerivative(normB).toFixed(4)+'。导数变小意味着该位置的梯度信号变弱；整个网络梯度还取决于其他层和路径。';
+  }
   function renderParagraph(lessonId,sectionIndex,paragraphIndex){
     if(lessonId!=='network'||sectionIndex!==3)return '';
+    if(paragraphIndex===2)return batchNormWhyMarkup();
     if(paragraphIndex===7)return batchNormPrimerMarkup();
     if(paragraphIndex===9)return '<div class="bn-table-wrap" tabindex="0" role="region" aria-label="BN 统计范围对照"><table class="bn-learning-table"><caption>固定一个通道，统计同一通道内的这些位置</caption><thead><tr><th scope="col">层与输入形状</th><th scope="col">每通道统计范围</th><th scope="col">输出形状</th></tr></thead><tbody><tr><th scope="row">BatchNorm1d：[N,C]</th><td>N 个样本</td><td>[N,C]</td></tr><tr><th scope="row">BatchNorm1d：[N,C,L]</th><td>N × L 个位置</td><td>[N,C,L]</td></tr><tr><th scope="row">BatchNorm2d：[N,C,H,W]</th><td>N × H × W 个位置</td><td>[N,C,H,W]</td></tr></tbody></table></div>';
     if(paragraphIndex===12)return '<div class="bn-table-wrap" tabindex="0" role="region" aria-label="训练与评估对照"><table class="bn-learning-table"><caption>默认设置：track_running_stats=True</caption><thead><tr><th scope="col">观察项</th><th scope="col">训练：model.train()</th><th scope="col">评估：model.eval()</th></tr></thead><tbody><tr><th scope="row">本次计算用什么统计</th><td>当前批次的均值、方差</td><td>已保存的运行均值、方差</td></tr><tr><th scope="row">是否更新运行统计</th><td>会，即使在 no_grad 中</td><td>不会</td></tr><tr><th scope="row">gamma、beta</th><td>参与前向；通常可由梯度学习</td><td>仍参与前向</td></tr><tr><th scope="row">是否自动关闭梯度</th><td>不会</td><td>不会，需另用梯度模式</td></tr></tbody></table></div>';
     if(paragraphIndex===15)return batchNormBiasMarkup();
     return '';
   }
-  document.addEventListener('input',event=>{const root=event.target.closest('[data-bn-primer]');if(root)updateBatchNormPrimer(root)});
+  document.addEventListener('input',event=>{const why=event.target.closest('[data-bn-why-scale],[data-bn-why-shift]');if(why){updateBatchNormWhy(why.closest('[data-bn-why]'));return}const root=event.target.closest('[data-bn-primer]');if(root)updateBatchNormPrimer(root)});
   document.addEventListener('click',event=>{
+    const whyReset=event.target.closest('[data-bn-why-reset]');
+    if(whyReset){const root=whyReset.closest('[data-bn-why]');root.querySelector('[data-bn-why-scale]').value='3';root.querySelector('[data-bn-why-shift]').value='8';updateBatchNormWhy(root);return}
     const step=event.target.closest('[data-bn-step]');
     if(step){const root=step.closest('[data-bn-primer]');root.dataset.bnStage=step.dataset.bnStep;updateBatchNormPrimer(root);return}
     const preset=event.target.closest('[data-bn-preset]');
@@ -191,6 +240,7 @@
     return '';
   }
   function initialize(){
+    document.querySelectorAll('[data-bn-why]').forEach(updateBatchNormWhy);
     document.querySelectorAll('[data-bn-primer]').forEach(updateBatchNormPrimer);
     document.querySelectorAll('[data-bias-line]').forEach(updateLineBias);
     document.querySelectorAll('[data-relu-bias]').forEach(updateReluBias);

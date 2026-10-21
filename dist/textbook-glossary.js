@@ -321,6 +321,19 @@
   add('csv','CSV 表格文本格式','把表格每一行写成文本记录、用分隔符区分列的一种简单文件格式。','像把电子表格保存成一行一行的纯文字。',['CSV','.csv'],'dataset');
   add('json','JSON 数据格式','用键和值、列表等结构保存数据的一种文本格式，常用于配置和程序交换数据。','像用统一标签写好的数据清单，其他程序可以按标签读取。',['JSON','.json'],'dataset');
 
+  add('source-repository','源码仓库（source repository）','集中保存程序代码、配置和说明的项目目录；是否带有版本历史要看是否使用了Git等工具。','像一本同时装有机器图纸、操作步骤和说明书的工程档案。',['源码仓库','仓库','source repository'],'train-yolo');
+  add('gradient-accumulation','梯度累积（gradient accumulation）','先累加几个批次的梯度，再执行一次优化器参数更新的方法。','像先收集几次作业的修改意见，再一起调整解题方法。',['梯度累积','gradient accumulation'],'train-yolo');
+  add('fitness-score','模型选择评分（fitness）','按指定指标组合得到的分数；本地标准检测用它比较验证表现并选择best.pt。','像按事先公布的权重合成总成绩，再决定哪次考试最好。',['fitness','fitness评分'],'train-yolo');
+  add('resume-training','断点续训（resume training）','从仍保留训练进度和优化器等状态的检查点恢复被中断实验。','像读取包含关卡进度的存档，接着上次玩到的位置继续。',['断点续训','resume training','--resume'],'train-yolo');
+  add('fine-tuning','微调（fine-tuning）','用已有模型参数作为起点，再用目标任务的数据调整参数。','像已会基本驾驶的人，继续练习适应一种新车型。',['微调','fine-tuning','finetuning'],'train-yolo');
+  add('transfer-learning','迁移学习（transfer learning）','把来源任务学到的部分表示或参数用于帮助学习新任务。','像学会骑自行车后，把平衡经验用于学习其他两轮车。',['迁移学习','transfer learning'],'transfer');
+  add('anchor-bpr','Anchor几何覆盖率（Best Possible Recall，BPR）','按宽高比例阈值，至少有一个可用Anchor的标注框比例；不是模型实际召回率。','像只检查货物尺寸能否找到合适箱子，还没有测打包工人的实际表现。',['BPR','Best Possible Recall'],'anchors');
+  add('anchor-aat','平均可用参考框数（Anchors Above Threshold，AAT）','每个标注框平均有多少个Anchor通过宽高比例阈值。','像平均每件货物有几种箱子可以选。',['AAT','Anchors Above Threshold'],'anchors');
+  add('k-means','K-means聚类（K-means clustering）','把数据按相似程度分成指定数量的组，并用各组中心概括数据。','像按衣服尺码分堆，给每堆找一个代表尺寸。',['K-means','K-means聚类'],'anchors');
+  add('genetic-algorithm','遗传算法（genetic algorithm）','对候选方案做随机变化，比较评分并保留更优方案的搜索方法。','像反复小幅调整配方，每次留下更符合目标的一版。',['遗传算法','genetic algorithm'],'anchors');
+  add('whitening','白化（whitening）','一般指调整数据尺度与相关性的预处理；本地AutoAnchor的K-means阶段具体按宽、高各自标准差缩放。','像比较不同单位的测量值前，先换到可比较的刻度。',['白化','whitening'],'anchors');
+  add('albumentations','Albumentations图像增强库','提供图像及其标注同步变换的Python工具库，可作为可选增强流程接入。','像一套会同时修改照片和框位置的图片编辑工具箱。',['Albumentations'],'augmentation');
+
   const byId=Object.fromEntries(items.map(item=>[item.id,item]));
   const aliases=items.flatMap(item=>item.aliases.map(alias=>({alias,item}))).sort((a,b)=>b.alias.length-a.alias.length);
   // Only these audited whole terms suppress their embedded child terms. A

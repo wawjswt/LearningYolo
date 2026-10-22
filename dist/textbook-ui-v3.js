@@ -342,7 +342,7 @@
     const glossaryMatches=query?window.visionlabGlossary?.search(query)||[]:[];
     const subtitle=query?'按标题、小节和正文匹配；点击结果可直达命中位置。':filter==='yolo'?'从检测背景开始，按仓库、网络、训练、部署的顺序学习；每阶段都有明确目标与验收问题。':filter==='dl'?'先学输入、张量、神经网络与损失，再沿梯度、优化器、训练和泛化逐步深入。':filter==='cv'?'先确定视觉任务与输入，再学习卷积、经典网络、检测指标和数据实践。':'按学习路线阅读，或搜索课程、概念与代码。每课提供目标、图解和练习。';
     const count=query?'找到 '+items.length+' 个课程位置与 '+glossaryMatches.length+' 个术语':filter==='yolo'?'YOLOv5专题 · '+items.length+'课 · 5个阶段':filter==='dl'?'深度学习 · '+items.length+'课 · 5个阶段':filter==='cv'?'计算机视觉 · '+items.length+'课 · 4个阶段':'共 '+items.length+' 课 · '+lessons.length+' 课课程';
-    const terms=glossaryMatches.length?'<section class="glossary-search-results"><h2>概念词典</h2><ul>'+glossaryMatches.map(item=>'<li><a href="'+esc(item.learnMore)+'"><strong>'+esc(item.title)+'</strong><span>'+esc(item.plainExplanation)+'</span><small>打开相关课程 ↗</small></a></li>').join('')+'</ul></section>':'';
+    const terms=glossaryMatches.length?'<section class="glossary-search-results"><h2>术语速查</h2><ul>'+glossaryMatches.map(item=>'<li><a href="#dictionary/'+esc(item.id)+'"><strong>'+esc(item.title)+'</strong><span>'+esc(item.plainExplanation)+'</span><small>查看定义、例子与相关课程 ↗</small></a></li>').join('')+'</ul><p><a href="#dictionary">打开完整术语词典 ↗</a></p></section>':'';
     return heading(query?'搜索结果：'+esc(query):filter==='yolo'?'YOLOv5 系统课程':filter==='dl'?'深度学习课程路线':filter==='cv'?'计算机视觉课程路线':'课程目录',subtitle,'THE TEXTBOOK')
       +filters()+'<p class="catalog-count">'+count+'</p>'+terms+courseList(items);
   }
@@ -476,14 +476,19 @@
     const currentLesson=route==='lesson'?lessons.find(l=>l.id===id):null;
     const targetSection=currentLesson&&(parts[2]||state.lastSection?.[id])?resumeSectionId(currentLesson,parts[2]):null;
     if(route==='courses')filter=id&&groups[id]?id:'all';
-    const names={home:'学习概览',courses:'课程目录',path:'学习路线',lab:'交互实验室',notes:'我的笔记',resources:'资源导航',lesson:'教材阅读'};
+    const names={home:'学习概览',courses:'课程目录',dictionary:'术语速查',path:'学习路线',lab:'交互实验室',notes:'我的笔记',resources:'资源导航',lesson:'教材阅读'};
     const crumb=route==='lesson'?(lessons.find(l=>l.id===id)||{}).title||'教材阅读':names[route]||'学习概览';
-    let content=route==='home'?home():route==='courses'?courses():route==='path'?path():route==='lesson'?lesson(id):route==='lab'?(window.renderInteractiveLab?window.renderInteractiveLab():lab()):route==='notes'?notes():route==='resources'?(window.renderFoundationResources?.()||resources()):home();
+    let content=route==='home'?home():route==='courses'?courses():route==='dictionary'?window.visionlabDictionary.render(id):route==='path'?path():route==='lesson'?lesson(id):route==='lab'?(window.renderInteractiveLab?window.renderInteractiveLab():lab()):route==='notes'?notes():route==='resources'?(window.renderFoundationResources?.()||resources()):home();
     if(route==='lab'&&window.renderFoundationLabPrimer&&content.includes('<div class="lab-tabs"'))content=content.replace('<div class="lab-tabs"',window.renderFoundationLabPrimer()+'<div class="lab-tabs"');
     document.getElementById('crumb').textContent=crumb;
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     document.querySelectorAll('[data-course-count]').forEach(badge=>{badge.textContent=String(lessons.length);badge.setAttribute('aria-label',lessons.length+' 节课程')});
     document.getElementById('content').innerHTML=content;
+    const headerSearch=document.getElementById('search');
+    headerSearch.placeholder=route==='dictionary'?'搜索术语、英文名或 API…':'搜索课程、概念或代码…';
+    headerSearch.setAttribute('aria-label',route==='dictionary'?'搜索术语':'搜索课程、概念或代码');
+    headerSearch.value=route==='dictionary'?window.visionlabDictionary.getQuery():query;
+    if(route==='dictionary')window.visionlabDictionary.initialize();
     renderLessonMath(document.getElementById('content'));
     window.visionlabGlossary?.init();
     window.visionlabGlossary?.decorate(document.getElementById('content'));
@@ -494,6 +499,7 @@
     window.initializeFoundationWorkshops?.();
     window.lessonBiasPlaygrounds?.initialize();
     initializeTensorLearning();
+    if(route==='dictionary'&&id){document.querySelector('.dictionary-layout')?.scrollIntoView({behavior:'auto',block:'start'});document.getElementById('dictionary-entry-title')?.focus({preventScroll:true});}
     if(route==='lesson'&&targetSection)document.getElementById(targetSection)?.scrollIntoView({behavior:'auto',block:'start'});
     if(route==='lab'){updateIoU();window.initializeInteractiveLab?.();}
     document.querySelector('.sidebar').classList.remove('open');
@@ -607,8 +613,8 @@
     event.preventDefault();
     history.pushState({},'',location.pathname+location.search+'#'+destination);
     window.render();
-    if(destination.split('/').length<3)window.scrollTo(0,0);
+    if(destination.split('/').length<3&&!destination.startsWith('dictionary/'))window.scrollTo(0,0);
   },true);
-  window.addEventListener('popstate',()=>{window.render();if(!location.hash.startsWith('#lesson/'))window.scrollTo(0,0)});
+  window.addEventListener('popstate',()=>{window.render();if(!/^#(?:lesson|dictionary)\//.test(location.hash))window.scrollTo(0,0)});
   render();
 })();

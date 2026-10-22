@@ -379,6 +379,7 @@
   add('normal-distribution','正态分布（normal distribution）','正态分布是一类由均值和方差确定的钟形概率分布，离均值近的区间通常更常见。把任意数据减均值、除标准差，只改变中心和尺度，不会让原本非正态的数据自动变成这种分布。','像中间高、两边逐渐降低的钟形轮廓，但不是每组数据都长这样。',['正态分布','normal distribution'],'network-extensions');
   add('standard-normal-distribution','标准正态分布（standard normal distribution）','标准正态分布是均值 0、方差 1 的特定正态分布。它关于 0 对称，所以累计概率 Φ(0)=0.5；GELU 精确公式里的 Φ 指这种分布的累计概率，不是任意均值、方差的正态分布。','像用统一中心和刻度的一种钟形概率曲线。',['标准正态分布','standard normal distribution'],'network-activations');
 
+  window.visionlabDictionaryContent?.extend(items,add);
   const byId=Object.fromEntries(items.map(item=>[item.id,item]));
   const aliases=items.flatMap(item=>item.aliases.map(alias=>({alias,item}))).sort((a,b)=>b.alias.length-a.alias.length);
   // Only these audited whole terms suppress their embedded child terms. A
@@ -470,9 +471,15 @@
   function termsIn(text){const found=new Map();for(const match of matchesIn(text))if(!found.has(match.item.id))found.set(match.item.id,match.item);return [...found.values()]}
   function firstTerm(text){return matchesIn(text)[0]?.item||null}
   function chip(id,label){const item=byId[id];if(!item)return '';return '<button class="glossary-chip" type="button" data-glossary-open="'+escapeHtml(id)+'" aria-haspopup="dialog">'+escapeHtml(label||item.title)+'<span aria-hidden="true">ⓘ</span></button>'}
-  function renderSearch(query){
-    const q=String(query||'').trim().toLocaleLowerCase();if(!q)return [];
-    return items.filter(item=>[item.title,...item.aliases,item.plainExplanation].some(value=>String(value).toLocaleLowerCase().includes(q))).slice(0,8);
+  function renderSearch(query,limit=8){
+    const normalize=value=>String(value||'').normalize('NFKC').toLocaleLowerCase().replace(/[\s_-]+/g,'');
+    const q=normalize(query);if(!q)return [];
+    return items.map(item=>{
+      const names=[item.title,...item.aliases].map(normalize),detail=item.dictionary||{};
+      const rank=names.includes(q)?0:names.some(name=>name.startsWith(q))?1:names.some(name=>name.includes(q))?2:
+        normalize(item.plainExplanation).includes(q)?3:normalize([detail.why,detail.example,detail.pitfall,detail.code].join(' ')).includes(q)?4:99;
+      return {item,rank};
+    }).filter(hit=>hit.rank<99).sort((a,b)=>a.rank-b.rank||a.item.title.localeCompare(b.item.title,'zh-Hans-CN')).slice(0,limit).map(hit=>hit.item);
   }
   function eligible(node,allowGlossaryCard=false){
     const parent=node.parentElement;
@@ -577,7 +584,7 @@
       if(card.hidden||!card.contains(target)){cardStack.length=0;returnFocus=target;}
       else{const focusKey='glossary-focus-'+(++nestedFocusSequence);target.setAttribute('data-glossary-focus-key',focusKey);cardStack.push({html:card.innerHTML,origin:returnFocus,focusKey});}
       target.setAttribute('aria-expanded','true');
-      card.innerHTML='<button class="glossary-close" type="button" aria-label="关闭术语解释">×</button><span class="chapter-kicker">术语小卡</span><h2 id="glossary-card-title">'+escapeHtml(item.title)+'</h2><p class="glossary-plain">'+escapeHtml(item.plainExplanation)+'</p><div class="glossary-metaphor"><strong>生活比喻</strong><p>'+escapeHtml(item.metaphor)+'</p></div>'+(item.contextNote?'<p class="glossary-context">'+escapeHtml(item.contextNote)+'</p>':'')+(item.formalDefinition?'<details class="glossary-formal"><summary>再看一步</summary><p>'+escapeHtml(item.formalDefinition)+'</p></details>':'')+'<a class="glossary-learn-more" href="'+escapeHtml(item.learnMore)+'">去课程里继续学 ↗</a>';
+      card.innerHTML='<button class="glossary-close" type="button" aria-label="关闭术语解释">×</button><span class="chapter-kicker">术语小卡</span><h2 id="glossary-card-title">'+escapeHtml(item.title)+'</h2><p class="glossary-plain">'+escapeHtml(item.plainExplanation)+'</p><div class="glossary-metaphor"><strong>例子与直觉</strong><p>'+escapeHtml(item.metaphor)+'</p></div>'+(item.contextNote?'<p class="glossary-context">'+escapeHtml(item.contextNote)+'</p>':'')+(item.formalDefinition?'<details class="glossary-formal"><summary>再看一步</summary><p>'+escapeHtml(item.formalDefinition)+'</p></details>':'')+'<a class="glossary-learn-more" href="#dictionary/'+escapeHtml(item.id)+'">打开完整词条 ↗</a><a class="glossary-learn-more" href="'+escapeHtml(item.learnMore)+'">去课程里继续学 ↗</a>';
       card.querySelectorAll('.glossary-plain,.glossary-metaphor,.glossary-context,.glossary-formal').forEach(region=>decorate(region,{allowGlossaryCard:true}));
       card.querySelectorAll('[data-term-id="'+id+'"],[data-glossary-open="'+id+'"]').forEach(node=>node.replaceWith(document.createTextNode(node.textContent||'')));
       card.hidden=false;position(card,returnFocus||target);card.querySelector('.glossary-close').focus({preventScroll:true});

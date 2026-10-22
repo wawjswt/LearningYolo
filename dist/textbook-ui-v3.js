@@ -70,7 +70,7 @@
       }).join('');
       const advancedBlocks=(s.advancedBlocks||[]).map(block=>'<details class="advanced-section"><summary>'+esc(block.title||'选学深入内容 · 点击展开')+'</summary><div class="advanced-section-body">'+(block.paragraphs||[]).map(paragraph=>'<p>'+rich(paragraph)+'</p>').join('')+'</div></details>').join('');
       const fallback=placements.filter(figure=>figure.section===legacyIndex&&!placed.has(figure.key)).map(figure=>{placed.add(figure.key);return window.lessonFigures.render(l,figure.key)}).join('');
-      const sectionCode=s.code?'<div class="code-block"><div class="code-head"><span>Python · 本节示例</span><button class="copy" type="button" data-copy-fragment="section-code-'+l.id+'-'+i+'">复制本段代码</button></div><pre><code id="section-code-'+l.id+'-'+i+'">'+esc(s.code)+'</code></pre></div>'+(s.codeNote?'<p class="code-note">'+rich(s.codeNote)+'</p>':'') : '';
+      const sectionCode=s.code?'<div class="code-block"><div class="code-head"><span>'+esc(s.codeLabel||'Python · 本节示例')+'</span><button class="copy" type="button" data-copy-fragment="section-code-'+l.id+'-'+i+'">复制本段代码</button></div><pre><code id="section-code-'+l.id+'-'+i+'">'+esc(s.code)+'</code></pre></div>'+(s.codeNote?'<p class="code-note">'+rich(s.codeNote)+'</p>':'') : '';
       const tensorOperations=l.id==='tensor'&&s.playgroundId==='tensor-operations'?tensorOperationsMarkup():'';
       const tensorExplorer=l.id==='tensor'&&s.playgroundId==='tensor-explorer'?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&s.playgroundId==='tensor-transpose'?tensorTransposeMarkup():'';

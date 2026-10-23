@@ -63,7 +63,7 @@
       const legacyIndex=Number.isInteger(s.legacyIndex)?s.legacyIndex:i;
       const paragraphs=s.paragraphs.map((p,j)=>{
         const heading=s.subheadings?.[j]?'<h3 class="lesson-subheading">'+rich(s.subheadings[j])+'</h3>':'';
-        const markup=heading+'<p>'+rich(p)+'</p>'+(window.lessonBiasPlaygrounds?.renderParagraph(l.id,legacyIndex,j)||'')+(window.visionlabCvEditorial?.renderParagraph(s,j)||'');
+        const markup=heading+'<p>'+rich(p)+'</p>'+(window.lessonBiasPlaygrounds?.renderParagraph(l.id,legacyIndex,j)||'')+(window.visionlabCvEditorial?.renderParagraph(s,j)||'')+(window.visionlabYoloLearning?.renderParagraph(s,j)||'');
         const here=placements.filter(figure=>figure.section===legacyIndex&&figure.paragraph===j&&!placed.has(figure.key));
         if(here.length){here.forEach(figure=>placed.add(figure.key));return markup+here.map(figure=>window.lessonFigures.render(l,figure.key)).join('')}
         return markup;
@@ -75,9 +75,9 @@
       const tensorExplorer=l.id==='tensor'&&s.playgroundId==='tensor-explorer'?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&s.playgroundId==='tensor-transpose'?tensorTransposeMarkup():'';
       const cvPlayers=l.cvEdited?window.visionlabCvEditorial?.renderPlayers(s):null;
-      const lessonPlayground=(cvPlayers?.main??window.lessonPlaygrounds?.render(l.id,s.playgroundId||i,legacyIndex)??'')+(cvPlayers?.extra||'');
+      const lessonPlayground=s.suppressLegacyPlayer?'':(cvPlayers?.main??window.lessonPlaygrounds?.render(l.id,s.playgroundId||i,legacyIndex)??'')+(cvPlayers?.extra||'');
       const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,legacyIndex)||'';
-      const cvWorkshop=s.cvWorkshop?(window.renderFoundationWorkshop?.(l)||''):'';
+      const cvWorkshop=s.cvWorkshop||s.foundationWorkshop?(window.renderFoundationWorkshop?.(l)||''):'';
       const content=paragraphs+cvWorkshop+advancedBlocks+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',legacyIndex,s.id):'');
       const optional=s.depth==='advanced'?'<details class="advanced-section"><summary>选学深入内容 · 点击展开</summary><div class="advanced-section-body">'+content+'</div></details>':content;
       const stableId=s.id||l.id+'-s'+String(legacyIndex+1).padStart(2,'0');
@@ -447,9 +447,10 @@
       +(l.chapterExercises?.length?'<li><a href="#chapter-quiz">本章综合练习</a></li>':'')
       +'<li><a href="#chapter-notes">笔记与进度</a></li>';
     const termGuide=window.renderFoundationStart?.(l)||'';
-    const foundation=l.cvEdited?'<details class="cv-term-reference"><summary>本课名词速查 · 阅读正文时可随时展开</summary>'+termGuide+'</details>':termGuide;
-    const beginnerWorkshop=l.cvEdited?'':window.renderFoundationWorkshop?.(l)||'';
-    const beginnerDepth=l.cvEdited?'':window.renderFoundationDepth?.(l)||'';
+    const editedTeaching=l.cvEdited||l.yoloLearningEdited;
+    const foundation=editedTeaching?'<details class="cv-term-reference"><summary>本课名词速查 · 阅读正文时可随时展开</summary>'+termGuide+'</details>':termGuide;
+    const beginnerWorkshop=editedTeaching?'':window.renderFoundationWorkshop?.(l)||'';
+    const beginnerDepth=editedTeaching?'':window.renderFoundationDepth?.(l)||'';
     const lossFoundation=l.id==='losses'?(window.renderLossFoundationChain?.()||''):'';
     const articleContent=articleSections(l);
     const examples=workedExampleMarkup(l);

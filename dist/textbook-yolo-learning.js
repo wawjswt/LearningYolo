@@ -34,7 +34,7 @@
   edit('train-yolo','能识别模型原始输出、targets、损失与参数梯度。',['yolo-loss','gradient','optimizer'],['backward计算梯度，满足累积条件后才由优化器更新参数。','每轮验证可产生fitness，保存best/last；正常结束清理后的权重不等于完整中断状态。']);
   edit('yolo-checkpoints','已分清结构、参数、优化器状态以及epoch进度。',['train-yolo','transfer'],['--weights用于初始化一次训练，--resume用于接续被中断的实验。','按键名和形状筛选参数后加载；类别顺序、模块职责仍需人工核对。']);
   edit('yolo-augment','能读训练命令、图像与标签同步变换，并会比较验证结果。',['train-yolo','augmentation','augmentation-evaluation'],['Mosaic/几何增强须同步改变框；颜色增强应保留任务语义。','输入面积、每批图片数与梯度累积共同影响预算；比较时明确固定的是轮数、更新数还是时间。']);
-  edit('yolo-evaluation','会匹配预测与标签、计算P/R，并理解AP的插值约定。',['metrics','metrics-map','train-yolo'],['验证先产生检测并匹配标签，再按分数统计PR/AP，不更新训练参数。','默认fitness=0.1×AP50+0.9×AP50:95；best.pt对应该评分的最佳保存轮次。','本地compute_ap的插值积分与COCO官方采样平均不可直接视为同一实现。']);
+  edit('yolo-evaluation','会匹配预测与标签、计算P/R，并理解AP的插值约定。',['metrics','metrics-map','train-yolo'],['验证先产生检测并匹配标签，再按分数统计PR/AP，不更新训练参数。','默认fitness=0.1×mAP50+0.9×mAP50:95；best.pt对应该评分的最佳保存轮次。','本地compute_ap的插值积分与COCO官方采样平均不可直接视为同一实现。']);
   edit('inference','会读Detect原始字段、Sigmoid、中心/角点框和补边逆变换。',['yolo-head','iou','image-preprocessing'],['标准推理从原始候选解码，组合分数后筛选与NMS，再还原原图坐标。','分数阈值、NMS IoU阈值与评估匹配IoU阈值控制三个不同步骤。']);
   edit('yolo-export','已经走过PyTorch推理、解码、NMS及坐标还原。',['inference'],['导出文件之外还需固定输入、颜色、数值尺度、输出约定、类别表和后处理。','先对齐相同输入张量与原始输出，再看阈值/NMS和任务指标，有助于定位后端差异。']);
   edit('yolo-trace','能阅读结构、样本分配、训练更新与推理流程；本课把它们合在一张图上。',['yolo-head','yolo-assignment','train-yolo','inference'],['810×1080照片按方形letterbox变为640×640，按指定auto规则也可能采用640×480。','预处理尺寸影响各层网格和候选数；教学框用于坐标演算，不是实际检测结果。']);
@@ -73,7 +73,11 @@
   write('yolo-data',0,'用一行标签说明烟雾和火焰在哪里',[
     '本项目约定0=smoke（烟雾）、1=fire（火焰）。先把应标的范围说清：蒸汽是否算烟雾、反光是否算火焰、部分遮挡和极小目标怎样处理。类别名称只是编号的说明，具体标注规则决定训练收到怎样的答案。',
     '图宽1000、高500，火焰框左上(400,160)，宽200、高80。中心为(400+100,160+40)=(500,200)。分别除图宽高，得到中心(0.5,0.4)、宽高(0.2,0.16)，一行标签是“1 0.5 0.4 0.2 0.16”。',
-    '前一项是类别索引，后四项是归一化中心x、中心y、宽、高，数值按原图轴分别换算。一张图有两个目标就写两行，批次里每张图目标数也可不同。图像变换后，框必须同步变换，不能继续照抄旧比例。'
+    '前一项是类别索引，后四项是归一化中心x、中心y、宽、高，数值按原图轴分别换算。一张图有两个目标就写两行，批次里每张图目标数也可不同。每个比例都要说明相对于哪张图：只缩放图像并同步缩放框时，归一化比例可以不变；增加灰边、裁剪或翻转后，则按新的坐标范围重新计算。',
+    '把同一张宽1000、高500的图放进640×640方形画布。横向允许的缩放比是640/1000=0.64，纵向是640/500=1.28；统一取较小的0.64，才能保持物体长宽比例并放得下。图像内容变成宽640、高320，上下各补(640−320)/2=160像素。这种等比例缩放再补边的方法叫letterbox。这里明确使用固定方形画布，不启用最小矩形auto模式。',
+    '框也先缩放，再平移：原中心(500,200)乘0.64，得到(320,128)；加上顶部160像素灰边，中心变成(320,288)。宽200×0.64=128，高80×0.64=51.2。全部除以新画布边长640，得到[中心x,中心y,宽,高]=[0.5,0.45,0.2,0.08]。',
+    '为什么中心y从0.4变成0.45？原来的0.4是相对于高500的原图；现在纵向尺子包括上下灰边，总高640。框仍跟着同一处火焰，换了参考画布，比例就可能变化。如果只缩为640×320而不补边，中心y=128/320仍为0.4，高=51.2/320仍为0.16。',
+    '磁盘上的标签继续描述原图。标准读取流程会在内存中同步变换图像与框，随后将框相对于当前输入重新归一化；不要为配合640输入而把所有原图txt改成补边后的比例，否则读取时可能再变换一次。下面的人工框演示这几个坐标阶段，不读取真实图片。'
   ],{learningFigure:'label'});
   write('yolo-config',0,'把一行YAML读成一次具体连接',[
     '每行写成[from, number, module, args]，依次表示输入来源、基础重复数、模块类型和构造参数。例如[-1,6,C3,[256]]表示读取上一层、构造C3、基础内部重复6次、输出256通道。输入通道由解析器沿来源计算，不需要在这一行重复填写。',
@@ -217,14 +221,21 @@
     '精确率Precision问“报告的3个里，几个是对的”，本例为2÷3≈66.7%；召回率Recall问“真实2个里，找到了几个”，为2÷2=100%。P和R分别是它们的缩写。若只看“总共报了3个”，无法知道是找全了还是多报了。',
     '怎样判断“框找对了”？先要求类别相同，再比较预测框与真实框覆盖的范围。IoU全称Intersection over Union，中文是交并比：重叠面积÷两个框合起来的面积。例如两个面积各100的框重叠60，合起来100+100−60=140，IoU=60/140≈0.429。完全重合时为1，不相交时为0。',
     '设最低IoU要求为0.5，则上面的0.429不通过。完整验证先在保留的数据上预测，再与标注做一对一匹配；同一真实目标至多匹配一条预测。验证不执行优化器更新。AP还要综合不同分数筛选条件下的表现，后面再说明，不能把这里一次计数的精确率直接叫AP。',
+    '再看分数门槛。固定一组已完成NMS的预测，真实目标共2个：A分数0.9，找到第1个；B分数0.8，是一处误报；C分数0.4，找到第2个。A与C对应不同目标，不存在匹配争抢。只改变“分数严格大于门槛才保留”的条件，重新计数如下。',
+    '门槛0.85只留下A，精确率100%、召回率50%；降到0.6，多留下误报B，变成50%、50%；再降到0.3，找回C，变成约66.7%、100%。精确率随门槛变化可能起伏。若分数在这组数据上排得不理想，更高门槛也可能把真目标先删掉，不能保证精确率一定更高。',
+    '这张表固定了预测框和匹配关系，只研究分数过滤。完整流程若重新运行NMS、改变候选上限或匹配规则，需要按新结果再数；真实数据里没有预测时，精确率分母为0，计算与显示约定应说明。比较模型时同时固定数据、后处理和评价协议。',
     '当前val.py的process_batch先计算预测与标签的IoU、检查类别，再按源码的排序与去重步骤选出一对一配对；AP统计在之后把预测按置信度排序。匹配冲突处理与PR置信度排序是两件事，不要用一份简化课堂规则替代所有评估器。',
     'IoU=0.7的正确类别框在AP50可以匹配，在AP75不通过；因此同一预测在10个IoU阈值下有10个真假标记。需要比较哪个环节变好时，既看AP50，也看更严格定位要求下的结果。'
   ],{learningFigure:'evaluation'});
   write('yolo-evaluation',1,'手算best评分，再核对AP实现',[
-    '假设模型A的AP50=0.80、AP50:95=0.40；B分别为0.75和0.45。默认fitness算A=0.1×0.80+0.9×0.40=0.44，B=0.1×0.75+0.9×0.45=0.48，所以按这条规则B得分更高。best不是由最低训练loss或最高AP50单独决定。',
+    '先拆开指标名字。AP是Average Precision（平均精确率）：固定一个类别和一种定位要求，再综合不同分数筛选位置的精确率—召回率表现，按规定插值和汇总。这里的“平均”不表示随手平均几个精确率。mAP中的m是mean，表示再对纳入评价的类别取平均。',
+    'AP50中的50表示匹配框时要求IoU至少0.50，不表示正确率50%。若烟雾的AP50为0.8、火焰为0.4，只有这两个被评价的类别，则mAP50=(0.8+0.4)/2=0.6。这里假定每类AP已经按完整协议算好，不能用某个门槛下的精确率直接代替。',
+    'AP50:95进一步使用0.50、0.55、0.60、0.65、0.70、0.75、0.80、0.85、0.90、0.95这10个IoU要求。每个类别在各要求下分别算AP，再按相应协议平均。更大的IoU要求更看重框是否贴近真实边界；这10个数是定位门槛，不是10个分数门槛。日志中mAP50-95就是这种跨类别、跨定位要求的汇总。',
+    'fitness是在本实现中挑选best权重的综合评分。假设模型A的mAP50=0.80、mAP50:95=0.40；B分别为0.75和0.45。默认算A=0.1×0.80+0.9×0.40=0.44，B=0.1×0.75+0.9×0.45=0.48，所以按这条规则B得分更高。best不是由最低训练loss或最高mAP50单独决定。',
     'AP先看某类按分数排序的Precision/Recall曲线，再按规定插值和汇总；mAP再跨类别/指定IoU阈值平均。本站CV课已逐行演算PR。本地utils/metrics.py::compute_ap加入端点、求单调精确率包络，在101个召回位置插值，再做梯形积分。',
     'COCO官方评估器按规定召回采样与其他规则汇总，其匹配、忽略区域、目标上限等也有完整约定。YOLO代码中的“101-point”注释不能证明两套结果对任意数据完全相同。报告时写明val.py内部统计还是pycocotools结果及数据版本。'
-  ],{learningFigure:'fitness',advancedBlocks:[advanced('选读：日志P/R与实际部署门槛','当前ap_per_class可在平滑后的平均F1曲线上选择读出P/R的位置；这不等于detect.py默认置信度门槛，也不等于每类分别选出的最优生产门槛。部署阈值应在独立验证场景按可接受误报/漏检选择，并在测试或新现场数据检验。')]});
+  ],{learningFigure:'fitness',subheadings:{0:'先读懂AP与mAP的名字',3:'再看best文件按什么规则选',4:'最后核对评价实现'},advancedBlocks:[advanced('选读：日志P/R与实际部署门槛','当前ap_per_class可在平滑后的平均F1曲线上选择读出P/R的位置；这不等于detect.py默认置信度门槛，也不等于每类分别选出的最优生产门槛。部署阈值应在独立验证场景按可接受误报/漏检选择，并在测试或新现场数据检验。')]});
+  Object.assign(courses.get('yolo-evaluation').sections[0],{beginnerFigure:'score-tradeoff',beginnerAfter:5,subheadings:{0:'先数找对、误报和漏检',2:'框重叠多少才算找对',4:'门槛改变后，重新数一遍',7:'回到评价代码的规则'}});
   write('yolo-evaluation',2,'把成绩拆成任务真正关心的几列',[
     '至少保留烟雾和火焰各自指标，再按白天/夜间、近处/远处、清晰/模糊分组回看。总体mAP是汇总，不能代替“夜间小烟雾能否发现”这一问题。分组样本少时注明数量，不把单个错误造成的大幅波动当稳定差异。',
     '速度报告写设备、输入、batch、数值精度、预热与计时范围。例如模型前向10ms，预处理3ms、后处理5ms、显示2ms，顺序处理总计20ms即约50帧/秒；只用前向10ms得到100帧/秒是在测另一个范围。这个例子是假设耗时，不是实测YOLO性能。'
@@ -318,10 +329,17 @@
     '训练需要“题目+答案”：图片是题目，标签是答案。标签记录图片里每个目标的类别和位置。文件001.jpg对应001.txt；若图片里有两处火焰，就在这个文本文件写两行框记录。文件名对应，程序才能把答案交给正确的题目。',
     '本课把原图宽高当尺子：中心横坐标500、图宽1000，写成500÷1000=0.5，就是位于从左到右的一半处。这叫归一化坐标，表示相对于图片尺寸的比例。x和框宽除图宽，y和框高除图高；这与将像素颜色除255是两件不同的处理。'
   ]);
+  courses.get('yolo-data').sections[0].subheadings={0:'原图和标签怎样配对',2:'先把原框写成比例',5:'换成方形输入后，比例为什么变了',8:'原图标签与内存中的训练标签'};
+  const dataPaths=courses.get('yolo-data').sections[1];
+  dataPaths.paragraphs[0]='数据YAML像一张地址簿，规定到哪里找图片，以及类别编号对应哪个名称。本地检测实现中，相对的path由utils/general.py::check_dataset()按仓库根目录解析，train/val/test再相对于这个数据根目录组成完整地址；不能笼统理解成总是相对于YAML所在目录。';
+  dataPaths.paragraphs.splice(2,0,'以images/train/fire001.jpg为例：images放图片，train表示训练部分；对应答案放在labels/train/fire001.txt。文件名fire001相同，扩展名不同。图片改名而标签没有改，或多套了一层目录，都可能导致程序读不到这张图的答案。先在文件管理器找到这一对真实文件，再核对配置。');
   orient('yolo-config',0,[
     '模型配置像一张装配说明：先做哪步，下一步接哪里，每步输出多少数。YAML是存放这种设置的文本格式；你修改它是在改说明，程序会在构建模型时读取它。它与保存学到数值的.pt权重文件用途不同。',
     '先把“层”理解成有输入和输出的一步计算，“模块”是这一步采用的具体做法。一个模块内部还可包含多步运算。下方一行配置描述一个顶层模块，所以配置行数、内部卷积数量和网络深度可能不是同一个数。方括号表示一组有顺序的项目，逗号将项目隔开。'
   ]);
+  const configStart=courses.get('yolo-config').sections[0];
+  configStart.paragraphs.splice(2,0,'先读一行卷积：[-1,1,Conv,[64,6,2,2]]。最外层四项表示“取上一层、做1个模块、类型Conv、参数在里面的方括号”。内层64表示输出通道数，6是窗口边长，2是步幅，最后2是每侧填充；输入通道由程序从上一层查出。每个位置读取多通道小窗口，再生成64个输出数。这里对应l配置，其他规模还会应用宽度系数。');
+  configStart.subheadings={0:'配置描述的是计算连接',2:'先读Conv，再读C3'};
   orient('yolo-backbone',0,[
     '这一课打开整机图里的“提取特征”部分。卷积可以先理解为拿一小块可学习的数字模板，在图片上滑动：每到一个位置，把覆盖的数与模板对应相乘后相加，写下一个结果。模板的数会在训练时调整。',
     '同一位置用不同模板，会得到不同结果，于是产生多张特征表。通道数就是这样的表有几张；高和宽是每张表有几行、几列。步幅指模板每次移动多远，填充是在边缘补数，下面分别看它们怎样影响表的尺寸。'
@@ -338,6 +356,11 @@
     '想象一张80×80的特征表和一张20×20的特征表：前者位置排得细，后者通常已经经过更深的计算。检测需要利用不同范围的线索。Neck会把不同大小的表对齐，再合起来计算；它处理的是特征，不是把三张原图拼成一张。',
     '先看一种对齐：把2×2表放大成4×4。最近邻上采样把每个原数铺到相邻2×2位置，比如左上是3，放大后左上四格都是3；表变大了，却没有凭空找回新细节。与早先保存的高分辨率特征一起融合，才是这条连线的作用。'
   ]);
+  const concat=courses.get('yolo-neck').sections[2];
+  concat.paragraphs.unshift('先缩成两张单通道2×2表：A=[1,2;3,4]，B=[10,20;30,40]，分号表示换行。拼接后仍能分别找到整张A和整张B，得到2个通道；对应相加则得到一张[11,22;33,44]表，只有1个通道。Concat保留两份数，Add在对应位置做加法。',
+    '拼接本身没有学到怎样取舍这两份数。假设后面用一个1×1卷积，给A通道权重0.5、B通道权重0.1，偏置为0，那么左上输出1×0.5+10×0.1=1.5，右上为2×0.5+20×0.1=3。其余位置同样计算，输出[1.5,3;4.5,6]。这些权重是手工设的教学数；实际融合层的系数由训练学习。');
+  concat.subheadings={0:'两张表是保留，还是逐项相加',2:'回到真实形状，逐轴检查'};
+  Object.assign(concat,{beginnerFigure:'concat-numbers',beginnerAfter:1});
   orient('yolo-head',0,[
     '先看输出究竟写什么。假设只分烟雾、火焰，一条已经解码的候选可写为[中心x,中心y,宽,高,物体性,烟雾分数,火焰分数]，共7个数。物体性表示这条候选对目标的响应；后两项表示对具体类别的响应。候选还可能判断错误，需要继续筛选。',
     '例如[100,80,40,20,0.9,0.1,0.8]表示：在输入画布上暂放一个中心(100,80)、宽40、高20的框，火焰的组合分数为0.9×0.8=0.72。这里先用人工给定的解码结果认字段；输出卷积实际先产生原始数，后续按公式才换成这些坐标和分数。',
@@ -373,6 +396,10 @@
     '你已经有一份训练好的权重，现在给它一张新照片，希望得到框。这次使用过程叫推理：读取图、整理输入、让模型计算、整理答案、画回原图。它使用保存的参数，默认不会在看新图时自动学习。',
     '先认一条记录：[中心100,中心80,宽40,高20,物体性0.9,火焰分数0.8]。该类组合分数为0.72；若门槛设0.6便通过，门槛设0.8便被筛掉。即使分数通过，同一目标的重复框也要另行去重。下面会把这几道处理分开观察。'
   ]);
+  const restore=courses.get('inference').sections[3];
+  restore.paragraphs.push('还原坐标可以先不看解码公式，直接做一遍逆运算。数据课的原框左上(400,160)、右下(600,240)，缩放0.64并在顶部补160后，变成(256,262.4)到(384,313.6)。回原图先从两个y都减160，再把四项都除0.64，就准确回到原来的两角。还原时若先除缩放比、再减原来的补边数，会算错。',
+    '例如上边界y：正确为(262.4−160)/0.64=160；如果先除0.64再减160，会得到250，框向下偏90像素。原因是262.4和160都属于输入画布的像素，必须在同一单位下先相减。实际程序还要使用真实缩放、取整与补边参数，并裁掉超出原图的部分。');
+  restore.subheadings={0:'先解码成输入画布坐标',4:'用同一火焰框走回原图'};
   orient('yolo-export',0,[
     '训练常在Python和PyTorch环境中进行，使用模型的设备可能需要另一种运行方式，例如C++程序或专门的推理引擎。导出就是把模型计算与参数转换成目标工具能读取的形式。可以先把ONNX理解为一种交换模型的文件格式，完整英文是Open Neural Network Exchange。',
     '转换文件后，接收程序仍要知道怎样喂数据、怎样读结果。像交接一份表格，需要说明每列含义：输入是否按RGB、颜色数是否除255，输出四个坐标是中心宽高还是两角。相同数字被按不同格式解释，就会画出错误的框。'
@@ -439,6 +466,12 @@
   courses.get('yolo-loss').sections[1].exercise=quiz('真实标签[0,1]，独立Sigmoid分数[0.8,0.2]，默认平均类别BCE约多少？',['1.6094','0.2231','0.5'],0,'两个字段都各为−ln0.2≈1.6094，取平均仍为1.6094。');
   courses.get('yolo-loss').sections[2].exercise=quiz('三项加权后总和0.86、B=2，本节ComputeLoss返回的反传值是多少？',['0.43','0.86','1.72'],2,'该实现返回总和乘批次大小；日志分项不因此都变成反传总值。');
   courses.get('yolo-evaluation').sections[0].exercise=quiz('正确类别框IoU=0.7，在AP50与AP75的几何门槛下怎样？',['都通过','AP50通过、AP75不通过','都不通过'],1,'同一预测在不同IoU匹配要求下可有不同真假标记，仍需满足一对一等规则。');
+  const dataRecall=quiz('图片为images/train/fire001.jpg，按本课目录规则，它的标签文件通常在哪里？',['labels/train/fire001.jpg','labels/train/fire001.txt','images/val/fire001.txt'],1,'images目录对应labels，文件主名fire001不变，扩展名换成.txt；训练图片仍对应训练部分的标签。');
+  courses.get('yolo-data').quiz=dataRecall;courses.get('yolo-data').chapterExercises[0]=dataRecall;
+  courses.get('yolo-data').chapterExercises.push(quiz('原图1000×500，原框中心y比例0.4、高比例0.16。保持比例放进640×640方形画布，上下各补160后，新中心y与高比例是多少？',['0.45、0.08','0.4、0.16','0.5、0.2'],0,'原中心200、框高80，缩放0.64后为128和51.2；中心加顶部160得到288。分别除640，得到0.45与0.08。磁盘原图标签仍保留原比例。'));
+  courses.get('yolo-evaluation').chapterExercises.push(quiz('固定本节A正确0.9、B误报0.8、C正确0.4；门槛从0.6降到0.3，精确率怎样变化？',['从50%变为约66.7%','必定下降','从100%变为0'],0,'0.6保留A/B，正确1条，共2条；0.3保留A/B/C，正确2条，共3条。新增正确预测可以使精确率上升，所以不能只凭门槛方向判断精确率。'));
+  courses.get('yolo-data').goals=['能给图片配上同名标签，并说清五列数各是什么。','能找到数据配置指向的目录，按视频或现场分开训练与验证图片。','能解释缩放和补边后，同一个框的像素数与比例为何变化。'];
+  courses.get('yolo-data').keypoints.push('纯缩放时归一化比例可保持；补边后按新画布重算，磁盘标签仍对应原图。');
 
   example('detection-intro','不用代码，写出一个框','左上角(20,10)、右下角(60,50)，改写成中心、宽、高。',['先看左右：宽60−20=40；再看上下：高50−10=40。','中心x=20+40/2=40，中心y=10+40/2=30。','按中心x、中心y、宽、高顺序写成(40,30,40,40)。'],'两种写法指同一矩形；交给程序时还要写明格式和坐标所属图片。');
   example('detection-two-stage','100个候选怎样复用一张特征图','候选统一RoI Pooling为每通道2×2，16个通道，每候选多少数？',['候选先映射到整图共享特征。','每通道2×2=4个汇总数，16通道共64个。','每个区域再接分类与框修正，候选来自外部搜索还是RPN需分别说明。'],'共享整图卷积不等于取消区域检测阶段。');
@@ -459,7 +492,7 @@
   example('train-yolo','第一次短跑后看哪三处','已准备好数据和依赖，使用下方一轮命令。结束后怎样判断下一步？',['先打开实际输出目录里的训练批次图，核对框是否圈准、类别是否对应。','再看日志：确认图片成功读取、box/obj/cls有记录且没有NaN或Inf，验证使用了预期的图片。','最后找到输出日志和weights目录，记下这次命令、配置和保存位置；流程无误后再设置更长训练。'],'一轮结束只能帮助检查流程，不能据此判断现场检测质量。');
   example('yolo-checkpoints','识别能续训与只能初始化的权重','最后文件显示epoch=−1且optimizer为空，能据文件名last完整续训吗？',['文件名只说明保存用途，需看内部状态。','正常清理已移除恢复原训练所需的部分状态。','可按兼容性用于新训练初始化；需要原实验恢复时寻找未清理检查点。'],'模型参数可用与训练状态完整是两项不同检查。');
   example('yolo-augment','640改960，候选预算变化多少','仍用P3/P4/P5、每格3组参考。',['960网格120×120、60×60、30×30。','3×(14400+3600+900)=56,700。','除25,200得到2.25；实际速度和峰值内存仍需测量。'],'空间面积带来预算变化，候选比值不能直接当耗时比值。');
-  example('yolo-evaluation','AP50低一些也可能成为best','A为AP50=.80、AP50:95=.40；B为.75、.45。',['A fitness=.1×.80+.9×.40=.44。','B fitness=.1×.75+.9×.45=.48。','按默认fitness，B更高；现场关键类别仍需单独看。'],'保存规则决定best含义，不能只按其中一列判断。');
+  example('yolo-evaluation','mAP50低一些也可能成为best','A为mAP50=.80、mAP50:95=.40；B为.75、.45。',['A fitness=.1×.80+.9×.40=.44。','B fitness=.1×.75+.9×.45=.48。','按默认fitness，B更高；现场关键类别仍需单独看。'],'保存规则决定best含义，不能只按其中一列判断。');
   example('inference','从原始坐标回到原图','gx=10、gy=12、stride=8，框原始四项0，Anchor=(16,30)，r=.5、pad_x=20。',['Sigmoid为.5，解码xywh=(84,100,16,30)。','转角点(76,85)到(92,115)。','x先减20，所有坐标除.5，得到(112,170)到(144,230)。'],'坐标先属于输入画布，再用实际缩放与补边还原。');
   example('yolo-export','很小分数误差为何改变最终框','同一候选PyTorch=.7201、后端=.7199，门槛=.72。',['绝对差只有.0002，先比较原始数值。','前者过门槛，后者不过，最终数量可不同。','固定输入、输出解释与后处理，定位误差来源再评估可接受范围。'],'离散筛选可放大小数值差的表现，不能只比较最终条数。');
   example('yolo-trace','同一照片的方形与矩形候选数','bus照片宽810高1080，缩为480×640，比较两种补边。',['固定方形左右补80，网格80/40/20，候选25,200。','指定auto矩形规则时宽480，网格80×60、40×30、20×15。','3×(4800+1200+300)=18,900，类别字段仍85。'],'预处理改变网格与候选数，标准权重并未因此重新训练。');
@@ -493,6 +526,9 @@
   addSource('yolo-evaluation','val.py','固定v7.0：验证匹配');
   addSource('inference','utils/general.py','固定v7.0：组合分数、NMS与坐标处理');
   addSource('train-yolo','train.py','固定v7.0：累积、混合精度与保存');
+  addSource('yolo-data','utils/augmentations.py','固定v7.0：letterbox的缩放、填充和auto模式');
+  addSource('yolo-data','utils/dataloaders.py','固定v7.0：原图标签到输入标签的内存变换');
+  addSource('yolo-data','utils/general.py','固定v7.0：xywh比例与角点坐标转换');
 
   const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function table(title,heads,rows,note=''){
@@ -506,7 +542,9 @@
     stages:()=>table('计算重复发生在哪里',['方法','整图共享特征','候选来自哪里','区域后续处理'],[['R-CNN','对每个裁剪候选分别提取','Selective Search等外部方法','分类、框修正'],['Fast R-CNN','先对整图提取一次','外部方法','RoI Pooling、区域检测头'],['Faster R-CNN','共享整图特征','RPN网络','RoI特征、区域检测头']],'对照职责，不据此推断固定倍数的速度差。'),
     version:()=>table('进入公式前核对这四项',['观察点','本站标准配置','看到差异时查哪里'],[['入口','6×6卷积，步幅2','模型YAML与Conv实现'],['主体模块','C3、SPPF','models/common.py'],['检测方式','Anchor-based，含objectness','Detect与ComputeLoss'],['固定源码参照','Ultralytics YOLOv5 v7.0','本地修改与固定版本的差异']],'P2、P6、分割和其他YOLO分支需要另列结构及输出约定。'),
     whole:()=>flow('从同一批图片到三尺度候选',[['输入','[B,3,640,640]'],['Backbone','多个分辨率特征'],['Neck','256×80² / 512×40² / 1024×20²'],['Detect参照：80类','[B,25200,85]'],['筛选与还原','每图Mi条检测']],'前三张特征按C×H×W写，均属于同一批B张图；Mi是每图最后保留数量。'),
-    label:()=>table('原图1000×500，火焰框的一行标签',['字段','像素值/含义','归一化值'],[['类别','1=fire','1'],['中心x','400+200/2=500','500/1000=0.5'],['中心y','160+80/2=200','200/500=0.4'],['宽','200','200/1000=0.2'],['高','80','80/500=0.16']],'文件记录：1 0.5 0.4 0.2 0.16。'),
+    label:labelGeometryMarkup,
+    'concat-numbers':()=>table('同样两张表，三种操作分别得到什么',['操作','左上位置怎样计算','输出通道与整张表'],[['输入A与B','A左上1，B左上10','A=[1,2;3,4]，B=[10,20;30,40]'],['Concat沿通道拼接','分别保留1和10','2通道：完整A和完整B'],['Add对应相加','1+10=11','1通道：[11,22;33,44]'],['Concat后1×1卷积','0.5×1+0.1×10=1.5','1通道：[1.5,3;4.5,6]']],'表中分号表示换行。卷积偏置为0，权重为人工设定；真实C3融合包含更多运算。'),
+    'score-tradeoff':()=>table('同一组预测，只改分数门槛',['门槛（严格大于）','保留','TP / FP / FN','精确率','召回率'],[['0.85','A','1 / 0 / 1','1/1=100%','1/2=50%'],['0.60','A、B','1 / 1 / 1','1/2=50%','1/2=50%'],['0.30','A、B、C','2 / 1 / 0','2/3≈66.7%','2/2=100%']],'A=0.9正确，B=0.8误报，C=0.4正确；真实目标2个，位置匹配固定。这些固定门槛的精确率不是AP。'),
     yaml:()=>table('[-1,6,C3,[256]]逐项读',['项目','值','含义'],[['from','−1','读取上一层'],['number','6','基础内部重复数'],['module','C3','需要构建的模块类型'],['args','[256]','输出通道，其他参数用实现默认'],['l系数','深1、宽1','内部6次，输出256通道']],'解析器为C3传入内部次数；n/s/m/x需应用各自缩放。'),
     c3:()=>table('教学C3：输入8，隐藏4，输出8',['路径','运算','形状'],[['共同输入','两路都读完整x','[1,8,4,4]'],['主路','1×1后2个Bottleneck','[1,4,4,4]'],['短路','另一块1×1卷积','[1,4,4,4]'],['Concat','沿通道并列','[1,8,4,4]'],['cv3','1×1混合','[1,8,4,4]']],'小例子说明连接；真实第4层是256→隐藏128→输出256。'),
     sppf:()=>table('标准SPPF的四路账本',['名称','来自哪里','形状','相对x0范围'],[['x0','cv1降通道','[1,512,20,20]','1×1'],['y1','池化x0','[1,512,20,20]','5×5'],['y2','池化y1','[1,512,20,20]','9×9'],['y3','池化y2','[1,512,20,20]','13×13'],['拼接','x0/y1/y2/y3','[1,2048,20,20]','保留四路'],['cv2','1×1融合','[1,1024,20,20]','组合四路']],'全部池化k5、s1、p2；范围以模块内特征为参照。'),
@@ -521,7 +559,7 @@
     settings:()=>table('四种设置的职责',['设置入口','举例','实际检查'],[['data YAML','names、train、val','解析后的路径和类别顺序'],['model YAML','C3、Detect、from','构建摘要与输出形状'],['hyp YAML','学习率、gain、Mosaic','实际值与源码调用'],['命令行','imgsz、batch、epochs','完整命令及覆盖关系']],'保存解析后的配置和代码版本；文件名不是配置内容。'),
     budget:()=>table('标准三尺度、每格3候选的空间预算',['输入','三张网格','候选数','相对640'],[['640×640','80² / 40² / 20²','25,200','1'],['960×960','120² / 60² / 30²','56,700','2.25'],['1280×1280','160² / 80² / 40²','100,800','4']],'只计算候选条数；不声称实测延迟、内存或准确率同比变化。'),
     evaluation:()=>table('同一预测在不同定位要求下',['预测','类别一致？','IoU','AP50几何门槛','AP75几何门槛'],[['p1','是',0.70,'通过','不通过'],['p2','否',0.90,'不通过','不通过'],['p3','是',0.85,'通过','通过']],'通过几何与类别条件后，还须按评价代码形成一对一匹配。'),
-    fitness:()=>table('教学评分：best选择依据',['模型','AP50','AP50:95','0.1×前者+0.9×后者'],[['A',0.80,0.40,0.44],['B',0.75,0.45,0.48]],'按默认fitness，B更高；不表示每个类别、速度或现场错误都更好。'),
+    fitness:()=>table('教学评分：best选择依据',['模型','mAP50','mAP50:95','0.1×前者+0.9×后者'],[['A',0.80,0.40,0.44],['B',0.75,0.45,0.48]],'按默认fitness，B更高；不表示每个类别、速度或现场错误都更好。'),
     latency:()=>flow('假设计时：四段共20ms',[['预处理','3ms'],['模型前向','10ms'],['后处理','5ms'],['显示','2ms'],['顺序总和','20ms ≈ 50帧/秒']],'纯教学耗时，非实际测试；吞吐与单张延迟在并行/批处理条件下还需分别测量。'),
     decode:()=>table('明确单位：从raw到原图',['步骤','数值','所在坐标'],[['raw框四项','[0,0,0,0]','尚未解码'],['网格/步幅','gx10、gy12、s8','P3网格'],['解码中心宽高','[84,100,16,30]','640×640输入画布像素'],['转角点','[76,85,92,115]','输入画布像素'],['去边并除r','[112,170,144,230]','原图1200×1280像素']],'本例原图缩放r=0.5、左右各补20，上下不补；真实图按实际预处理记录计算。'),
     'export-contract':()=>table('一个明确的2类导出接口示例',['约定','示例值'],[['输入','[1,3,640,640]，float32，RGB，除255'],['模型内部','包含Detect解码，不含NMS'],['输出','[1,25200,7]，cx/cy/w/h/obj/cls0/cls1'],['类别','0=smoke，1=fire'],['外部处理','组合分数、筛选、NMS、去补边/缩放']],'只对这里明确的导出设置成立；实际输出以文件与运行环境为准。'),
@@ -532,6 +570,22 @@
 
   const card=(name,value)=>'<div class="yd-value"><span>'+esc(name)+'</span><strong>'+esc(value)+'</strong></div>';
   const panel=(kind,title,description,controls)=>'<section class="yd-workshop yl-workshop" data-yl-kind="'+kind+'"><span class="yd-eyebrow">逐项算 · 再动手</span><h3>'+esc(title)+'</h3><p>'+esc(description)+'</p>'+controls+'<div data-yl-output aria-live="polite"></div><p class="yd-footnote">固定配置与人工算例，不运行模型、不代表训练或现场检测结果。</p></section>';
+  function labelGeometryMarkup(){
+    return panel('label-geometry','同一个框，换了画布后哪些数会变？','框宽占原图20%、高占16%。先移动原图中的中心，再看原图像素、输入像素和比例各自怎样变化。只演示等比缩放与对称补边，auto=False、无裁剪和随机增强。',
+      '<div class="yd-controls"><label>原图宽×高<select data-yl-original aria-label="原图宽高"><option value="1000,500">1000×500 · 横图</option><option value="500,1000">500×1000 · 竖图</option></select></label><label>方形输入画布<select data-yl-canvas aria-label="输入画布边长"><option value="640">640×640</option><option value="960">960×960</option></select></label></div><div class="yd-controls"><label class="yd-slider">原图中心x比例<input type="range" min="0.1" max="0.9" step="0.05" value="0.5" data-yl-label-x aria-label="原图中心x比例"></label><label class="yd-slider">原图中心y比例<input type="range" min="0.1" max="0.9" step="0.05" value="0.4" data-yl-label-y aria-label="原图中心y比例"></label></div><label class="yd-check"><input type="checkbox" data-yl-old-label aria-label="显示照抄原比例的错误框">对照：照抄原图比例会画到哪里？（红虚线）</label>');
+  }
+  function updateLabelGeometry(root){
+    const [w,h]=root.querySelector('[data-yl-original]').value.split(',').map(Number),size=Number(root.querySelector('[data-yl-canvas]').value),nx=Number(root.querySelector('[data-yl-label-x]').value),ny=Number(root.querySelector('[data-yl-label-y]').value),wrong=root.querySelector('[data-yl-old-label]').checked;
+    const r=Math.min(size/w,size/h),contentW=w*r,contentH=h*r,padX=(size-contentW)/2,padY=(size-contentH)/2;
+    const original=[nx*w,ny*h,.2*w,.16*h],scaled=[original[0]*r,original[1]*r,original[2]*r,original[3]*r],input=[scaled[0]+padX,scaled[1]+padY,scaled[2],scaled[3]],normalized=input.map(v=>v/size),oldInput=[nx*size,ny*size,.2*size,.16*size];
+    const f=v=>Number(v.toFixed(4)).toString(),vector=a=>'['+a.map(f).join(', ')+']';
+    const fromScale=Math.min(300/w,240/h),fromLeft=20+(300-w*fromScale)/2,fromTop=55+(240-h*fromScale)/2,toScale=240/size,toLeft=450,toTop=55;
+    const rect=(v,left,top,scale,color,dash='')=>'<rect x="'+(left+(v[0]-v[2]/2)*scale)+'" y="'+(top+(v[1]-v[3]/2)*scale)+'" width="'+v[2]*scale+'" height="'+v[3]*scale+'" fill="none" stroke="'+color+'" stroke-width="2.5"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
+    const drawing='<svg class="yl-geometry-svg" viewBox="0 0 740 345" role="img" aria-label="原图和方形输入中的同一人工框，紫实线是同步变换结果，红虚线是照抄比例的错误位置"><text x="20" y="28">原图：宽'+w+'、高'+h+'</text><rect x="'+fromLeft+'" y="'+fromTop+'" width="'+w*fromScale+'" height="'+h*fromScale+'" fill="#e4ede5" stroke="#aaa"/>'+rect(original,fromLeft,fromTop,fromScale,'#7860a9')+'<text x="355" y="170" font-size="23">→</text><text x="450" y="28">输入画布：'+size+'×'+size+'</text><rect x="450" y="55" width="240" height="240" fill="#dfdfdf" stroke="#aaa"/><rect x="'+(toLeft+padX*toScale)+'" y="'+(toTop+padY*toScale)+'" width="'+contentW*toScale+'" height="'+contentH*toScale+'" fill="#e4ede5"/>'+rect(input,toLeft,toTop,toScale,'#7860a9')+(wrong?rect(oldInput,toLeft,toTop,toScale,'#b54c47','6 4'):'')+'<text x="20" y="330">浅绿：图像内容；灰：补边；框为人工设定</text></svg>';
+    const rows=[['原图中心/宽高',vector(original),'原图像素'],['只缩放，不补边',vector(scaled),'宽'+f(contentW)+'、高'+f(contentH)+'的内容区域'],['再加左/上补边',vector(input),'输入画布像素'],['除输入画布边长',vector(normalized),'相对于'+size+'×'+size+'输入的比例'],['去补边、除r还原',vector([(input[0]-padX)/r,(input[1]-padY)/r,input[2]/r,input[3]/r]),'回到原图像素']];
+    const explanation=wrong?'红虚线把旧比例['+[nx,ny,.2,.16].map(f).join(', ')+']直接乘新画布边长，得到'+vector(oldInput)+'。紫实线才是当前正确结果'+vector(input)+'。比例数看起来合法，也可能把框画偏或画大。':'改变640为960时，本例画布的纵横比例未变，所以最终比例不变，但输入像素坐标会随尺寸变化。横图/竖图切换则改变补边方向；用滑杆移动中心，看新旧比例的区别。';
+    root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('缩放比r',f(r))+card('左右各补',f(padX)+'像素')+card('上下各补',f(padY)+'像素')+card('原图标签：类别+比例','1 '+[nx,ny,.2,.16].map(f).join(' '))+'</div><div class="yd-svg-scroll" tabindex="0" role="region" aria-label="可横向滚动的原图与画布对照">'+drawing+'</div>'+table('同一框的五个阶段；均按中心x、中心y、宽、高排列',['阶段','四个框数','参考范围'],rows,'本组缩放后的内容高宽恰为整数，不涉及尺寸取整差异。真实数据流程请读取实际ratio、pad及输入高宽。')+'<p class="yd-explanation">'+esc(explanation)+'</p><p class="yd-footnote">这里演示内存中的坐标变化。原图文件未变，磁盘txt仍使用原图比例；界面不写入数据集。</p>';
+  }
   function assignmentMarkup(){return panel('assignment','移动同一个目标，哪些网格要负责？','固定P3的80×80网格、图片0、类别1、Anchor1=(2,3.75)网格单位、目标宽高(4,2)，已通过宽高匹配。只移动中心，小图显示网格40～44列、35～39行。','<div class="yd-controls"><label class="yd-slider">目标中心x<input type="range" min="42.1" max="42.9" step="0.1" value="42.4" data-yl-x aria-label="目标中心网格x"></label><label class="yd-slider">目标中心y<input type="range" min="37.1" max="37.9" step="0.1" value="37.6" data-yl-y aria-label="目标中心网格y"></label></div>');}
   function updateAssignment(root){
     const x=Number(root.querySelector('[data-yl-x]').value),y=Number(root.querySelector('[data-yl-y]').value),i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j;
@@ -578,7 +632,7 @@
     root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('组合分数门槛',conf.toFixed(2))+card('NMS IoU门槛',limit.toFixed(2))+card('类别规则',agnostic?'跨类别去重':'按类别去重')+card('最终保留',kept.map(k=>k.id).join('、')||'0条')+'</div><svg viewBox="0 0 320 185" role="img" aria-label="人工候选框图，实线保留，虚线删除"><text x="20" y="20">烟雾蓝色、火焰橙色；实线保留</text>'+drawing+'</svg>'+table('逐条决策记录',['候选','类别','物体性×类别','组合分数','结果'],nmsData.map(item=>[item.id,item.name,item.obj+'×'+item.cp,item.score.toFixed(2),decisions.get(item.id)]),'A/B的IoU约'+overlap(nmsData[0].box,nmsData[1].box).toFixed(3)+'。此处不画真实标签，NMS不使用真实标签；评价匹配在另外一步进行。');
   }
   Object.assign(figures,{assignment:assignmentMarkup,loss:lossMarkup,nms:nmsMarkup});
-  function update(root){({assignment:updateAssignment,loss:updateLoss,nms:updateNms}[root.dataset.ylKind])?.(root);}
+  function update(root){({'label-geometry':updateLabelGeometry,assignment:updateAssignment,loss:updateLoss,nms:updateNms}[root.dataset.ylKind])?.(root);}
   const previous=window.lessonPlaygrounds||{};
   window.lessonPlaygrounds={...previous,initialize(){previous.initialize?.();document.querySelectorAll('[data-yl-kind]').forEach(update);}};
   document.addEventListener('input',event=>{const root=event.target.closest?.('[data-yl-kind]');if(root&&event.target.matches('input[type="range"]'))update(root);});

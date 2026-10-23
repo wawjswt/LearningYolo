@@ -275,4 +275,5 @@
     const motion=event.target.closest('[data-cnn-row],[data-cnn-col]');if(!motion)return;
     const root=motion.closest('[data-cnn-motion]');if(motion.matches('[data-cnn-row]'))root.dataset.row=motion.value;else root.dataset.col=motion.value;updateMotion(root);
   });
+  window.visionlabCnnComponents={renderConvolution:convolutionMarkup};
 })();

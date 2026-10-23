@@ -75,5 +75,5 @@
     if(position){const root=position.closest('[data-channel-math]');[root.dataset.row,root.dataset.col]=position.dataset.channelPosition.split(',');updateMath(root);return}
     const reset=event.target.closest('[data-channel-math-reset]');if(reset){const root=reset.closest('[data-channel-math]');root.dataset.filter='0';root.dataset.row='0';root.dataset.col='0';root.querySelector('[data-channel-bias]').value='1';root.querySelectorAll('[data-channel-enabled]').forEach(input=>input.checked=true);updateMath(root)}
   });
-  window.channelConvolution={shape,compute};
+  window.channelConvolution={shape,compute,renderMath:mathMarkup};
 })();

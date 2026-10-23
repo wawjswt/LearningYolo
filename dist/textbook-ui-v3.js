@@ -63,7 +63,7 @@
       const legacyIndex=Number.isInteger(s.legacyIndex)?s.legacyIndex:i;
       const paragraphs=s.paragraphs.map((p,j)=>{
         const heading=s.subheadings?.[j]?'<h3 class="lesson-subheading">'+rich(s.subheadings[j])+'</h3>':'';
-        const markup=heading+'<p>'+rich(p)+'</p>'+(window.lessonBiasPlaygrounds?.renderParagraph(l.id,legacyIndex,j)||'');
+        const markup=heading+'<p>'+rich(p)+'</p>'+(window.lessonBiasPlaygrounds?.renderParagraph(l.id,legacyIndex,j)||'')+(window.visionlabCvEditorial?.renderParagraph(s,j)||'');
         const here=placements.filter(figure=>figure.section===legacyIndex&&figure.paragraph===j&&!placed.has(figure.key));
         if(here.length){here.forEach(figure=>placed.add(figure.key));return markup+here.map(figure=>window.lessonFigures.render(l,figure.key)).join('')}
         return markup;
@@ -74,9 +74,11 @@
       const tensorOperations=l.id==='tensor'&&s.playgroundId==='tensor-operations'?tensorOperationsMarkup():'';
       const tensorExplorer=l.id==='tensor'&&s.playgroundId==='tensor-explorer'?tensorExplorerMarkup():'';
       const transposeExplorer=l.id==='tensor'&&s.playgroundId==='tensor-transpose'?tensorTransposeMarkup():'';
-      const lessonPlayground=window.lessonPlaygrounds?.render(l.id,s.playgroundId||i,legacyIndex)||'';
+      const cvPlayers=l.cvEdited?window.visionlabCvEditorial?.renderPlayers(s):null;
+      const lessonPlayground=(cvPlayers?.main??window.lessonPlaygrounds?.render(l.id,s.playgroundId||i,legacyIndex)??'')+(cvPlayers?.extra||'');
       const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,legacyIndex)||'';
-      const content=paragraphs+advancedBlocks+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',legacyIndex,s.id):'');
+      const cvWorkshop=s.cvWorkshop?(window.renderFoundationWorkshop?.(l)||''):'';
+      const content=paragraphs+cvWorkshop+advancedBlocks+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',legacyIndex,s.id):'');
       const optional=s.depth==='advanced'?'<details class="advanced-section"><summary>选学深入内容 · 点击展开</summary><div class="advanced-section-body">'+content+'</div></details>':content;
       const stableId=s.id||l.id+'-s'+String(legacyIndex+1).padStart(2,'0');
       return '<section class="text-section" id="section-'+stableId+'" data-lesson-id="'+l.id+'" data-section-id="'+stableId+'" data-section-index="'+i+'"><span class="legacy-section-anchor" id="section-'+(legacyIndex+1)+'" aria-hidden="true"></span><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+optional+'</section>';
@@ -364,7 +366,7 @@
     const steps=guidedSteps
       ?'<div class="worked-example-steps"><h3>分步推演</h3><ol id="worked-steps-'+esc(l.id)+'" data-worked-list>'+worked.steps.map((step,index)=>'<li data-worked-step-item="'+(index+1)+'"><button type="button" class="worked-step-index" data-worked-jump="'+(index+1)+'" aria-label="跳到步骤 '+(index+1)+'" aria-current="'+(index===0?'step':'false')+'">步骤 '+String(index+1).padStart(2,'0')+'</button><div class="worked-step-content">'+rich(step)+'</div></li>').join('')+'</ol>'
         +'<div class="worked-example-controls" role="group" aria-label="例题步骤控制"><button type="button" class="worked-control-button" data-worked-prev disabled>上一步</button><output data-worked-progress>第 1 / '+count+' 步</output><button type="button" class="worked-control-button" data-worked-next>下一步</button><button type="button" class="worked-control-button is-quiet" data-worked-toggle-all aria-expanded="false" aria-controls="worked-steps-'+esc(l.id)+'">显示全部步骤</button><button type="button" class="worked-control-button is-quiet" data-worked-reset>从头演示</button></div>'
-        +'<p class="worked-example-status" data-worked-status role="status" aria-live="polite">图中已高亮第 1 步对应内容。</p></div>':'';
+        +'<p class="worked-example-status" data-worked-status role="status" aria-live="polite">已显示第 1 步。</p></div>':'';
     const solutionLabel=guidedSteps?'结论':'解析';
     const guidedAttrs=guidedSteps?' data-worked-example data-worked-step="1" data-worked-expanded="false"':'';
     const conclusion=guidedSteps?'<p data-worked-conclusion hidden><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p>':'<p><strong>'+solutionLabel+'</strong>　'+rich(worked.solution)+'</p>';
@@ -390,7 +392,7 @@
     const progress=root.querySelector('[data-worked-progress]');
     if(progress)progress.textContent='第 '+current+' / '+count+' 步';
     const status=root.querySelector('[data-worked-status]');
-    if(status)status.textContent=expanded?'已显示全部 '+count+' 步，图中高亮第 '+current+' 步。':'已显示到第 '+current+' 步，共 '+count+' 步；图中高亮对应内容。';
+    if(status)status.textContent=(expanded?'已显示全部 '+count+' 步。':'已显示到第 '+current+' 步，共 '+count+' 步。')+(figure?'图中高亮第 '+current+' 步。':'');
     const previous=root.querySelector('[data-worked-prev]');
     const next=root.querySelector('[data-worked-next]');
     if(previous)previous.disabled=current<=1;
@@ -444,9 +446,10 @@
       +(l.keypoints?'<li><a href="#chapter-review">本章要点</a></li>':'')
       +(l.chapterExercises?.length?'<li><a href="#chapter-quiz">本章综合练习</a></li>':'')
       +'<li><a href="#chapter-notes">笔记与进度</a></li>';
-    const foundation=window.renderFoundationStart?.(l)||'';
-    const beginnerWorkshop=window.renderFoundationWorkshop?.(l)||'';
-    const beginnerDepth=window.renderFoundationDepth?.(l)||'';
+    const termGuide=window.renderFoundationStart?.(l)||'';
+    const foundation=l.cvEdited?'<details class="cv-term-reference"><summary>本课名词速查 · 阅读正文时可随时展开</summary>'+termGuide+'</details>':termGuide;
+    const beginnerWorkshop=l.cvEdited?'':window.renderFoundationWorkshop?.(l)||'';
+    const beginnerDepth=l.cvEdited?'':window.renderFoundationDepth?.(l)||'';
     const lossFoundation=l.id==='losses'?(window.renderLossFoundationChain?.()||''):'';
     const articleContent=articleSections(l);
     const examples=workedExampleMarkup(l);

@@ -615,6 +615,7 @@
       if(record.type==='characterData'){decorate(mutationRoot(record.target,content));return;}
       record.addedNodes.forEach(node=>{if(node.nodeType===Node.TEXT_NODE||node.nodeType===Node.ELEMENT_NODE)decorate(mutationRoot(node,content));});
     })).observe(content,{childList:true,subtree:true,characterData:true});}
+    window.visionlabGlossary.dismiss=()=>{clearTimeout(hideTimer);hideTimer=0;hideShort();close(false,true);};
     window.visionlabGlossary.initialized=true;
   }
   window.visionlabGlossary={items,byId,lookup,chip,search:renderSearch,matchesIn,termsIn,firstTerm,decorate,init};

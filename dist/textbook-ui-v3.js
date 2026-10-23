@@ -357,6 +357,10 @@
     const links=l.prereqLinks?.length?'<div class="prerequisite-links"><strong>需要补基础？从这里开始：</strong><ul>'+l.prereqLinks.map(item=>'<li><a href="'+esc(item.href||('#lesson/'+item.id))+'">'+esc(item.title)+' ↗</a></li>').join('')+'</ul></div>':'';
     return '<section class="learning-contract"><div><h2>学完本章，你将能够</h2><ul>'+l.goals.map(g=>'<li>'+rich(g)+'</li>').join('')+'</ul></div><p><strong>先修知识</strong><span>'+rich(l.prereq||'可从上一章接着阅读；不需要提前掌握本领域全部数学。')+'</span>'+links+'</p></section>';
   }
+  function beginnerReadingMarkup(l){
+    const guide=l.beginnerReading;if(!guide)return '';
+    return '<aside class="yl-reading-guide" aria-label="新手阅读建议"><h2>'+esc(guide.title)+'</h2><p>'+esc(guide.description)+'</p><ol>'+guide.steps.map(([target,label])=>{const [id,section]=target.split('#');return '<li><a href="#lesson/'+esc(id)+(section?'/section-'+esc(section):'')+'">'+esc(label)+' →</a></li>';}).join('')+'</ol></aside>';
+  }
   function workedExampleMarkup(l){
     if(!l.worked)return '';
     const worked=l.worked;
@@ -469,7 +473,7 @@
     return '<article class="textbook-page"><div class="reading-progress" id="reading-progress" role="progressbar" aria-label="章节阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阅读进度 0%"><span id="reading-progress-fill"></span></div><div class="book-toolbar"><a href="#courses/'+l.group+'">← 返回'+groups[l.group].name+'目录</a><span>第 '+String(courseNumber).padStart(2,'0')+' '+courseUnit+'　/　'+courseCount+' '+courseUnit+'</span></div>'
       +'<header class="chapter-heading"><p class="chapter-kicker">'+groups[l.group].label+'　·　'+l.level+'</p><h1>'+l.title+'</h1><p class="chapter-deck">'+l.desc+'</p><div class="chapter-byline"><span>◷ 约 '+l.time+' 分钟阅读</span><span>📖 概念讲解 · 图文示意 · 例题 · 自测</span>'+videoLinks+'</div></header>'
       +'<div class="chapter-layout"><aside class="chapter-toc'+(tocCollapsed?' is-collapsed':'')+'" aria-label="本章导航"><div class="chapter-toc-heading"><strong>本章导航</strong><button class="chapter-toc-toggle" type="button" data-toggle-toc aria-expanded="'+(!tocCollapsed)+'" aria-controls="chapter-toc-list">'+(tocCollapsed?'展开':'收起')+'</button></div><ol id="chapter-toc-list"'+(tocCollapsed?' hidden':'')+'>'+tocItems+'</ol></aside>'
-      +'<div class="chapter-body">'+(window.visionlabYoloCurriculum?.renderContext(l)||window.visionlabFoundationCurriculum?.renderContext(l)||'')+objectiveBox(l)+foundation+beginnerWorkshop+beginnerDepth+lossFoundation+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
+      +'<div class="chapter-body">'+(window.visionlabYoloCurriculum?.renderContext(l)||window.visionlabFoundationCurriculum?.renderContext(l)||'')+beginnerReadingMarkup(l)+objectiveBox(l)+foundation+beginnerWorkshop+beginnerDepth+lossFoundation+articleContent+examples+code+keypoints.replace('<section class="keypoint-review">','<section class="keypoint-review" id="chapter-review">')+quiz+source
       +'<section class="chapter-notes" id="chapter-notes"><span class="chapter-kicker">MY STUDY NOTES</span><h2>写下你的思考</h2><p>用自己的话总结一个概念，或记下尚未解决的问题。笔记保存在当前浏览器。</p><textarea class="note-input" id="lesson-note" placeholder="例如：我现在可以用自己的话解释…… / 我还不确定的是……" aria-label="课程笔记">'+esc(state.notes[id]||'')+'</textarea><div class="lesson-actions"><button class="secondary" data-save-note="'+id+'">保存笔记</button><span id="note-status" class="saved" role="status"></span><button class="primary complete-button" data-complete="'+id+'">'+(state.done.includes(id)?'已完成 · 点击撤销':'标记本章已完成 ✓')+'</button></div></section>'
       +'<nav class="chapter-pagination">'+(prev?'<a href="#lesson/'+prev.id+'"><small>上一章</small><strong>← '+prev.title+'</strong></a>':'<a href="#path"><small>学习路线</small><strong>浏览课程阶段 →</strong></a>')+(next?'<a class="pagination-next" href="#lesson/'+next.id+'"><small>接下来</small><strong>'+next.title+' →</strong></a>':'<a class="pagination-next" href="#path"><small>全部完成</small><strong>回顾完整学习路线 →</strong></a>')+'</nav></div></div></article>';
   }
@@ -487,6 +491,7 @@
     document.getElementById('crumb').textContent=crumb;
     document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='lesson'?'courses':route)));
     document.querySelectorAll('[data-course-count]').forEach(badge=>{badge.textContent=String(lessons.length);badge.setAttribute('aria-label',lessons.length+' 节课程')});
+    window.visionlabGlossary?.dismiss?.();
     document.getElementById('content').innerHTML=content;
     const headerSearch=document.getElementById('search');
     headerSearch.placeholder=route==='dictionary'?'搜索术语、英文名或 API…':'搜索课程、概念或代码…';

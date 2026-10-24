@@ -465,3 +465,21 @@ code[data-glossary-open]:hover,code[data-glossary-open]:focus-visible{outline:2p
 .bw-class-bars b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#73ad92,#8a77b8)}
 .bw-size-bars{padding-top:10px;border-top:1px solid #ece8f2}
 @media(max-width:700px){.bw-class-distribution{padding:12px}.bw-class-bars>div{grid-template-columns:112px minmax(80px,1fr);gap:7px}}
+
+/* 梯度有限差分示意：公式、曲线和读数保持同一组数值。 */
+.bw-gradient-equations,.bw-finite-difference{margin:14px 0;padding:14px;border:1px solid #e8e3ef;border-radius:9px;background:#faf9fc;color:#4d5968}
+.bw-gradient-equations p{margin:8px 0;line-height:1.9}
+.bw-gradient-equations small{display:block;margin-top:8px;color:#6e7886;line-height:1.7}
+.bw-finite-difference h4{margin:0 0 7px;color:#4e4275;font-size:14px}
+.bw-finite-difference>p{margin:7px 0;color:#596575;font-size:12px;line-height:1.8}
+.bw-finite-formula{margin:12px 0;padding:10px;border-radius:7px;background:#fff;text-align:center;overflow-x:auto}
+.bw-gradient-plot{margin:12px 0;padding:10px;border:1px solid #e8e3ef;border-radius:8px;background:#fff}
+.bw-gradient-plot svg{display:block;width:100%;height:auto}
+.bw-gradient-plot text{fill:#596575;font-size:10px}
+.bw-gradient-plot figcaption{margin-top:6px;color:#6e7886;font-size:11px;line-height:1.6}
+.bw-finite-readouts{grid-template-columns:repeat(auto-fit,minmax(118px,1fr))}
+.bw-finite-readouts>div{display:grid;gap:4px;padding:9px;border:1px solid #eeeaf3;border-radius:8px;background:#fff}
+.bw-finite-readouts small{color:#788294;font-size:10px;line-height:1.5}
+.bw-finite-readouts strong{color:#54478b;font-size:13px;font-variant-numeric:tabular-nums}
+.bw-finite-status{padding:9px;border-left:3px solid #8974c1;background:#f3f0fa}
+@media(max-width:700px){.bw-gradient-equations,.bw-finite-difference{padding:11px}.bw-finite-readouts{grid-template-columns:repeat(2,minmax(0,1fr))}}

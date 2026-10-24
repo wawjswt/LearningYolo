@@ -12,7 +12,7 @@
     if(!old)throw new Error('Missing curriculum section '+origin+':'+legacy);
     const sourceLegacy=Number.isInteger(old.legacyIndex)?old.legacyIndex:legacy;
     const originalPlayground=old.playgroundId||sourceLegacy;
-    const section={...old,paragraphs:(old.paragraphs||[]).slice(),sourceLesson:origin,sourceLegacyIndex:sourceLegacy};
+    const section={...old,paragraphs:(old.paragraphs||[]).slice(),sourceLesson:origin,sourceLegacyIndex:sourceLegacy,sourcePlaygroundId:originalPlayground};
     routes.set(origin+'/section-'+old.id,{lesson:destination,section:old.id});
     routes.set(origin+'/section-'+(sourceLegacy+1),{lesson:destination,section:old.id});
     routes.set(origin+'/section-'+origin+'-s'+(sourceLegacy+1),{lesson:destination,section:old.id});

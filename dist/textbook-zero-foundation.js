@@ -233,6 +233,9 @@
   function termChip(id){return window.visionlabGlossary?.chip(id)||'';}
   function renderStart(lesson){
     const item=lesson?.foundation;if(!item)return '';
+    if(lesson.curriculumKey==='dl'){
+      return '<details class="advanced-section dl-term-quickref"><summary>本课名词速查 · 需要时点开</summary><div class="advanced-section-body"><p>正文会在第一次用到这些词时解释；这里保留词条入口，方便随时查阅。</p><div class="zero-start-terms">'+item.terms.map(termChip).join('')+'</div></div></details>';
+    }
     const steps=beginnerSteps[lesson.id]||[],stepMarkup=steps.length?'<ol class="zero-start-steps" aria-label="本课零基础学习步骤">'+steps.map((step,index)=>'<li><span aria-hidden="true">'+(index+1)+'</span><div><strong>'+escapeHtml(step[0])+'</strong><p>'+escapeHtml(step[1])+'</p></div></li>').join('')+'</ol>':'';
     return '<section class="zero-start-card" aria-labelledby="zero-start-'+escapeHtml(lesson.id)+'"><div class="zero-start-heading"><span class="chapter-kicker">ZERO-FOUNDATION · 零基础起点</span><h2 id="zero-start-'+escapeHtml(lesson.id)+'">'+escapeHtml(item.title)+'</h2><p class="zero-start-question">'+escapeHtml(item.question)+'</p></div><div class="zero-start-grid"><div class="zero-start-purpose"><strong>这节要解决什么</strong><p>'+escapeHtml(item.why)+'</p></div><div class="zero-start-example"><strong>用一个具体例子理解</strong><p>'+escapeHtml(item.example)+'</p></div></div><div class="zero-start-steps-wrap"><strong>先把本课名词讲清楚</strong>'+stepMarkup+'</div><div class="zero-start-terms"><strong>遇到新词可以点开看解释</strong><div>'+item.terms.map(termChip).join('')+'</div></div></section>';
   }

@@ -25,31 +25,31 @@
       },
       sections:[
         {title:'从一个样本手算到参数真的改变',paragraphs:[
-          '设输入 x=2、标签 y=5，当前 w=1、b=0。先前向：ŷ=wx+b=2；再计算误差 e=ŷ−y=−3。为了让求导更简洁，暂用 L=½(ŷ−y)²，得到 L=4.5。这里的 ½ 是人为选的常数；PyTorch 的 MSELoss 默认没有这个 ½，所以比较梯度时必须先核对损失定义。',
-          '先求 ∂L/∂ŷ=e=−3，再沿线性层传回：∂ŷ/∂w=x=2，∂ŷ/∂b=1。因此 ∂L/∂w=−6，∂L/∂b=−3。负号意味着在当前位置稍微增加 w 或 b，会让预测向标签 5 靠近。梯度是对参数变化的敏感度，并不是参数下一步应该被设置成的数值。',
-          '学习率取 η=0.1，同时使用旧参数处算出的梯度：w_new=1−0.1×(−6)=1.6，b_new=0−0.1×(−3)=0.3。用新参数重新前向，得到 ŷ_new=1.6×2+0.3=3.5、L_new=½(3.5−5)²=1.125。损失从 4.5 降到 1.125，这才构成一次可以核查的完整更新。',
+          '设输入 x=2、标签 y=5，当前 w=1、b=0。先前向：ŷ=wx+b=2；再计算误差 e=ŷ−y=−3。本例使用标准单样本平方误差 L=(ŷ−y)²，所以 L=9；这里不额外乘 ½，与 PyTorch 的 MSELoss 默认约定一致。',
+          '先求 ∂L/∂ŷ=2(ŷ−y)=−6，再沿线性层传回：∂ŷ/∂w=x=2，∂ŷ/∂b=1。因此 ∂L/∂w=−12，∂L/∂b=−6。负号意味着在当前位置稍微增加 w 或 b，会让预测向标签 5 靠近。梯度是对参数变化的敏感度，并不是参数下一步应该被设置成的数值。',
+          '学习率取 η=0.05，同时使用旧参数处算出的梯度：w_new=1−0.05×(−12)=1.6，b_new=0−0.05×(−6)=0.3。用新参数重新前向，得到 ŷ_new=1.6×2+0.3=3.5、L_new=(3.5−5)²=2.25。损失从 9 降到 2.25，这才构成一次可以核查的完整更新。',
           '“同时更新”指两个梯度都来自同一组旧参数；不要先改 w，再用改后的 w 重新算 b 的梯度，否则已经换了更新规则。多样本时，一个参数还要兼顾不同样本：某张图的误差减小，不代表整个数据集平均误差都一定减小。'
         ],code:`import torch
 
 w = torch.nn.Parameter(torch.tensor(1.0))
 b = torch.nn.Parameter(torch.tensor(0.0))
-optimizer = torch.optim.SGD([w, b], lr=0.1)
+optimizer = torch.optim.SGD([w, b], lr=0.05)
 x, y = torch.tensor(2.0), torch.tensor(5.0)
 
 optimizer.zero_grad(set_to_none=True)
 prediction = w * x + b
-loss = 0.5 * (prediction - y).square()
+loss = (prediction - y).square()
 loss.backward()
-print('before:', prediction.item(), loss.item())  # 2.0, 4.5
-print('grad:', w.grad.item(), b.grad.item())       # -6.0, -3.0
+print('before:', prediction.item(), loss.item())  # 2.0, 9.0
+print('grad:', w.grad.item(), b.grad.item())       # -12.0, -6.0
 optimizer.step()
 with torch.no_grad():
     prediction_after = w * x + b
-    loss_after = 0.5 * (prediction_after - y).square()
+    loss_after = (prediction_after - y).square()
 print('after:', w.item(), b.item())  # approximately 1.6, 0.3
-print(prediction_after.item(), loss_after.item())  # 3.5, 1.125`,
+print(prediction_after.item(), loss_after.item())  # 3.5, 2.25`,
           codeNote:'可直接运行。浮点表示可能让 1.6 显示为 1.60000002 左右，比较时用适当容差。',
-          exercise:question('x=2、y=5、w=1、b=0，L=½(ŷ−y)²，η=0.1。一次 SGD 更新后的 w、b 是什么？',['1.6、0.3','−6、−3','0.4、−0.3'],0,'梯度是 −6、−3，参数要减去学习率乘梯度，得到 1.6、0.3。梯度数值与新参数数值不同。')},
+          exercise:question('x=2、y=5、w=1、b=0，L=(ŷ−y)²，η=0.05。一次 SGD 更新后的 w、b 是什么？',['1.6、0.3','−12、−6','0.4、−0.3'],0,'梯度是 −12、−6；参数要减去学习率乘梯度，得到 1.6、0.3。梯度数值与新参数数值不同。')},
         {title:'平均损失、共享参数与梯度相加',paragraphs:[
           '对两个样本使用同一个 w，令 x₁=1、y₁=2，x₂=2、y₂=2，当前 w=0、不使用偏置。各样本损失为 Lᵢ=½(wxᵢ−yᵢ)²，其梯度分别是 −2 与 −4。若总损失取平均 L=(L₁+L₂)/2，总梯度就是 (−2−4)/2=−3；若取和，则是 −6。',
           '这说明 mean 与 sum 不只改变日志显示的数字，也改变传给优化器的梯度尺度。对普通 SGD，在其他条件相同时，把整个损失乘以常数 c 会把梯度与本次梯度更新也乘以 c。对带有自适应缩放、裁剪或额外正则项的流程，不能简单宣布它总与学习率乘 c 完全等价。',

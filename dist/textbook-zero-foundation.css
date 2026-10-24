@@ -483,3 +483,31 @@ code[data-glossary-open]:hover,code[data-glossary-open]:focus-visible{outline:2p
 .bw-finite-readouts strong{color:#54478b;font-size:13px;font-variant-numeric:tabular-nums}
 .bw-finite-status{padding:9px;border-left:3px solid #8974c1;background:#f3f0fa}
 @media(max-width:700px){.bw-gradient-equations,.bw-finite-difference{padding:11px}.bw-finite-readouts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* 第四项：参数更新方式并排比较 */
+.bw-update-comparison{margin:16px 0;padding:16px;border:1px solid #ddd5ee;border-radius:12px;background:linear-gradient(145deg,#faf9fd,#fff)}
+.bw-update-comparison h4{margin:0 0 8px;color:#43366e;font-size:16px}
+.bw-update-comparison>p,.bw-update-explain p{color:#4d5a69;font-size:13px;line-height:1.85}
+.bw-update-explain{padding:12px 14px;border-left:3px solid #8170b4;background:#f3f0fa}
+.bw-update-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.bw-update-results article{padding:12px;border:1px solid #e5e1eb;border-radius:9px;background:#fff}
+.bw-update-results article.is-selected{border-color:#8270b7;box-shadow:0 0 0 2px #eee9f8 inset}
+.bw-update-results h5{margin:0 0 6px;color:#4e4275}
+.bw-update-results p{margin:4px 0;color:#455366;font-size:13px}
+.bw-update-code{overflow:auto;margin:10px 0;padding:14px;border-radius:8px;background:#242b3a;color:#f4f5fa;font-size:12px;line-height:1.7}
+.bw-update-code[hidden]{display:none}
+@media(max-width:700px){.bw-update-comparison{padding:12px}.bw-update-results{grid-template-columns:1fr}.bw-update-code{font-size:11px}}
+
+/* 第五项：分类从原始分数贯穿到损失与梯度 */
+.softmax-flow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;gap:8px;margin:14px 0}
+.softmax-flow>div{display:flex;min-width:0;flex-direction:column;justify-content:center;gap:6px;padding:10px;border:1px solid #e5e1eb;border-radius:8px;background:#fff}
+.softmax-flow small{color:#756995;font-size:11px}
+.softmax-flow strong{overflow-wrap:anywhere;color:#344054;font-size:13px}
+.softmax-flow>span{align-self:center;color:#8b7ab3}
+.softmax-row.is-target{padding:4px 6px;border-radius:7px;background:#f1edf9}
+.softmax-loss-readout,.softmax-gradient-note{margin:12px 0;padding:14px;border:1px solid #e7e3ed;border-radius:9px;background:#faf9fc}
+.softmax-loss-readout p,.softmax-gradient-note p{margin:6px 0;color:#4f5c6b;font-size:13px;line-height:1.85}
+.softmax-gradient-note h4{margin:0 0 7px;color:#4e4275;font-size:15px}
+.softmax-gradient-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.softmax-gradient-grid>div{display:flex;justify-content:space-between;gap:8px;padding:9px 11px;border-radius:7px;background:#f0eef5;color:#455366;font-size:12px}
+.softmax-gradient-grid strong{font-variant-numeric:tabular-nums;color:#493b70}
+@media(max-width:760px){.softmax-flow{grid-template-columns:1fr}.softmax-flow>span{transform:rotate(90deg)}.softmax-gradient-grid{grid-template-columns:1fr}}

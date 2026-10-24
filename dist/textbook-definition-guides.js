@@ -14,7 +14,7 @@
       "neuron"
     ],
     "区分任务、计算规则和计算单元，理解模型怎样把输入变为输出。",
-    "输入 3，规则“乘 2 再加 1”输出 7。把乘数和加数做成可调整参数，就得到一个最小模型；识别猫需要更多数据和更复杂的计算。"
+    "输入 x=2，权重 w=1、偏置 b=0，模型按 z=wx+b 算出 2。训练再用答案检查这个预测是否合适，并调整 w、b；这只是单个数字的玩具模型，不是图片识别器。"
   ],
   "ai-layers": [
     [
@@ -69,7 +69,7 @@
       "bias"
     ],
     "能逐项说明输入、权重与偏置怎样组成一个神经元的计算。",
-    "输入为 2 和 1，权重为 3 和 −2，偏置为 1：加权结果是 3×2−2×1+1=5。5 是计算结果，是否再变成概率取决于后续函数。"
+    "先只用一个输入：x=2、w=1、b=0，按 z=wx+b 得到 2。z 是模型这一步算出的分数；若后续任务需要概率，才再做对应的概率转换。"
   ],
   "network-activation": [
     [
@@ -96,7 +96,7 @@
       "regression"
     ],
     "先认清题型与监督答案，再解释损失为什么这样计分。",
-    "真实温度为 20、预测为 22，误差是 2，平方损失为 4；如果 0、1、2 表示三种动物，这些数字只是类别编号，不能按温度差计算。"
+    "沿用小回归例子：输入 x=2、w=1、b=0，预测为 2；真实值 y=5，误差 e=2−5=−3，均方误差 e²=9。若是分类，标签代表类别，不能把类别编号当作可相减的温度。"
   ],
   "loss-probabilities": [
     [
@@ -123,7 +123,7 @@
       "gradient"
     ],
     "先理解一个数的局部变化率，再理解多个参数的梯度。",
-    "L(w)=(w−3)² 在 w=1 的导数为 −4：把 w 稍微增大，损失局部趋向降低。多个参数就分别计算这种变化率，再按参数顺序组成向量。"
+    "固定 x=2、b=0、y=5，只调整 w：L=(2w−5)²，导数 dL/dw=4(2w−5)。w=1 时梯度为 −12，说明在这一点附近把 w 增大，会让损失下降。"
   ],
   "gradient-chain-rule": [
     [
@@ -150,7 +150,7 @@
       "learning-rate"
     ],
     "用一次可手算更新认识优化器，明确梯度方向与步幅系数的关系。",
-    "参数 w=2、损失梯度 g=−3、学习率 η=0.1，普通 SGD 更新为 w−ηg=2.3。负梯度让这一个参数增大；不是所有参数都会一起减小。"
+    "沿用同一个例子：w=1、梯度 g=−12、学习率 η=0.05，普通 SGD 得 w−ηg=1.6。负梯度让这个参数增大；其他参数要按各自的梯度更新。"
   ],
   "optimizer-momentum": [
     [
@@ -187,7 +187,7 @@
       "iteration"
     ],
     "把一次批次计算、一轮数据遍历和一次参数更新放到正确层级。",
-    "10 个样本、每批 4 个并保留尾批，一轮是 4、4、2 共 3 批。不累积梯度时常更新 3 次；若把全部 3 批梯度累积后再 step，则只更新 1 次。"
+    "先看一个样本的完整更新：x=2、y=5、初始 w=1、b=0，预测 2、MSELoss=9；反向得到梯度 w=−12、b=−6；学习率 0.05 更新后 w=1.6、b=0.3，预测变成 3.5，损失为 2.25。batch 与 epoch 再描述把这套过程重复到一组、整份数据的层级。"
   ],
   "checkpoints": [
     [
@@ -917,5 +917,58 @@
     }
     lesson.foundation={...lesson.foundation,title:lesson.title,question:lesson.desc,why,example,terms:terms.slice()};
     foundation.beginnerSteps[lesson.id]=terms.map(id=>glossary.byId[id]).filter(Boolean).map(item=>[item.title,item.plainExplanation]);
+  }
+  const addParagraph=(id,paragraph)=>{
+    const lesson=catalog.find(item=>item.id===id);
+    const section=lesson?.sections?.[0];
+    if(section&&Array.isArray(section.paragraphs))section.paragraphs.push(paragraph);
+  };
+  addParagraph('network','同一组数字会贯穿后面的几课：输入 x=2、权重 w=1、偏置 b=0，模型先算出分数 z=wx+b=2。这里的 2 是计算分数；要不要转成概率，由后续任务决定。');
+  addParagraph('losses','先用一个回归例子看损失怎样计分：输入 x=2、w=1、b=0 时预测为 2；真实值是 5，误差为 −3，均方误差为 (2−5)²=9。分类任务会用标签概率和交叉熵，后文另算。');
+  addParagraph('gradient','接着沿用这个例子，只调整 w：L=(2w−5)²，因此 dL/dw=4(2w−5)；w=1 时梯度为 −12。梯度为负表示在当前位置增大 w 会让损失下降。');
+  addParagraph('optimizer','用学习率 η=0.05 做普通 SGD：w_new=1−0.05×(−12)=1.6。此例中负梯度令权重增加；新预测为 3.2，平方误差从 9 降到 3.24。');
+  const trainingLesson=catalog.find(item=>item.id==='training-loop');
+  if(trainingLesson){
+    trainingLesson.language='Python / PyTorch';
+    trainingLesson.code=[
+      'import torch',
+      'from torch import nn',
+      '',
+      '# 一个输入、一个输出；先把参数设成可手算的值',
+      'model = nn.Linear(1, 1)',
+      'with torch.no_grad():',
+      '    model.weight.fill_(1.0)',
+      '    model.bias.zero_()',
+      '',
+      'x = torch.tensor([[2.0]])',
+      'target = torch.tensor([[5.0]])',
+      'loss_fn = nn.MSELoss()  # 默认对元素取平均，不额外乘 1/2',
+      'optimizer = torch.optim.SGD(model.parameters(), lr=0.05)',
+      '',
+      'optimizer.zero_grad()',
+      'prediction = model(x)',
+      'loss = loss_fn(prediction, target)',
+      'loss.backward()',
+      'optimizer.step()',
+      '',
+      'with torch.no_grad():',
+      '    prediction_after = model(x)',
+      '    loss_after = loss_fn(prediction_after, target)',
+      '',
+      'print("更新前：", prediction.item(), loss.item())          # 2.0, 9.0',
+      'print("更新后：", prediction_after.item(), loss_after.item())  # 3.5, 2.25',
+      'print("参数：", model.weight.item(), model.bias.item())      # 1.6, 0.3'
+    ].join('\n');
+    trainingLesson.codeGuide={
+      where:'在安装好 PyTorch 的本地 Python 环境中运行；暂时不需要图片数据集。',
+      input:'一个数值输入 x=2 和正确答案 target=5；模型参数手动设为 weight=1、bias=0，便于把每一步与手算对上。',
+      output:'更新前预测为 2、MSE 为 9；更新后 weight=1.6、bias=0.3，预测为 3.5、MSE 为 2.25。MSELoss 默认计算平方误差的平均值，不额外乘 1/2；单样本时损失是 9，weight、bias 的梯度分别是 −12、−6。学习率 0.05 便于核对参数更新。'
+    };
+    trainingLesson.sources=trainingLesson.sources||[];
+    for(const source of [
+      {label:'PyTorch Linear：输入与 weight、bias 的计算',url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html'},
+      {label:'PyTorch MSELoss：平方误差与默认平均方式',url:'https://docs.pytorch.org/docs/stable/generated/torch.nn.MSELoss.html'},
+      {label:'PyTorch SGD：梯度下降更新接口',url:'https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html'}
+    ])if(!trainingLesson.sources.some(item=>item.url===source.url))trainingLesson.sources.push(source);
   }
 })();

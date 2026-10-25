@@ -45,6 +45,89 @@ const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
+function mountWorkshop(id, collections = {}) {
+  const nodes = new Map();
+  const node = selector => {
+    if (!nodes.has(selector)) nodes.set(selector, {
+      value: '', textContent: '', innerHTML: '', dataset: {}, disabled: false,
+      events: {}, attributes: {},
+      addEventListener(type, handler) { this.events[type] = handler; },
+      setAttribute(name, value) { this.attributes[name] = value; },
+      classList: { toggle() {} }, querySelector: node
+    });
+    return nodes.get(selector);
+  };
+  const root = { dataset: { bwRoot: id }, querySelector: node,
+    querySelectorAll(selector) { return collections[selector] || []; } };
+  const original = context.document.querySelectorAll;
+  context.document.querySelectorAll = selector => selector === '[data-bw-root]' ? [root] : [];
+  context.initializeFoundationWorkshops();
+  context.document.querySelectorAll = original;
+  return node;
+}
+
+test('gradient ledger separates fresh graphs, gradient accumulation, step, and clearing', () => {
+  const actions = ['forward', 'backward', 'clear', 'step', 'reset'].map(action => ({
+    dataset: { bwLedgerAction: action }, addEventListener(type, handler) { this.click = handler; }
+  }));
+  const node = mountWorkshop('gradient-diagnostics', { '[data-bw-ledger-action]': actions });
+  const click = action => actions.find(button => button.dataset.bwLedgerAction === action).click();
+  const read = key => node('[data-bw-ledger-' + key + ']').textContent;
+  click('step'); assert.equal(read('w'), '1.000');
+  click('forward'); assert.equal(read('loss'), '9.000');
+  click('backward'); assert.equal(read('grad'), '−12.000'); assert.equal(read('w'), '1.000');
+  click('backward'); assert.equal(read('grad'), '−12.000'); assert.match(read('status'), /已释放/);
+  click('forward'); click('backward'); assert.equal(read('grad'), '−24.000');
+  click('step'); assert.equal(read('w'), '2.200'); assert.equal(read('grad'), '−24.000');
+  assert.equal(read('loss'), '9.000', 'step does not recalculate the old loss');
+  click('forward'); assert.equal(read('loss'), '0.360');
+  click('clear'); assert.equal(read('grad'), 'None'); assert.equal(read('w'), '2.200');
+  click('reset'); assert.equal(read('w'), '1.000'); assert.equal(read('loss'), '尚未计算');
+});
+
+test('learning rate demo reaches an increasing loss and Adam belongs to the next course', () => {
+  const slider = { value: '0.05', addEventListener(type, handler) { this.input = handler; } };
+  // The initializer queries this slider once; inject it through the root node map.
+  const original = context.document.querySelectorAll;
+  const fields = new Map();
+  const root = { dataset: { bwRoot: 'optimizer' }, querySelector(selector) {
+    if (selector === '[data-bw-lr-slider]') return slider;
+    if (!fields.has(selector)) fields.set(selector, {});
+    return fields.get(selector);
+  } };
+  context.document.querySelectorAll = () => [root];
+  context.initializeFoundationWorkshops(); context.document.querySelectorAll = original;
+  slider.value = '0.5'; slider.input();
+  assert.equal(fields.get('[data-bw-lr-next]').textContent, '7.00');
+  assert.equal(fields.get('[data-bw-lr-loss]').textContent, '81.00');
+  assert.match(fields.get('[data-bw-lr-note]').textContent, /更大/);
+  assert.doesNotMatch(context.renderFoundationWorkshop('optimizer'), /data-bw-adam-step/);
+  assert.match(context.renderFoundationWorkshop('optimizer-momentum'), /data-bw-adam-step/);
+});
+
+test('batch demonstration counts an update only after its third phase', () => {
+  const cells = Array.from({ length: 4 }, () => ({
+    classList: { toggle() {} }, small: {}, querySelector() { return this.small; }
+  }));
+  const nodes = new Map();
+  const node = selector => {
+    if (!nodes.has(selector)) nodes.set(selector, { textContent: '', innerHTML: '', disabled: false,
+      addEventListener(type, handler) { this.click = handler; }, querySelectorAll() { return cells; } });
+    return nodes.get(selector);
+  };
+  const original = context.document.querySelectorAll;
+  context.document.querySelectorAll = () => [{ dataset: { bwRoot: 'training-loop' }, querySelector: node }];
+  context.initializeFoundationWorkshops(); context.document.querySelectorAll = original;
+  const next = node('[data-bw-loop-next]'), counter = node('[data-bw-loop-step]');
+  next.click(); next.click(); assert.equal(counter.textContent, '0 / 4 次更新已完成');
+  next.click(); assert.equal(counter.textContent, '1 / 4 次更新已完成');
+  assert.match(node('[data-bw-loop-label]').textContent, /第 1 批/);
+  for (let i = 3; i < 12; i++) next.click();
+  assert.equal(counter.textContent, '4 / 4 次更新已完成'); assert.equal(next.disabled, true);
+  assert.ok(cells.every(cell => cell.small.textContent === '2 张 · 已更新'));
+  node('[data-bw-loop-reset]').click(); assert.equal(counter.textContent, '0 / 4 次更新已完成');
+});
+
 test('beginner short courses with custom examples have scoped explanations, worked steps and code', () => {
   for (const id of ids) {
     const lesson = courses.find(l => l.id === id);

@@ -43,9 +43,9 @@ for (const [, src] of html.matchAll(/<script src="([^"?]+)(?:\?[^"]*)?"><\/scrip
 }
 const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
-const ids = courses.filter(l => l.curriculumKey === 'dl').slice(0, 12).map(l => l.id);
+const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
-test('first twelve short courses have their own scoped explanation, worked steps and code', () => {
+test('beginner short courses with custom examples have scoped explanations, worked steps and code', () => {
   for (const id of ids) {
     const lesson = courses.find(l => l.id === id);
     assert.ok(lesson.foundationDepth?.parts.length >= 3, id + ': missing short-course explanation');
@@ -54,6 +54,24 @@ test('first twelve short courses have their own scoped explanation, worked steps
     assert.match(context.lesson(id), /data-worked-example/);
     assert.ok(context.renderFoundationDepth(lesson).includes(lesson.foundationDepth.title));
   }
+});
+
+test('gradient to training loop uses one consistent calculation from loss to updated parameters', () => {
+  const expected = {
+    gradient: ['w_new=1.6', '3.24', 'dL/dw=−12'],
+    'gradient-chain-rule': ['dL/du=−6', 'du/dw=2', 'dL/dw=−12'],
+    optimizer: ['η=0.01', 'η=0.05', '7.6176', '81'],
+    'training-loop': ['dw=−12', 'db=−6', '2.25']
+  };
+  for (const [id, phrases] of Object.entries(expected)) {
+    const lesson = courses.find(l => l.id === id);
+    assert.ok(lesson?.foundationDepth, id + ': missing beginner explanation');
+    const text = JSON.stringify(lesson.foundationDepth) + JSON.stringify(lesson.worked) + lesson.starterCode;
+    for (const phrase of phrases) assert.ok(text.includes(phrase), id + ': missing ' + phrase);
+    assert.ok(lesson.starterCode, id + ': missing code example');
+  }
+  const fullLoop = courses.find(l => l.id === 'training-loop');
+  assert.match(fullLoop.starterCode, /zero_grad\(\)[\s\S]*backward\(\)[\s\S]*step\(\)/);
 });
 
 test('shape lesson does not introduce matrix multiplication or indexing as its example', () => {
@@ -150,7 +168,7 @@ test('neuron workshop keeps probability conversion in an optional explanation', 
   assert.doesNotMatch(workshop, /只有经过 Sigmoid/);
 });
 
-test('twelve Python examples parse and the two arithmetic examples produce the documented numbers', () => {
+test('all custom Python examples parse and the two pure-Python examples produce the documented numbers', () => {
   const program = [
     'import ast, contextlib, io, json, sys',
     'programs = json.load(sys.stdin)',

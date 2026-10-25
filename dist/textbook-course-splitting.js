@@ -260,6 +260,30 @@
       worked:{title:'把分数、标签、真实类概率和损失连起来',prompt:'分数 [2,1,0.1]，真实类别为兔（编号 2），单样本交叉熵约是多少？',steps:['先做 Softmax 得到概率约 [0.6590,0.2424,0.0986]。这一步用于手算理解。','按真实编号 2 取第三项 pᵧ≈0.0986。','计算 −ln(pᵧ)≈2.317。实际代码直接让稳定损失接口处理原始 logits。'],solution:'交叉熵约 2.317；传给 CrossEntropyLoss 的是 logits 与真实类别索引。'},
       code:'import torch\nimport torch.nn.functional as F\n\nlogits = torch.tensor([[2., 1., 0.1]])  # [样本数, 类别数]\ntarget = torch.tensor([2], dtype=torch.long)\nloss = F.cross_entropy(logits, target)\n# 下面只用于对照手算；不把 p 传回 cross_entropy\np = logits.softmax(dim=1)\nprint(p[0, 2].item())  # 约 0.0986\nprint(loss.item())     # 约 2.3170',
       source:'https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html'
+    },
+    'gradient':{
+      depth:{title:'梯度告诉我们参数往哪边改，改多少由学习率决定',parts:[['先把“梯度”放回一个具体问题里','输入 x=2，正确答案 y=5，模型暂时只有权重 w，预测为 ŷ=wx。权重 w 是可学习的参数；损失 L=(ŷ−y)² 衡量预测离答案多远。'],['在当前位置看损失对参数的变化','当 w=1 时，预测 2、误差 −3、损失 9。梯度 dL/dw=−12 表示 w 在当前位置略微增加时，损失会沿下降方向变化；它不是新权重，也不是损失本身。'],['学习率把方向变成一次具体步幅','SGD 按 w_new=w−ηg 更新，η 是学习率，g 是梯度。η=0.05 时，w_new=1−0.05×(−12)=1.6。重新前向计算，预测为 3.2，损失为 3.24。']],example:'固定偏置 b=0、只训练 w：从 w=1、L=9 出发，一步后 w=1.6、L=3.24。',symbols:'w 是参数；L 是损失；g=dL/dw 是当前梯度；η 是学习率；w_new 是更新后的参数。'},
+      worked:{title:'根据梯度算一次参数更新',prompt:'旧权重 w=1，梯度 g=−12，学习率 η=0.05。新权重是多少？',steps:['先写 SGD 更新规则：w_new=w−ηg。','代入数值：w_new=1−0.05×(−12)。负数前再减一次，等于加 0.6。','得到 w_new=1.6。代回预测 ŷ=2w，新预测为 3.2；平方误差从 9 变为 3.24。'],solution:'新权重是 1.6。只在这组算例下损失下降；不能据此保证任意学习率都会下降。'},
+      code:'import torch\n\nx = torch.tensor([2.])\ny = torch.tensor([5.])\nw = torch.nn.Parameter(torch.tensor([1.]))\noptimizer = torch.optim.SGD([w], lr=0.05)\n\nprediction = w * x\nloss = ((prediction - y) ** 2).mean()\nloss.backward()  # 计算梯度，不在这一步更新 w\nprint(w.grad.item())  # -12\noptimizer.step()\nprint(w.item())      # 1.6\nprint(((w * x - y) ** 2).item())  # 3.24',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html'
+    },
+    'gradient-chain-rule':{
+      depth:{title:'沿着计算链逐段求导，再把局部变化相乘',parts:[['先看参数怎样影响损失','固定 x=2、y=5、b=0，预测 ŷ=wx，误差 u=ŷ−y=2w−5，平方损失 L=u²。w 从 1 开始时，u=−3、L=9。'],['把长问题拆成两段短问题','L=u²，所以 dL/du=2u=−6；u=2w−5，所以 du/dw=2。第一段问误差变一点时损失变多少，第二段问权重变一点时误差变多少。'],['乘起来得到损失对权重的梯度','链式法则给出 dL/dw=(dL/du)(du/dw)=(−6)×2=−12。系数 2 来自平方求导，另一个 2 来自预测 2w 对权重的影响。反向传播就是把这种局部导数乘积沿网络计算链传回去。']],example:'w=1 时，L=u²、u=2w−5：dL/du=−6，du/dw=2，故 dL/dw=−12。',symbols:'u 是带符号误差；dL/du 是损失对误差的局部导数；du/dw 是误差对权重的局部导数；沿链相乘得到 dL/dw。'},
+      worked:{title:'不跳步地算出系数 −12',prompt:'L=u²，u=2w−5，w=1。求 dL/dw。',steps:['先求 u：2×1−5=−3，因此 L=9。','对第一段求导：dL/du=2u=−6。','对第二段求导：du/dw=2；相乘得到 dL/dw=−6×2=−12。'],solution:'梯度为 −12。它表示损失对 w 的局部变化率；更新参数仍需再使用优化器和学习率。'},
+      code:'import torch\n\nw = torch.tensor(1.0, requires_grad=True)\nu = 2 * w - 5\nloss = u ** 2\nloss.backward()\nprint(u.item())       # -3\nprint(loss.item())    # 9\nprint(w.grad.item())  # -12 = (2u) * 2',
+      source:'https://docs.pytorch.org/docs/stable/autograd.html'
+    },
+    'optimizer':{
+      depth:{title:'优化器按规则使用梯度改变参数',parts:[['梯度与更新是两件事','梯度 g 描述当前位置的变化方向和快慢；它还没有改变参数。优化器读取参数、梯度和自己的状态，执行更新规则。'],['SGD 用学习率缩放梯度','最简单的 SGD 规则是 w_new=w−ηg。例中 w=1、g=−12、η=0.05，所以 w_new=1.6。负梯度使减去梯度变成增加参数。'],['学习率决定一步迈多远','沿用预测 ŷ=2w、目标 5 的例子，η=0.01、0.05、0.5 分别让 w 变为 1.12、1.6、7。重新计算损失分别为 7.6176、3.24、81；最后一步越过低损失区域，说明步幅过大会变差。实际多参数网络还要考虑其他参数和非线性。'],['复杂优化器还会保存额外状态','动量会结合以往梯度形成速度；Adam 会跟踪梯度及梯度平方的移动平均。它们改变更新规则，但仍需要合适的学习率并用训练与验证结果检查。']],example:'同一组 w=1、g=−12：η=0.01 得 w=1.12、损失 7.6176；η=0.05 得 w=1.6、损失 3.24；η=0.5 得 w=7、损失 81。',symbols:'η 是学习率；g 是梯度；SGD 是随机梯度下降；参数更新不等于重新计算梯度。'},
+      worked:{title:'只改学习率，比较更新后的损失',prompt:'w=1、梯度 −12，预测为 2w，目标为 5。比较 η=0.01 和 η=0.05 更新后的权重及损失。',steps:['使用相同规则 w_new=w−ηg；初始损失是 (2−5)²=9。','η=0.01：w_new=1.12，预测 2.24，损失 (2.24−5)²=7.6176。','η=0.05：w_new=1.6，预测 3.2，损失 (3.2−5)²=3.24。再用 η=0.5 会得到 w=7、损失 81，步幅过大反而变差。'],solution:'本例中 η=0.05 的新损失较小；这只说明这一步的结果，训练中应继续观察损失和验证表现。'},
+      code:'import torch\nw = torch.nn.Parameter(torch.tensor([1.]))\noptimizer = torch.optim.SGD([w], lr=0.05)\nw.grad = torch.tensor([-12.])  # 演示：直接给定已算出的梯度\noptimizer.step()\nprint(w.item())  # 1.6\n# step() 使用梯度更新参数；它不负责计算梯度',
+      source:'https://docs.pytorch.org/docs/stable/optim.html'
+    },
+    'training-loop':{
+      depth:{title:'把一次训练更新按时间顺序走完',parts:[['取输入和标准答案','一条训练样本是 x=2、y=5。模型只把 x 作为输入；y 是计算损失时使用的正确答案。当前模型为 ŷ=wx+b，初始 w=1、b=0。'],['前向预测并计算损失','预测为 1×2+0=2。平方损失 L=(ŷ−y)²=(2−5)²=9。前向计算表示按模型当前参数从输入一路算到输出。'],['清除旧梯度，再反向计算本批梯度','PyTorch 默认把新梯度加到已有的 .grad 上，所以通常先 zero_grad()。loss.backward() 沿计算关系求梯度，得到 dw=−12、db=−6；此时参数尚未更新。'],['让优化器更新，再用新参数重新计算','SGD 学习率 0.05 得 w=1.6、b=0.3。新预测为 1.6×2+0.3=3.5，新损失为 (3.5−5)²=2.25。一次训练更新包含整条流程，不是只有 backward。']],example:'样本 (2,5) → 预测 2 → 损失 9 → 梯度 (−12,−6) → 更新参数 (1.6,0.3) → 新损失 2.25。',symbols:'x 是输入；y 是正确答案；ŷ 是预测；L 是损失；.grad 暂存梯度；zero_grad 清旧梯度；backward 求梯度；step 更新参数。'},
+      worked:{title:'核对一次完整更新的每个数',prompt:'x=2、y=5、w=1、b=0，平方误差，SGD 学习率 0.05。更新后的参数和损失是多少？',steps:['前向：ŷ=wx+b=2，L=(2−5)²=9。','反向：dw=2(ŷ−y)x=−12，db=2(ŷ−y)=−6。','更新：w=1−0.05×(−12)=1.6；b=0−0.05×(−6)=0.3。','再前向核验：ŷ=1.6×2+0.3=3.5，L=(3.5−5)²=2.25。'],solution:'参数变为 w=1.6、b=0.3，重新计算后的损失为 2.25。两个梯度都由更新前的参数计算。'},
+      code:'import torch\n\nx = torch.tensor([[2.]])\ny = torch.tensor([[5.]])\nmodel = torch.nn.Linear(1, 1)\nwith torch.no_grad():\n    model.weight.fill_(1.)\n    model.bias.fill_(0.)\noptimizer = torch.optim.SGD(model.parameters(), lr=0.05)\n\noptimizer.zero_grad()             # 清除上一步残留的梯度\nprediction = model(x)              # 前向计算：2\nloss = ((prediction - y) ** 2).mean()\nloss.backward()                    # 反向计算梯度：dw=-12, db=-6\noptimizer.step()                   # 更新参数\nprint(model.weight.item(), model.bias.item())  # 1.6, 0.3\nprint(((model(x) - y) ** 2).item())             # 2.25',
+      source:'https://docs.pytorch.org/tutorials/beginner/basics/optimization_tutorial.html'
     }
   };
   const foundationUnitKeypoints={

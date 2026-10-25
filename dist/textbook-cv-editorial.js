@@ -293,7 +293,7 @@
 
   course('metrics',['把预测逐个匹配到真实目标，数出TP、FP、FN。','由明确计数算出Precision和Recall。'],['一对一匹配下，重复预测可能是FP，未被匹配的真实目标是FN。','Precision=TP/(TP+FP)，Recall=TP/(TP+FN)。'],'会算IoU，并知道真实标注和预测是两份不同数据。',['iou-calculation']);
   section('metrics',0,'先做一次匹配，再命名对错',[
-    '一张图中有3辆真实车A、B、C，预测按分数从高到低为p1到p4。规定类别相同、IoU至少0.5才可匹配，每辆真实车至多匹配一次。p1匹配A，p2再次指向A但A已被占用，p3匹配B，p4指向背景；C没有对应预测。',
+    '一张图中有3辆真实车A、B、C，预测按分数从高到低为p1到p4。规定类别相同、IoU至少0.5才可匹配，每辆真实车至多匹配一次。p1匹配A，p2再次指向A但A已被占用，p3匹配B，p4指向背景；C没有对应预测。下方固定A、B、C的框，用四条带分数的预测逐个核对。',
     'p1和p3是正确匹配，称真正例TP，共2个。p2和p4是未匹配预测，称假正例FP，共2个。没有被找到的真实车C是假负例FN，共1个。先按规则匹配，才有这些计数；不是看预测框是否画在某辆车附近就都算对。',
     '这里是普通单类别、一对一匹配的教学简化。正式评估还可能有难例、忽略区、crowd与候选数量上限等规则，要使用所选协议。目标检测通常不逐个数无穷多的背景框作为TN。'
   ],q('真实车A已被高分预测匹配，再有一个重复预测指向A，教学规则下记为什么？',['另一个TP','FP','FN'],1,'一个真实目标只匹配一次，重复预测未匹配。'),{cvVisual:'matching'});
@@ -305,7 +305,7 @@
 
   course('metrics-map',['按分数排序，逐行计算PR点和一个注明规则的AP。','分开解释跨类别平均、跨IoU平均和NMS去重。'],['AP来自分数排序下的PR表现，计算需说明插值规则。','mAP的平均维度要说明；NMS只看预测，评估匹配还要用真实标注。'],'已会按一对一规则匹配并计算P/R。',['metrics']);
   section('metrics-map',0,'从四条预测一步步走到AP',[
-    '有3个真实目标，按分数从高到低的4条预测依次匹配为TP、FP、TP、TP。只保留第一条时，累计TP=1、FP=0，P=1，R=1/3；保留前两条时P=1/2、R=1/3；前三条时P=2/3、R=2/3；全部保留时P=3/4、R=1。',
+    '沿用上一课的真实车A、B、C和四条预测，这次先把原来落在背景上的p4移到C，其余预测不变。四条预测从高分到低分依次是TP、FP、TP、TP。只保留第一条时，累计TP=1、FP=0，P=1，R=1/3；保留前两条时P=1/2、R=1/3；前三条时P=2/3、R=2/3；全部保留时P=3/4、R=1。计算台可以把p4移回背景，比较召回与AP怎样变化。',
     '把这些点画在横轴Recall、纵轴Precision上，得到PR曲线的离散观测。这里FP那一行增加预测但没找到新目标，因此召回不动、精确率下降。改变分数顺序，就会改变这些点的先后与AP。',
     '先采用“单调精确率包络＋所有召回增量求和”的教学规则：在某召回率处，取该点及其右侧最大的精确率。得到三个有召回增量的水平高度1、3/4、3/4，每段召回宽度1/3，所以AP=1/3×1+1/3×3/4+1/3×3/4=5/6≈0.8333。并不是把原表四个P直接平均。',
     'COCO采用101个召回采样点0、0.01、…、1来采样包络；对这个无忽略、全召回的小例子，采样平均为(34×1+67×0.75)/101≈0.8342。正式COCO还涉及多图排序、IoU阈值、类别、面积范围、maxDets、ignore/crowd等规则，应用官方评估器。',
@@ -505,7 +505,7 @@
   }
   for(const l of byId.values())l.prereqLinks=l.prereqLinks.map(link=>({...link,title:catalog.find(item=>item.id===link.id)?.title||link.title}));
   // 开篇旧讲义中的解释已融入正文；既有互动移到第一次解释之后。
-  const workshopSections={tasks:0,iou:1,metrics:1,dataset:0,'data-quality':0,augmentation:0,transfer:0,quaternion:1};
+  const workshopSections={tasks:0,dataset:0,'data-quality':0,augmentation:0,transfer:0,quaternion:1};
   for(const [id,index] of Object.entries(workshopSections))byId.get(id).sections[index].cvWorkshop=true;
   const playerRef=(id,i)=>{const s=byId.get(id).sections[i];return {lesson:id,key:s.playgroundId||i,legacy:s.legacyIndex};};
   const channels=playerRef('cnn',1),claims=playerRef('cnn-priors-limits',0),connections=playerRef('cnn-priors-limits',1);
@@ -520,6 +520,12 @@
   byId.get('pooling').sections.forEach(s=>s.cvPlayers=[]);
   byId.get('pooling-tradeoffs').sections.forEach(s=>s.cvPlayers=[]);
   byId.get('pooling-tradeoffs').sections[0].cvLab='pool-shift';
+  for(const id of ['iou','iou-calculation','metrics','metrics-map'])byId.get(id).sections.forEach(s=>s.cvPlayers=[]);
+  byId.get('iou-calculation').sections[0].cvLab='overlap';
+  byId.get('metrics').sections[0].cvLab='matching';
+  delete byId.get('metrics').sections[0].cvVisual;
+  byId.get('metrics-map').sections[0].cvLab='ap-matching';
+  delete byId.get('metrics-map').sections[0].cvVisual;
   byId.get('cnn-priors').sections[1].cvPlayers=[playerRef('cnn-priors',1),connections];
   byId.get('cnn-priors').sections[2].cvOptionalPlayers=[claims];
   byId.get('cnn-priors-limits').sections[0].cvPlayers=[];
@@ -555,7 +561,7 @@
   const oldFigures=window.lessonFigures;
   if(oldFigures)window.lessonFigures={...oldFigures,placement(l){
     const items=oldFigures.placement(l);if(!l.cvEdited)return items;
-    const replaced=new Set(l.sections.filter(s=>s.cvVisual||l.id==='pooling').map(s=>s.legacyIndex));
+    const replaced=new Set(l.sections.filter(s=>s.cvVisual||s.cvLab||l.id==='pooling').map(s=>s.legacyIndex));
     return items.filter(item=>!replaced.has(item.section));
   }};
 
@@ -631,6 +637,69 @@
     const scaled=x/255,value=double?scaled/255:scaled,out=(value-.5)/.25;
     return flow('每一列对应一次操作',[['原 uint8 整数',String(x)],['仅转 float32',x+'.0'],['除以 255',number(scaled)],...(double?[['再次除以 255',number(value)]]:[]),['减 0.5，再除 0.25',number(out)]],'数值均按当前输入重算；显示小数经过舍入。')+'<p class="cv-lab-result" role="status" aria-live="polite">'+(double?'现在比模型约定多除了一次 255：标准化前为 '+number(value)+'，标准化后为 '+number(out)+(x===0?'。当前像素为0，重复除法后仍为0；换128或255看差异。':'。这改变了模型收到的输入。'):'标准化：('+number(scaled)+'−0.5) ÷ 0.25 = '+number(out)+'。负数只表示低于本例约定的中心。')+'</p>';
   }
+  function boxOverlap(a,b){
+    for(const box of [a,b])if(box.length!==4||!box.every(Number.isFinite)||box[2]<=box[0]||box[3]<=box[1])throw new RangeError('本算例要求有限坐标且宽、高都大于0');
+    const left=Math.max(a[0],b[0]),top=Math.max(a[1],b[1]),right=Math.min(a[2],b[2]),bottom=Math.min(a[3],b[3]);
+    const width=Math.max(0,right-left),height=Math.max(0,bottom-top),intersection=width*height;
+    const areaA=(a[2]-a[0])*(a[3]-a[1]),areaB=(b[2]-b[0])*(b[3]-b[1]),union=areaA+areaB-intersection;
+    return {left,top,width,height,areaA,areaB,intersection,union,value:intersection/union};
+  }
+  function overlapView(x,y){
+    const a=[0,0,10,10],b=[x,y,x+10,y+10],v=boxOverlap(a,b);
+    let grid='';for(let i=0;i<=25;i+=5)grid+='<path d="M'+i+' 0V21 M0 '+i+'H26" stroke="#ddd9e5" stroke-width=".08"/>';
+    const svg='<svg class="cv-overlap-scene" viewBox="-2 -3 30 27" role="img" aria-label="蓝框A固定，橙框B左上角为'+x+','+y+'，绿色为交集，IoU '+number(v.value)+'">'+grid+'<rect x="0" y="0" width="10" height="10" fill="#6687b1" fill-opacity=".16" stroke="#527ba7" stroke-width=".2"/><rect x="'+x+'" y="'+y+'" width="10" height="10" fill="#d28a54" fill-opacity=".14" stroke="#c17b43" stroke-width=".2"/>'+(v.intersection?'<rect x="'+v.left+'" y="'+v.top+'" width="'+v.width+'" height="'+v.height+'" fill="#5caa85" fill-opacity=".55"/>':'')+'<text x="0" y="-1" fill="#527ba7">A [0,0,10,10]</text><text x="'+x+'" y="'+(y+11.5)+'" fill="#a66332">B ['+b.join(',')+']</text><text x="0" y="22.5">坐标 x 向右、y 向下；框宽高均为10</text></svg>';
+    const code='def iou(a, b):\n    assert a[2] > a[0] and a[3] > a[1]\n    assert b[2] > b[0] and b[3] > b[1]\n    width = max(0, min(a[2], b[2]) - max(a[0], b[0]))\n    height = max(0, min(a[3], b[3]) - max(a[1], b[1]))\n    inter = width * height\n    area_a = (a[2]-a[0]) * (a[3]-a[1])\n    area_b = (b[2]-b[0]) * (b[3]-b[1])\n    return inter / (area_a + area_b - inter)\n\nprint(iou([0,0,10,10], ['+b.join(',')+']))\n# 约 '+v.value.toFixed(6);
+    return svg+flow('逐项算，最后才相除',[['交集宽','max(0,min(10,'+(x+10)+')−max(0,'+x+'))='+v.width],['交集高','max(0,min(10,'+(y+10)+')−max(0,'+y+'))='+v.height],['交集面积',v.width+'×'+v.height+'='+v.intersection],['并集面积','100+100−'+v.intersection+'='+v.union]],'两框面积相加时交集被重复计数，所以减去一次交集。')+'<p class="cv-lab-result" role="status" aria-live="polite">IoU = '+v.intersection+' / '+v.union+' = <strong>'+v.value.toFixed(4)+'</strong>。'+(v.value===0?'两框没有正面积重叠；边缘接触也不产生交集面积。':v.value===1?'两个框完全重合。':'绿色只标交集；并集包括两个框覆盖的整个区域。')+'</p><p>同一框B的中心为 ('+(x+5)+','+(y+5)+')，中心格式为 ['+(x+5)+','+(y+5)+',10,10]；左上角格式为 ['+x+','+y+',10,10]。两种 xywh 的前两项不同。</p><details class="advanced-section"><summary>普通 Python：运行与当前图相同的计算</summary><div class="code-block"><div class="code-head"><span>无需第三方库</span><button type="button" class="copy" data-copy-fragment="cv-overlap-code">复制代码</button></div><pre><code id="cv-overlap-code">'+esc(code)+'</code></pre></div></details>';
+  }
+  function overlapMarkup(){return '<section class="cv-lab" data-cv-overlap aria-label="IoU面积计算台"><span class="chapter-kicker">从位置走到面积</span><h3>移动B框，逐项检查IoU怎样变化</h3><p>A、B都宽10、高10。先保持B的y为0：x=0时完全重合；x=5时IoU为1/3；x=10时边缘接触；x大于10时分离。再改变y，观察交集宽和高怎样分别影响面积。</p><div class="cv-lab-controls"><label>B左上角 x <output data-cv-box-x-value>5</output><input type="range" min="0" max="15" step="1" value="5" data-cv-box-x aria-label="B框左上角横坐标"></label><label>B左上角 y <output data-cv-box-y-value>0</output><input type="range" min="0" max="10" step="1" value="0" data-cv-box-y aria-label="B框左上角纵坐标"></label><button type="button" data-cv-overlap-reset>恢复本课算例</button></div><div data-cv-overlap-view>'+overlapView(5,0)+'</div><p class="cv-lab-note">连续坐标，宽高不加1；本演示只使用正面积矩形。图解由给定坐标计算，不代表模型检测结果。IoU不包含类别正确与否的信息。</p></section>';}
+  function scoreDetections(fix,shift,iouGate,scoreGate){
+    const gt=[[10,20,40,60],[70,20,100,60],[120,20,150,60]];
+    const predictions=[{id:'p1',score:.95,box:[10,20,40,60]},{id:'p2',score:.85,box:[12,20,42,60]},{id:'p3',score:.70,box:[70+shift,20,100+shift,60]},{id:'p4',score:.60,box:fix?[120,20,150,60]:[70,75,100,100]}];
+    const used=new Set();let tp=0,fp=0;
+    const rows=predictions.map(p=>{
+      const overlaps=gt.map((box,index)=>({index,...boxOverlap(p.box,box)})).sort((a,b)=>b.value-a.value||a.index-b.index);
+      const match=overlaps.find(o=>!used.has(o.index)&&o.value>=iouGate),best=overlaps[0];
+      if(match){used.add(match.index);tp++;}else fp++;
+      return {...p,best,matched:match?.index??null,tp,fp,precision:tp/(tp+fp),recall:tp/3,kept:p.score>=scoreGate,reason:match?'匹配真实车'+['A','B','C'][match.index]:best.value>=iouGate?'重复：足够重叠的真实车已被高分预测占用':best.value===0?'与真实框无面积重叠':'最高IoU低于当前匹配门槛'};
+    });
+    let bestPrecision=0;
+    const envelope=rows.map(r=>r.precision);for(let i=rows.length-1;i>=0;i--){bestPrecision=Math.max(bestPrecision,rows[i].precision);envelope[i]=bestPrecision;}
+    let previousRecall=0,ap=0;
+    const areas=rows.map((r,i)=>{const width=r.recall-previousRecall;previousRecall=r.recall;const area=width*envelope[i];ap+=area;return {width,height:envelope[i],area};});
+    let ap101=0;for(let k=0;k<=100;k++)ap101+=Math.max(0,...rows.filter(r=>r.recall>=k/100).map(r=>r.precision));ap101/=101;
+    const kept=rows.filter(r=>r.kept),last=kept.at(-1),keptTP=last?.tp||0,keptFP=kept.length-keptTP;
+    return {gt,rows,envelope,areas,ap,ap101,tp:keptTP,fp:keptFP,fn:3-keptTP,precision:kept.length?keptTP/kept.length:null,recall:keptTP/3};
+  }
+  function detectionScene(result,selected){
+    const p=result.rows[selected],color=p.kept?'#c17b43':'#8c8c94';
+    const targets=result.gt.map((b,i)=>'<rect x="'+b[0]+'" y="'+b[1]+'" width="30" height="40" fill="#6d96c6" fill-opacity=".08" stroke="#527ba7" stroke-width=".7"/><text x="'+b[0]+'" y="16" fill="#527ba7">真实车'+['A','B','C'][i]+'</text>').join('');
+    const b=p.box,v=p.best;
+    return '<svg class="cv-detection-scene" viewBox="0 0 165 115" role="img" aria-label="三辆真实车蓝框固定，当前查看'+p.id+'的橙色预测框">'+targets+(v.intersection?'<rect x="'+v.left+'" y="'+v.top+'" width="'+v.width+'" height="'+v.height+'" fill="#5caa85" fill-opacity=".4"/>':'')+'<rect x="'+b[0]+'" y="'+b[1]+'" width="'+(b[2]-b[0])+'" height="'+(b[3]-b[1])+'" fill="none" stroke="'+color+'" stroke-width="1" stroke-dasharray="2 1"/><text x="4" y="110" fill="'+color+'">'+p.id+' 预测 ['+b.join(',')+'] · 分数 '+p.score.toFixed(2)+'</text></svg><p class="cv-lab-result">'+p.id+' 对真实车'+['A','B','C'][p.best.index]+'的最高IoU为 '+p.best.value.toFixed(4)+'；'+(p.kept?(p.matched!==null?'本次记TP：':'本次记FP：')+p.reason:'分数低于当前门槛，不保留，也不计TP或FP。')+'</p>';
+  }
+  function prAreaView(result){
+    const x=r=>60+400*r,y=p=>220-190*p;
+    let rects='',prev=0;result.areas.forEach((a,i)=>{if(a.width>0)rects+='<rect x="'+x(prev)+'" y="'+y(a.height)+'" width="'+400*a.width+'" height="'+190*a.height+'" fill="#65a78c" fill-opacity=".26" stroke="#578c77" stroke-width="1"><title>召回增量 '+number(a.width)+'，包络高度 '+number(a.height)+'，面积 '+number(a.area)+'</title></rect>';prev=result.rows[i].recall;});
+    const points=result.rows.map(r=>x(r.recall)+','+y(r.precision)).join(' ');
+    const marks=result.rows.map((r,i)=>'<circle cx="'+x(r.recall)+'" cy="'+y(r.precision)+'" r="4" fill="#b56b51"/><text x="'+(x(r.recall)+7)+'" y="'+(y(r.precision)-7)+'">'+(i+1)+'</text>').join('');
+    return '<h4>同一完整排序的PR点与包络面积</h4><svg class="cv-pr-chart" viewBox="0 0 520 275" role="img" aria-label="横轴召回率，纵轴精确率；绿色矩形的总面积为教学AP '+result.ap.toFixed(4)+'"><path d="M60 25V220H475" fill="none" stroke="#69758a"/>'+[0,.5,1].map(v=>'<path d="M60 '+y(v)+'H460" stroke="#ddd9e5" stroke-dasharray="3 3"/><text x="45" y="'+(y(v)+4)+'" text-anchor="end">'+v+'</text><text x="'+x(v)+'" y="241" text-anchor="middle">'+v+'</text>').join('')+rects+'<polyline points="'+points+'" fill="none" stroke="#b56b51" stroke-width="1.5"/>'+marks+(result.precision!==null?'<circle cx="'+x(result.recall)+'" cy="'+y(result.precision)+'" r="8" fill="none" stroke="#71549c" stroke-width="3"/>':'')+'<text x="60" y="15">Precision 精确率</text><text x="450" y="265" text-anchor="end">Recall 召回率</text></svg><p>红点旁数字是加入第几条预测；绿色矩形用“召回增量×该区间包络高度”计面积。紫圈是当前分数门槛选中的工作点；没有预测时不画未定义的精确率点。</p>'+table('逐段相加，不是直接平均四个精确率',['加入预测','召回增量','包络高度','新增面积'],result.areas.map((a,i)=>[result.rows[i].id,number(a.width),number(a.height),number(a.area)]),'未覆盖的召回区间贡献为0；零召回增量的行不增加面积。')+'<p class="cv-lab-result">本例全召回增量规则 AP = <strong>'+result.ap.toFixed(4)+'</strong>；101个召回采样点上的包络平均 = '+result.ap101.toFixed(4)+'。两种计算约定要分别报告。</p><p class="cv-lab-note">这里固定一张图、一个类别、一个IoU门槛，无ignore/crowd。本例不是完整COCO评估器；跨图排序、面积范围、maxDets和跨IoU平均等应按正式协议执行。</p>';
+  }
+  function matchingView(kind,fix,shift,iouGate,scoreGate,selected){
+    const result=scoreDetections(fix,shift,iouGate,scoreGate),kept=result.tp+result.fp;
+    const precisionFormula=kept?String.raw`\(P=\frac{TP}{TP+FP}=\frac{${result.tp}}{${kept}}=${result.precision.toFixed(4)}\)`:'P的分母为0，未定义（没有预测）。';
+    const recallFormula=String.raw`\(R=\frac{TP}{TP+FN}=\frac{${result.tp}}{3}=${result.recall.toFixed(4)}\)`;
+    const ledger=result.rows.map(r=>[r.id,r.score.toFixed(2),r.best.value.toFixed(4),r.kept?(r.matched!==null?'TP':'FP'):'未保留',r.kept?r.reason:'分数低于门槛',r.kept?r.tp+' / '+r.fp:'—']);
+    return detectionScene(result,selected)+table('四条预测按分数从高到低依次处理',['预测','模型分数','最高IoU','本次计数','原因','累计TP / FP'],ledger,'模型分数用于排序筛选；最高IoU是与真实框的几何比较。分数高不保证有足够IoU，足够IoU也不保证还能占用已匹配的真实框。')+'<div class="cv-eval-counts"><div><span>TP 正确匹配</span><strong>'+result.tp+'</strong></div><div><span>FP 未匹配预测</span><strong>'+result.fp+'</strong></div><div><span>FN 未匹配真实车</span><strong>'+result.fn+'</strong></div></div><div class="cv-eval-fractions"><p>Precision看保留预测中有多少匹配正确：'+precisionFormula+'</p><p>Recall看三辆真实车中找到了几辆：'+recallFormula+'</p></div>'+(kind==='ap-matching'?prAreaView(result):'<p>先把每一条预测的原因说明白，再到<a href="#lesson/metrics-map">下一课画PR点与AP面积 →</a></p>');
+  }
+  function matchingMarkup(kind){
+    const ap=kind==='ap-matching';
+    return '<section class="cv-lab" data-cv-matching="'+kind+'" data-selected="1" aria-label="检测匹配与PR计算台"><span class="chapter-kicker">从框到匹配，再到指标</span><h3>'+(ap?'沿同一份匹配记录画PR曲线':'每条预测到底为什么算对或算错？')+'</h3><p>三辆真实车固定不动，四条预测都声明类别为车。按p1、p2、p3、p4的降序分数处理；每辆真实车最多匹配一次。先点p2看重复预测，再移动p3或切换p4的位置。</p><div class="cv-lab-controls"><label>保留预测的最低分数 <output data-cv-score-value>0.00</output><input type="range" min="0" max="1" step="0.05" value="0" data-cv-score aria-label="保留预测的最低分数"></label><label>预测对真实框的IoU门槛<select data-cv-match-iou aria-label="评估匹配IoU门槛"><option value="0.3">0.30</option><option value="0.5" selected>0.50</option><option value="0.75">0.75</option><option value="0.95">0.95</option></select></label><label>p3向右偏移 <output data-cv-shift-value>0</output><input type="range" min="0" max="24" step="1" value="0" data-cv-shift aria-label="p3预测框向右偏移"></label><label class="cv-lab-toggle"><input type="checkbox" data-cv-fix-p4'+(ap?' checked':'')+'>把p4从背景移到真实车C</label><button type="button" data-cv-matching-reset>恢复本课算例</button></div><div class="bw-adam-controls" role="group" aria-label="选择要查看的预测框">'+['p1','p2','p3','p4'].map((id,i)=>'<button type="button" data-cv-match-pred="'+i+'" aria-pressed="'+(i===1)+'">查看 '+id+'</button>').join('')+'</div><div data-cv-matching-view>'+matchingView(kind,ap,0,.5,0,1)+'</div><p class="cv-lab-note">分数和IoU都用“大于等于门槛”判断。本台不执行NMS，刻意保留p2来观察重复预测。这里的IoU门槛用于预测与真实框匹配，不是NMS预测间的去重门槛。'+(ap?'分数滑杆只选择完整排序中的一个PR工作点，图中的AP仍按全部四条排序计算；真实评估前如果硬删候选，会改变可评估的排序。':'教学用单图、单类别，无ignore/crowd等特殊规则；零预测时不把精确率当满分。')+'</p></section>';
+  }
+  function updateMatching(root){
+    const score=Number(root.querySelector('[data-cv-score]').value),gate=Number(root.querySelector('[data-cv-match-iou]').value),shift=Number(root.querySelector('[data-cv-shift]').value),fix=root.querySelector('[data-cv-fix-p4]').checked,selected=Number(root.dataset.selected);
+    root.querySelector('[data-cv-score-value]').textContent=score.toFixed(2);root.querySelector('[data-cv-shift-value]').textContent=shift;
+    root.querySelectorAll('[data-cv-match-pred]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.cvMatchPred)===selected)));
+    const view=root.querySelector('[data-cv-matching-view]');view.innerHTML=matchingView(root.dataset.cvMatching,fix,shift,gate,score,selected);window.renderLessonMath?.(view);
+  }
   const visuals={
     rgb:()=>'<figure class="cv-numeric-figure"><figcaption><strong>把四个像素拆成三张通道表</strong></figcaption><div class="cv-pixel-grid"><div style="--pixel:#dd3030">红<br><span>[255,0,0]</span></div><div style="--pixel:#248b3d">绿<br><span>[0,255,0]</span></div><div style="--pixel:#2d59c3">蓝<br><span>[0,0,255]</span></div><div style="--pixel:#fff">白<br><span>[255,255,255]</span></div></div>'+table('相同位置在三个通道中的数值',['位置','红R','绿G','蓝B'],[['左上',255,0,0],['右上',0,255,0],['左下',0,0,255],['右下',255,255,255]],'这是2×2教学图。屏幕色块仅帮助辨认颜色，旁边数字才是本例数据。')+'</figure>',
     mask:()=>table('L形物体的4×4二值掩码',['行/列','第1列','第2列','第3列','第4列'],[['第1行',0,0,0,0],['第2行',0,1,1,0],['第3行',0,1,0,0],['第4行',0,0,0,0]],'数出3个1。包围它的2×2矩形还包含第3行第3列的背景。'),
@@ -642,8 +711,6 @@
     classifier:()=>flow('一个小分类器的形状链',[['一张灰度图','[1,1,4,4]'],['卷积＋ReLU','[1,2,4,4]'],['2×2池化','[1,2,2,2]'],['展平','[1,8]'],['线性分类头','[1,3]']],'最左边的1都是批次大小；输出三个数对应猫、狗、兔，标签在损失步骤另行参与。'),
     rf:()=>'<figure class="cv-numeric-figure"><figcaption><strong>第一层的三个窗口，回溯到同一行输入</strong></figcaption><div class="cv-rf-trace"><div>输入位置</div><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><div>第一输出</div><span class="cv-rf-a">1、2、3</span><div>第二输出</div><span class="cv-rf-b">2、3、4</span><div>第三输出</div><span class="cv-rf-c">3、4、5</span><div>第二层汇合</div><span class="cv-rf-all">并集是1到5，共5个位置</span></div><figcaption>有颜色的范围表示依赖位置，并不表示每个位置实际贡献相等。</figcaption></figure>'+table('分别记录输出高宽、范围R与间隔J',['层','核/步幅/填充','输出高×宽','R','J'],[['输入','—','32×32',1,1],['卷积1','3/1/1','32×32',3,1],['卷积2','3/1/1','32×32',5,1],['池化','2/2/0','16×16',6,2],['卷积3','3/1/1','16×16',10,2]],'假设各层膨胀率1、局部窗口，无额外跨空间分支；R按内部位置的理论范围计算。'),
     pyramid:()=>table('同一个640输入中的16像素宽目标',['特征网格','相邻位置间隔','目标投影宽度'],[['80×80','8输入像素','16/8=2格'],['40×40','16输入像素','16/16=1格'],['20×20','32输入像素','16/32=0.5格']],'投影宽度是几何示意；特征响应与感受野还取决于各层计算。'),
-    matching:()=>table('3个真实车、4条预测：教学匹配记录',['预测','最高分开始依次匹配','记数'],[['p1','匹配真实车A','TP'],['p2','也指向A，但A已被p1占用','FP'],['p3','匹配真实车B','TP'],['p4','背景处无匹配','FP'],['真实车C','没有预测匹配','FN']],'条件：同类，IoU≥0.5，一对一，无ignore/crowd特殊规则。'),
-    pr:()=>'<section class="cv-pr-example" aria-label="PR逐行计算">'+table('3个真实目标，按分数依次加入4条预测',['排名','分数','本条匹配','累计TP','累计FP','Precision','Recall'],[[1,0.95,'TP',1,0,'1','1/3'],[2,0.85,'FP',1,1,'1/2','1/3'],[3,0.70,'TP',2,1,'2/3','2/3'],[4,0.60,'TP',3,1,'3/4','1']],'分数只决定这个教学例子的排序；匹配结果按已规定的几何与类别规则给定。')+'<label class="cv-pr-control">只保留排名前 <output data-cv-pr-k>4</output> 条预测<input type="range" min="1" max="4" step="1" value="4" data-cv-pr-range aria-label="保留排名前几条预测"></label><p class="cv-pr-readout" data-cv-pr-result role="status" aria-live="polite">TP=3，FP=1，FN=0；Precision=0.7500，Recall=1.0000</p></section>',
     checks:()=>table('从错误文件到修复动作',['错误输入','可能看到的现象','核对与修复'],[['有目标图缺标签','报错或被当背景','回看图，按协议补标配对'],['三类数据使用类别3','索引越界或非法类别','按0/1/2类别表修正'],['归一化框宽写80','范围异常或框越界','查像素单位并换算，再画框'],['真实空图、标签为空','可能是合法背景','确认加载器允许并主动记录']],'日志现象依实现而异；真实图像回看是语义检查的重要一步。'),
     coverage:()=>table('分类教学数据：场景比例会改变整体成绩',['场景','验证数量','正确数','组内正确率'],[['晴天',900,855,'95%'],['雨夜',100,50,'50%'],['验证总体',1000,905,'90.5%'],['部署各一半','比例50%/50%','按组内率估计','72.5%']],'这是分类准确率算例，不是检测AP。部署估计假设各场景内表现保持。'),
     crop:()=>flow('裁剪：按顺序更新框',[['原框','(60,20)→(140,80)'],['减裁剪原点(100,10)','(−40,10)→(40,70)'],['截到新图80×80','(0,10)→(40,70)'],['新归一化中心/宽高','(0.25,0.5)/(0.5,0.75)']],'被裁去一半面积；是否保留还取决于标注协议与最小尺寸要求。'),
@@ -653,6 +720,8 @@
     ids:[...byId.keys()],
     renderParagraph(s,index){return s.cvVisual&&index===s.cvVisualAfter?visuals[s.cvVisual]?.()||'':'';},
     renderPlayers(s){
+      if(s.cvLab==='overlap')return {main:overlapMarkup(),extra:''};
+      if(s.cvLab==='matching'||s.cvLab==='ap-matching')return {main:matchingMarkup(s.cvLab),extra:''};
       if(s.cvLab)return {main:windowLabMarkup(s.cvLab),extra:''};
       const render=refs=>refs.map(ref=>{
         const html=ref.component==='single-convolution'?window.visionlabCnnComponents.renderConvolution():ref.component==='channel-math'?window.channelConvolution.renderMath():window.lessonPlaygrounds?.render(ref.lesson,ref.key,ref.legacy)||'';
@@ -663,16 +732,18 @@
     }
   };
   document.addEventListener('input',event=>{
+    const overlap=event.target.closest?.('[data-cv-overlap]');
+    if(overlap){const x=Number(overlap.querySelector('[data-cv-box-x]').value),y=Number(overlap.querySelector('[data-cv-box-y]').value),view=overlap.querySelector('[data-cv-overlap-view]'),codeOpen=view.querySelector('details').open;overlap.querySelector('[data-cv-box-x-value]').textContent=x;overlap.querySelector('[data-cv-box-y-value]').textContent=y;view.innerHTML=overlapView(x,y);view.querySelector('details').open=codeOpen;return;}
+    const matching=event.target.closest?.('[data-cv-matching]');if(matching){updateMatching(matching);return;}
     const scale=event.target.closest?.('[data-cv-scale]');
     if(scale){const x=Number(scale.querySelector('[data-cv-scale-input]').value),double=scale.querySelector('[data-cv-double-scale]').checked;scale.querySelector('[data-cv-scale-value]').textContent=x;scale.querySelector('[data-cv-scale-result]').innerHTML=scaleView(x,double);return;}
     const setting=event.target.closest?.('[data-cv-setting]');
     if(setting){const root=setting.closest('[data-cv-window-lab]');if(setting.dataset.cvSetting==='value'){const values=root.dataset.values.split(',').map(Number);values[Number(root.dataset.pixel)]=Number(setting.value);root.dataset.values=values.join(',');}else root.dataset.position='0';updateWindowLab(root);return;}
-    const input=event.target.closest?.('[data-cv-pr-range]');if(!input)return;
-    const root=input.closest('.cv-pr-example'),k=Number(input.value),tp=[1,1,2,3][k-1],fp=k-tp;
-    root.querySelector('[data-cv-pr-k]').textContent=k;
-    root.querySelector('[data-cv-pr-result]').textContent='TP='+tp+'，FP='+fp+'，FN='+(3-tp)+'；Precision='+(tp/k).toFixed(4)+'，Recall='+(tp/3).toFixed(4);
   });
   document.addEventListener('click',event=>{
+    const overlapReset=event.target.closest?.('[data-cv-overlap-reset]');if(overlapReset){const root=overlapReset.closest('[data-cv-overlap]');root.querySelector('[data-cv-box-x]').value='5';root.querySelector('[data-cv-box-y]').value='0';root.querySelector('[data-cv-box-x-value]').textContent='5';root.querySelector('[data-cv-box-y-value]').textContent='0';root.querySelector('[data-cv-overlap-view]').innerHTML=overlapView(5,0);return;}
+    const matchReset=event.target.closest?.('[data-cv-matching-reset]');if(matchReset){const root=matchReset.closest('[data-cv-matching]');root.querySelector('[data-cv-score]').value='0';root.querySelector('[data-cv-match-iou]').value='0.5';root.querySelector('[data-cv-shift]').value='0';root.querySelector('[data-cv-fix-p4]').checked=root.dataset.cvMatching==='ap-matching';root.dataset.selected='1';updateMatching(root);return;}
+    const pred=event.target.closest?.('[data-cv-match-pred]');if(pred){const root=pred.closest('[data-cv-matching]');root.dataset.selected=pred.dataset.cvMatchPred;updateMatching(root);return;}
     const button=event.target.closest?.('[data-cv-pixel],[data-cv-output],[data-cv-lab-reset],[data-cv-pulse]');if(!button)return;
     const root=button.closest('[data-cv-window-lab]');if(!root)return;
     if(button.dataset.cvPixel!==undefined)root.dataset.pixel=button.dataset.cvPixel;

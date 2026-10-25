@@ -39,12 +39,58 @@ for (const [, src] of html.matchAll(/<script src="([^"?]+)(?:\?[^"]*)?"><\/scrip
   if (/^https?:/.test(src) || src === 'sidebar.js') continue;
   let source = readFileSync(join(root, src), 'utf8');
   if (src === 'textbook-ui-v3.js') source = source.replace(/  render\(\);\s*\}\)\(\);\s*$/, '})();');
-  if (src === 'textbook-cv-editorial.js') source = source.replace('  const visuals={', '  window.cvNumericCheck={computeWindow,windowState,windowView,scaleView};\n  const visuals={');
+  if (src === 'textbook-cv-editorial.js') source = source.replace('  const visuals={', '  window.cvNumericCheck={computeWindow,windowState,windowView,scaleView,boxOverlap,scoreDetections,overlapView};\n  const visuals={');
   vm.runInContext(source, context, { filename: src });
 }
 const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
+
+test('IoU handles identity, containment, touching and invalid boxes with continuous coordinates', () => {
+  const {boxOverlap}=context.cvNumericCheck;
+  const a=[0,0,10,10],b=[5,0,15,10];
+  assert.equal(boxOverlap(a,a).value,1);
+  assert.equal(boxOverlap(a,b).value,1/3);
+  assert.equal(boxOverlap(a,b).value,boxOverlap(b,a).value);
+  assert.equal(boxOverlap(a,[10,0,20,10]).value,0);
+  assert.equal(boxOverlap(a,[12,0,22,10]).width,0);
+  assert.equal(boxOverlap(a,[2,2,7,7]).value,.25);
+  assert.throws(()=>boxOverlap([0,0,0,10],a),/宽、高/);
+});
+
+test('detection matching assigns a true object at most once and uses inclusive thresholds', () => {
+  const score=context.cvNumericCheck.scoreDetections;
+  const baseline=score(false,0,.5,0);
+  assert.equal(baseline.tp,2);assert.equal(baseline.fp,2);assert.equal(baseline.fn,1);
+  assert.match(baseline.rows[1].reason,/重复/);
+  assert.equal(baseline.precision,.5);assert.equal(baseline.recall,2/3);
+  const boundary=score(false,10,.5,.7);
+  assert.equal(boundary.tp,2);assert.equal(boundary.fp,1);assert.equal(boundary.rows[2].best.value,.5);
+  assert.equal(score(false,11,.5,0).tp,1);
+  assert.equal(score(false,10,.75,0).tp,1);
+  assert.equal(score(false,0,.95,0).rows[1].matched,null);
+});
+
+test('AP sums recall increments under the precision envelope and keeps the selected point separate', () => {
+  const score=context.cvNumericCheck.scoreDetections;
+  const fixed=score(true,0,.5,0);
+  assert.equal(fixed.tp,3);assert.equal(fixed.fp,1);assert.equal(fixed.fn,0);
+  assert.ok(Math.abs(fixed.ap-5/6)<1e-12);
+  assert.ok(Math.abs(fixed.ap101-(34+67*.75)/101)<1e-12);
+  assert.ok(Math.abs(score(false,0,.5,0).ap-5/9)<1e-12);
+  const empty=score(true,0,.5,1);
+  assert.equal(empty.precision,null);assert.equal(empty.recall,0);assert.equal(empty.fn,3);
+  assert.equal(empty.ap,fixed.ap,'the score control selects a point, not a prefilter for the AP ranking');
+});
+
+test('the IoU Python example executes and agrees with the browser arithmetic', () => {
+  const cases=[[0,0],[5,0],[10,0],[6,3]];
+  const programs=cases.map(([x,y])=>({code:context.cvNumericCheck.overlapView(x,y).match(/<code id="cv-overlap-code">([\s\S]*?)<\/code>/)[1],expected:context.cvNumericCheck.boxOverlap([0,0,10,10],[x,y,x+10,y+10]).value}));
+  const source='import contextlib,html,io,json,sys\nfor item in json.load(sys.stdin):\n    out=io.StringIO()\n    with contextlib.redirect_stdout(out): exec(html.unescape(item["code"]),{})\n    assert abs(float(out.getvalue())-item["expected"])<1e-12';
+  const result=spawnSync('python',['-X','utf8','-c',source],{encoding:'utf8',input:JSON.stringify(programs)});
+  assert.equal(result.status,0,result.stderr||String(result.error));
+  for(const [id,attribute] of [['iou-calculation','data-cv-overlap aria-label='],['metrics','data-cv-matching="matching"'],['metrics-map','data-cv-matching="ap-matching"']])assert.equal(context.lesson(id).split(attribute).length-1,1,id);
+});
 
 test('CV convolution uses the same windows as the text and handles shared input contributions', () => {
   const {computeWindow,windowState} = context.cvNumericCheck;

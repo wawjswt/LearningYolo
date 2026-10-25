@@ -50,9 +50,11 @@
   function exerciseCard(l,exercise,type,index,sectionId=''){
     const label=exercise.stage|| (type==='section'?'本节练习':'章末综合题 '+(index+1));
     const indexAttribute=type==='section'?'data-section-index':'data-exercise-index';
-    const key=l.id+':'+type+':'+(type==='section'?(sectionId||index):index),saved=state.exerciseAnswers?.[key],selected=Number.isInteger(saved)&&saved>=0&&saved<exercise.options.length?saved:null;
+    const key=l.id+':'+type+':'+(type==='section'?(sectionId||index):(exercise.id||index));
+    const saved=state.exerciseAnswers?.[key]??(type==='section'?state.exerciseAnswers?.[l.id+':section:'+index]:undefined);
+    const selected=Number.isInteger(saved)&&saved>=0&&saved<exercise.options.length?saved:null;
     const sectionAttribute=type==='section'?' data-section-id="'+esc(sectionId||'')+'"':'';
-    const options=exercise.options.map((option,i)=>{const active=selected===i,correct=active&&selected===exercise.answer;return '<button type="button" class="'+(active?(correct?'correct':'wrong'):'')+'" aria-pressed="'+active+'" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'"'+sectionAttribute+'>'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>'}).join('');
+    const options=exercise.options.map((option,i)=>{const active=selected===i,correct=active&&selected===exercise.answer;return '<button type="button" class="'+(active?(correct?'correct':'wrong'):'')+'" aria-pressed="'+active+'" data-exercise-key="'+esc(key)+'" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'"'+sectionAttribute+'>'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>'}).join('');
     const feedback=selected===null?'':(selected===exercise.answer?'回答正确。':'再想一想。正确答案：'+String.fromCharCode(65+exercise.answer)+'。')+'解析：'+exercise.why;
     return '<section class="exercise-card '+type+'-exercise"><span class="exercise-label">'+label+'</span><p class="exercise-prompt">'+rich(exercise.q)+'</p><div class="exercise-options" role="group" aria-label="'+label+'">'+options+'</div><div class="quiz-result exercise-feedback" role="status" aria-live="polite">'+feedback+'</div></section>';
   }
@@ -463,9 +465,9 @@
     const starterCode=l.starterCode?'<div class="code-block"><div class="code-head"><span>Python · 第一个小例子</span><button class="copy" type="button" data-copy-fragment="starter-code-'+l.id+'">复制这段代码</button></div><pre><code id="starter-code-'+l.id+'">'+esc(l.starterCode)+'</code></pre></div><p class="code-note">先看输出：它对应上方算例里的已知输入和手算结果；暂时不运行，也可以按给定数字核对。</p>':'';
     const codeBlock=l.code?'<div class="code-block"><div class="code-head"><span>'+esc(l.language||'代码示例')+' · 建议逐行阅读</span><button class="copy" data-copy="'+l.id+'">'+(l.starterCode?'复制完整示例':'复制代码')+'</button></div><pre><code>'+esc(l.code)+'</code></pre></div>':'';
     const codeNote='<p class="code-note">'+(l.language==='源码流程示意'?'这段内容是源码逻辑摘要，不是可独立运行的脚本；请按注释中的文件与方法名对照仓库。':'先运行示例并观察结果，再一次只改变一个输入或参数。'+(l.group==='yolo'?'YOLOv5 命令行选项会随仓库版本变化，请用本地脚本的帮助信息核对。':'每做一步，先预测输入与输出形状，再用实际结果核对。'))+'</p>';
-    const code=l.starterCode?'<section class="text-section code-section">'+starterCode+(l.code?'<details class="advanced-section"><summary>选学：完整 PyTorch 操作示例 · 点击展开</summary><div class="advanced-section-body">'+codeBlock+codeGuide+codeNote+'</div></details>':'')+'</section>':l.code?'<section class="text-section code-section">'+codeBlock+codeGuide+codeNote+'</section>':'';
+    const code=l.starterCode?'<section class="text-section code-section">'+(!l.code?codeGuide:'')+starterCode+(l.code?'<details class="advanced-section"><summary>选学：完整 PyTorch 操作示例 · 点击展开</summary><div class="advanced-section-body">'+codeBlock+codeGuide+codeNote+'</div></details>':'')+'</section>':l.code?'<section class="text-section code-section">'+codeBlock+codeGuide+codeNote+'</section>':'';
     const stagedQuiz=l.chapterExercises?.length&&l.chapterExercises.every(exercise=>exercise.stage);
-    const quiz=l.chapterExercises?.length?'<section class="chapter-quiz" id="chapter-quiz"><span class="chapter-kicker">CHAPTER REVIEW · 章末综合练习</span><h2>本章综合练习</h2><p>'+(stagedQuiz?'按“认概念 → 手算推理 → 场景迁移”的顺序完成；每题作答后查看解析。':'结合本章概念完成练习；每题作答后查看解析。')+'</p>'+l.chapterExercises.map((exercise,i)=>exerciseCard(l,exercise,'chapter',i)).join('')+'</section>':'';
+    const quiz=l.chapterExercises?.length?'<section class="chapter-quiz" id="chapter-quiz"><span class="chapter-kicker">CHAPTER REVIEW · 章末综合练习</span><h2>本章综合练习</h2><p>'+(stagedQuiz?'按“认概念 → 解释与计算 → 场景迁移”的顺序完成；每题作答后查看解析。':'结合本章概念完成练习；每题作答后查看解析。')+'</p>'+l.chapterExercises.map((exercise,i)=>exerciseCard(l,exercise,'chapter',i)).join('')+'</section>':'';
     const keypoints=l.keypoints?'<section class="keypoint-review"><span class="chapter-kicker">CHAPTER REVIEW</span><h2>本章要点</h2><ul>'+l.keypoints.map(x=>'<li>'+x+'</li>').join('')+'</ul></section>':'';
     const sourceItems=Array.isArray(l.sources)&&l.sources.length?l.sources:(l.source?[{url:l.source,label:'官方文档与参考资料'}]:[]);const source=sourceItems.length?'<p class="source-note">延伸阅读：'+sourceItems.map(item=>'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(item.label)+' ↗</a>').join(' · ')+'。概念解释为本课程整理；实现细节请以对应版本文档为准。</p>':'';
     const lessonSequence=l.curriculumKey==='dl'
@@ -618,7 +620,7 @@
     const anchor=event.target.closest('a[href^="#"]');
     if(!anchor)return;
     const destination=anchor.getAttribute('href').slice(1);
-    if(destination.startsWith('section-')||destination.startsWith('yc-phase-')||destination.startsWith('fc-phase-')||destination==='chapter-review'||destination==='chapter-notes'){
+    if(destination.startsWith('section-')||destination.startsWith('yc-phase-')||destination.startsWith('fc-phase-')||destination==='chapter-review'||destination==='chapter-quiz'||destination==='chapter-notes'){
       event.preventDefault();
       const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       document.getElementById(destination)?.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});

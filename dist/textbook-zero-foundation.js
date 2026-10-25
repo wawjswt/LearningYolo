@@ -240,19 +240,17 @@
     return '<section class="zero-start-card" aria-labelledby="zero-start-'+escapeHtml(lesson.id)+'"><div class="zero-start-heading"><span class="chapter-kicker">ZERO-FOUNDATION · 零基础起点</span><h2 id="zero-start-'+escapeHtml(lesson.id)+'">'+escapeHtml(item.title)+'</h2><p class="zero-start-question">'+escapeHtml(item.question)+'</p></div><div class="zero-start-grid"><div class="zero-start-purpose"><strong>这节要解决什么</strong><p>'+escapeHtml(item.why)+'</p></div><div class="zero-start-example"><strong>用一个具体例子理解</strong><p>'+escapeHtml(item.example)+'</p></div></div><div class="zero-start-steps-wrap"><strong>先把本课名词讲清楚</strong>'+stepMarkup+'</div><div class="zero-start-terms"><strong>遇到新词可以点开看解释</strong><div>'+item.terms.map(termChip).join('')+'</div></div></section>';
   }
   function renderLossChain(){
-    const lesson=allLessons.find(item=>item.id==='losses');
     const steps=[
-      {prefix:'二分类、多分类与多标签',title:'先看标签和题型',text:'标签是标准答案；先判断是“是/否”、单选，还是可多选。'},
-      {prefix:'二分类、多分类与多标签',title:'从原始分数到概率',text:'二分类用 Sigmoid；互斥多分类把整组 logits 交给 Softmax。'},
-      {prefix:'Softmax 把互斥类别分数',title:'按正确答案计算惩罚',text:'二分类看 BCE；单标签多分类看真实类别的交叉熵。'},
-      {prefix:'独热标签与多分类交叉熵',title:'最后选择训练接口',text:'根据输入是概率还是 logits 选择 PyTorch 接口；代码细节在对应小节。'}
+      {lesson:'losses',title:'本课：先看标签和题型',text:'区分单选、多选和连续数值；说清标准答案怎样表示。'},
+      {lesson:'loss-probabilities',title:'下一课：从分数到概率',text:'用同一组分数逐步计算 Sigmoid 和 Softmax，比较它们的适用场景。'},
+      {lesson:'loss-cross-entropy',title:'接着：按真实类别计分',text:'按真实类别索引取概率，再手算一次交叉熵。'},
+      {lesson:'loss-cross-entropy',title:'对照：把手算换成代码',text:'同一门课末尾的代码把原始 logits 与真实类别交给 CrossEntropyLoss。'}
     ];
     const links=steps.map((step,index)=>{
-      const section=lesson?.sections.find(item=>String(item.title||'').replace(/^\s*\d+\s*[.、．]\s*/,'').startsWith(step.prefix));
-      const href=section?.id?'#lesson/losses/section-'+section.id:'#lesson/losses';
+      const href='#lesson/'+step.lesson;
       return '<li><b aria-hidden="true">'+(index+1)+'</b><a href="'+escapeHtml(href)+'"><strong>'+escapeHtml(step.title)+'</strong><p>'+escapeHtml(step.text)+'</p></a></li>';
     }).join('');
-    return '<section class="loss-foundation-chain" aria-labelledby="loss-foundation-title"><div class="loss-chain-heading"><span class="chapter-kicker">本章阅读地图</span><h2 id="loss-foundation-title">从标签，按顺序走到训练接口</h2><p>上面的零基础讲解已经逐步算过这些概念；点击一格可直接跳到正文对应小节。</p></div><ol class="loss-chain-steps">'+links+'</ol><div class="loss-chain-note"><strong>推荐顺序</strong><span>标签与题型 → 原始分数与概率 → BCE / 交叉熵 → PyTorch 接口。信息量、熵、KL、梯度和极端数值列为选学内容。</span></div></section>';
+    return '<section class="loss-foundation-chain" aria-labelledby="loss-foundation-title"><div class="loss-chain-heading"><span class="chapter-kicker">接下来怎样学</span><h2 id="loss-foundation-title">从标签，按顺序走到训练接口</h2><p>这条路线由三门相接的短课组成。先完成本课的任务与标签练习，再进入概率和交叉熵；点击下面的步骤可打开对应课程。</p></div><ol class="loss-chain-steps">'+links+'</ol><div class="loss-chain-note"><strong>阅读顺序</strong><span>任务与标签 → 分数与概率 → 真实类概率与损失 → 对照代码。信息量、熵和损失梯度留在后面的选学课展开。</span></div></section>';
   }  function sigmoid(value){return value>=0?1/(1+Math.exp(-value)):Math.exp(value)/(1+Math.exp(value));}
   function updateBce(root){
     const slider=root.querySelector('[data-bce-logit]');if(!slider)return;

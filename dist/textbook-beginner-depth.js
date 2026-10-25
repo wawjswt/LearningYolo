@@ -35,7 +35,7 @@
   content.cnn.symbols='X 是输入像素或特征；K 是卷积核权重；b 是偏置；一次输出是所有对应乘积的和加 b。卷积步幅是窗口移动格数，padding 是边缘补出的格子。';
   const escape=value=>String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   function render(lesson){
-    const item=content[lesson?.id];if(!item)return '';
+    const item=lesson?.foundationDepth||content[lesson?.id];if(!item)return '';
     const steps=item.parts.map((part,index)=>'<li><span class="depth-step-number">'+(index+1)+'</span><div><h4>'+escape(part[0])+'</h4><p>'+escape(part[1])+'</p></div></li>').join('');
     const advanced=item.advanced?'<details class="depth-advanced"><summary>选学深入：'+escape(item.advanced.title)+'</summary><p>'+escape(item.advanced.text)+'</p></details>':'';
     return '<section class="beginner-depth" id="foundation-notes-'+escape(lesson.id)+'" aria-labelledby="depth-title-'+escape(lesson.id)+'"><div class="beginner-depth-heading"><span class="chapter-kicker">ZERO-FOUNDATION · 逐步拆开讲</span><h2 id="depth-title-'+escape(lesson.id)+'">'+escape(item.title)+'</h2><p>下面先解释本章会用到的基础概念，再给一个能手算核对的例子。正文里的专业词也可以点开查看通俗解释和比喻。</p></div><ol class="depth-steps">'+steps+'</ol><div class="depth-worked"><strong>算一个具体例子</strong><p>'+escape(item.example)+'</p><p class="depth-symbols"><strong>符号对照：</strong>'+escape(item.symbols)+'</p></div>'+advanced+'</section>';

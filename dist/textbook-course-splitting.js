@@ -186,13 +186,89 @@
     'training-engineering':{goals:['根据样本数和 batch size 算出是否存在不完整尾批。','解释保留或丢弃尾批对样本利用和统计的影响。'],exercise:check('10 个样本按 batch size 4 分批并保留尾批，三批的样本数是什么？',['4、4、2','4、4','4、4、4'],0,'前两批各 4 个，最后剩余 2 个；保留尾批时总共用到全部 10 个样本。')},
     'training-accumulation':{goals:['说明梯度累积期间何时清零、何时反向和何时更新。','按实际样本数处理不完整累积组，避免缩放分母错误。'],exercise:check('梯度累积多个小批次后，只希望做一次参数更新，应在什么时机调用 step()？',['每个小批次反向后立刻更新','累计组的梯度都算完后更新一次','清零梯度时同时更新'],1,'梯度累积先把多个小批次的梯度累加，再调用一次 optimizer.step()。')}
   };
+  // Each short course owns its opening explanation and worked example. A parent
+  // course's complete example may require concepts taught several short courses later.
+  const foundationUnitExamples={
+    'ai-foundations':{
+      depth:{title:'先看清输入、计算规则和输出',parts:[['模型接收的是可以计算的数据','照片进入计算机后会表示为像素数值。模型根据这些输入做计算，给出分数或其他结果。本课先把输入缩成一个数，方便逐步核对；一个数的演示不等于完整图片识别器。'],['神经元先完成一次乘加','把输入记作 x，权重记作 w，偏置记作 b。先计算 w×x，再加 b，得到 z。权重决定这条输入对结果的贡献，偏置提供额外的平移量。'],['算出分数以后，还要知道它代表什么','本例 z 是未经概率转换的原始分数。它可以大于 1 或小于 0。一个分数如何变成类别或连续预测，要由任务与后面的计算规定。']],example:'x=2、w=3、b=−1：先得 3×2=6，再得 6−1=5。',symbols:'x 是输入，w 是权重，b 是偏置，z 是这次乘加的结果。'},
+      worked:{title:'用两个步骤算出神经元分数',prompt:'输入 2，权重 3，偏置 −1，原始分数是多少？',steps:['把输入与权重对应起来：x=2，w=3，b=−1。','先乘：w×x=3×2=6。','再加偏置：z=6+(−1)=5。分数 5 不表示概率为 500%。'],solution:'原始分数为 5；这里只演示一个输入的一次乘加。'},
+      code:'x = 2\nw = 3\nb = -1\nweighted_input = w * x\nz = weighted_input + b\nprint(weighted_input)  # 6\nprint(z)               # 5',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html'
+    },
+    'ai-layers':{
+      depth:{title:'前一层的结果怎样交给后一层',parts:[['层是一组计算步骤','一层接收一组数，按本层的参数计算，再输出一组数。后一层把这组输出当成自己的输入。输入层、隐藏层和输出层描述它们在网络中的位置。'],['每一层有自己的参数','第一层可以用 w₁=2、b₁=1；第二层用 w₂=2、b₂=1。数值恰好相同也不表示两层共用参数；训练通常分别调整各层注册的参数。'],['先理解连接，再理解怎样学习','本例暂时固定参数，只演示前向计算。训练还需要标准答案、衡量差异的损失、计算调整信号的方法和更新规则；后面的损失、梯度与优化器课会逐项展开。']],example:'输入 2 → 第一层 2×2+1=5 → 第二层 2×5+1=11。',symbols:'x 是最初输入，h 是第一层的中间结果，z 是第二层输出；下标 1、2 标明参数属于哪层。'},
+      worked:{title:'沿两层网络传递同一个数',prompt:'两层都执行“乘 2，再加 1”，输入为 2，最终得到多少？',steps:['第一层读取原输入 x=2。','第一层输出 h=2×2+1=5；把 5 交给第二层。','第二层输出 z=2×5+1=11；第二层不能重新拿最初的 2 代替 h。'],solution:'最终输出 11。本例没有激活函数，整体还能写成 z=4x+3；激活函数课再解释怎样增加非线性。'},
+      code:'x = 2\nw1, b1 = 2, 1\nw2, b2 = 2, 1\nh = w1 * x + b1\nz = w2 * h + b2\nprint(h)  # 5：第一层输出\nprint(z)  # 11：第二层输出',
+      source:'https://docs.pytorch.org/tutorials/beginner/basics/buildmodel_tutorial.html'
+    },
+    'tensor':{
+      depth:{title:'先数有几条轴，再数每条轴有多长',parts:[['从一排数到一张数字表','一个数是标量，一排数是向量，两层规则分组的数字表是矩阵。它们都可用张量表示。维数在这里指轴的数量，不表示元素的总数。'],['shape 按顺序记录各轴长度','[[1,2,3],[4,5,6]] 有 2 行，每行 3 个数，形状为 (2,3)。两个长度值对应两条轴；长度分别是 2 和 3。单个数的形状是 ()，没有轴。'],['用乘法算元素总数','形状 (2,3,4) 表示 2 组，每组 3 行，每行 4 个数：总共 2×3×4=24 个数。轴的含义由数据约定决定；只看形状不能判断哪条轴代表图片或通道。']],example:'两行三列的表：形状 (2,3)，轴数 2，元素数 6。',symbols:'shape 记录每条轴的长度；ndim 读取轴数；numel() 统计元素总数。'},
+      worked:{title:'把三种数量分开数',prompt:'一组数据的形状为 (2,3,4)。轴数、各轴长度、元素数分别是什么？',steps:['形状中有三个长度值，因此有 3 条轴。','按顺序读：轴 0 长度 2，轴 1 长度 3，轴 2 长度 4。','每组有 3×4=12 个数，两组共有 2×12=24 个数。'],solution:'3 条轴，长度依次为 2、3、4，共 24 个元素。'},
+      code:'import torch\n\nx = torch.tensor([[1, 2, 3], [4, 5, 6]])\nprint(tuple(x.shape))  # (2, 3)：各轴长度\nprint(x.ndim)          # 2：轴数\nprint(x.numel())       # 6：元素总数',
+      source:'https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html'
+    },
+    'tensor-indexing':{
+      depth:{title:'先说取哪一组，再说取哪一行和哪一项',parts:[['位置编号从 0 开始','列表 [10,20,30] 的位置编号是 0、1、2。编号 1 取到的数是 20；编号与数据值不是一回事。负索引 −1 通常表示该轴的最后一项。'],['每条轴各给一个索引','形状 (2,3,4) 有三条轴。x[1,2,3] 依次选第 2 组、第 3 行、第 4 项，每个编号都要在对应轴的范围内。整数索引选中位置后，通常会移除那条轴。'],['切片取一段，冒号保留整条轴','x[:,1,:] 保留全部组，选中每组的第二行，再保留该行全部元素，结果形状为 (2,4)。切片 1:3 取位置 1、2，不包含结束位置 3。']],example:'把 0 到 23 按顺序排成 (2,3,4)，x[1,2,3] 是最后一项 23。',symbols:'方括号内的逗号分开各轴选择；冒号 : 表示保留该轴全部位置；start:stop 的 stop 不包含在结果中。'},
+      worked:{title:'从 24 个数中定位到 23',prompt:'x 按 0 到 23 的顺序排成 (2,3,4)，x[1,2,3] 是多少？',steps:['第一轴选编号 1，也就是第二组；这一组从 12 开始，共有 12 个数。','第二轴选编号 2，也就是第三行；这一行是 [20,21,22,23]。','第三轴选编号 3，也就是第四项，得到 23。'],solution:'取得标量 23；而 x[:,1,:] 会留下两组各一行，形状为 (2,4)。'},
+      code:'import torch\n\n# arange(24) 生成 0 到 23；reshape 把它们分成 2 组、3 行、4 列\nx = torch.arange(24).reshape(2, 3, 4)\nprint(x[1, 2, 3].item())     # 23\nprint(x[:, 1, :])            # [[4,5,6,7], [16,17,18,19]]\nprint(tuple(x[:, 1, :].shape))  # (2, 4)\nprint(x[0, 0, 1:3])          # tensor([1, 2])',
+      source:'https://docs.pytorch.org/docs/stable/tensor_view.html'
+    },
+    'tensor-operations':{
+      depth:{title:'先确定运算规则，结果的形状才有意义',parts:[['逐元素乘法逐个格子计算','两个形状相同的张量用 * 相乘时，结果每个格子只取两个对应位置的乘积。没有把整行压成一个数；若形状不同，还必须符合广播的对齐规则。'],['点积把一组乘积相加成一个数','向量 [1,2,3] 和 [4,5,6] 点积为 1×4+2×5+3×6=32。torch.dot 接收两个一维张量，本课的两个向量长度必须相同。'],['二维矩阵乘法反复做“行与列的点积”','A 为两行三列，B 为三行两列，A @ B 的每个结果取 A 的一行和 B 的一列相乘再相加。内侧两个 3 要相等，结果保留外侧的 2、2，得到形状 (2,2)。']],example:'结果左上角使用行 [1,2,3] 和列 [1,3,5]，得到 1+6+15=22。',symbols:'* 表示逐元素乘法；torch.dot 是一维向量点积；本课的二维 @ 表示矩阵乘法。'},
+      worked:{title:'真正算出矩阵乘法的四个格子',prompt:'A=[[1,2,3],[4,5,6]]，B=[[1,2],[3,4],[5,6]]，A @ B 是什么？',steps:['检查形状：(2,3) @ (3,2) 合法，结果为 (2,2)。','第一行分别乘两列：1×1+2×3+3×5=22；1×2+2×4+3×6=28。','第二行分别乘两列：4×1+5×3+6×5=49；4×2+5×4+6×6=64。'],solution:'结果是 [[22,28],[49,64]]；它和逐元素乘法的规则不同。'},
+      code:'import torch\n\nA = torch.tensor([[1, 2, 3], [4, 5, 6]])\nB = torch.tensor([[1, 2], [3, 4], [5, 6]])\nprint(A * A)  # [[1,4,9], [16,25,36]]，形状 (2,3)\nprint(A @ B)  # [[22,28], [49,64]]，形状 (2,2)\nu = torch.tensor([1, 2, 3])\nv = torch.tensor([4, 5, 6])\nprint(torch.dot(u, v).item())  # 32',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.matmul.html'
+    },
+    'tensor-layout':{
+      depth:{title:'重新分组与交换轴，得到的数字表会不同',parts:[['reshape 重新规定每组有几个数','原表 [[1,2,3],[4,5,6]] 按逻辑顺序读成 1、2、3、4、5、6。reshape(3,2) 每两个数分一行，得到 [[1,2],[3,4],[5,6]]。元素总数仍为 6。'],['转置交换行与列的职责','同一张表转置后，原第一行变成第一列，得到 [[1,4],[2,5],[3,6]]。它也有形状 (3,2)，但内容位置与 reshape 的结果不同；只看新形状分不出使用了哪种操作。'],['张量内存步幅告诉程序怎样沿轴找下一个数','普通连续的 (2,3) 表，沿行轴走一步要跨 3 个元素，沿列轴走一步跨 1 个，张量内存步幅为 (3,1)。转置视图交换轴后，张量内存步幅变为 (1,3)；这里的张量内存步幅以元素为单位。']],example:'同样从 (2,3) 到 (3,2)：reshape 的第一行为 [1,2]，转置的第一行为 [1,4]。',symbols:'reshape 改变分组；transpose(0,1) 交换轴 0、1；张量内存步幅是沿各轴走一步跨过的存储元素数。'},
+      worked:{title:'相同形状为什么不是相同操作',prompt:'原表 [[1,2,3],[4,5,6]]，reshape(3,2) 与转置后的第一行各是什么？',steps:['按原表逻辑顺序读取：1、2、3、4、5、6。','reshape 每两个数分一组，所以三行为 [1,2]、[3,4]、[5,6]。','转置把原来的每一列改成一行，所以三行为 [1,4]、[2,5]、[3,6]。'],solution:'两者形状都为 (3,2)，但元素位置不同。转置通常共享原存储；reshape 在布局不兼容时可能复制数据。'},
+      code:'import torch\n\nx = torch.tensor([[1, 2, 3], [4, 5, 6]])\nr = x.reshape(3, 2)\nt = x.transpose(0, 1)\nprint(r)           # [[1,2], [3,4], [5,6]]\nprint(t)           # [[1,4], [2,5], [3,6]]\nprint(x.stride())  # (3, 1)\nprint(t.stride())  # (1, 3)',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.transpose.html'
+    },
+    'network':{
+      depth:{title:'一个神经元怎样汇总多条输入',parts:[['每条输入先乘自己的权重','两个输入 x₁=1、x₂=2，权重 w₁=2、w₂=3。分别得到贡献 2×1=2 和 3×2=6。权重是带正负号的数，负权重也可以降低当前分数。'],['把贡献相加，再加一次偏置','两条贡献相加得到 8，再加 b=1，最终 z=9。偏置属于这个输出单元，不是给每条输入各加一遍。'],['改变一个参数，观察它影响哪一步','只把 b 从 1 改成 2，分数增加 1；只把 w₂ 从 3 改成 4，在当前 x₂=2 下分数增加 2。参数的影响还取决于当前输入。']],example:'z=2×1+3×2+1=9。这里先研究乘加输出，下一课再处理激活函数。',symbols:'x₁、x₂ 是两条输入；w₁、w₂ 是对应权重；b 是偏置；z 是加权和加偏置。'},
+      worked:{title:'把两条贡献和偏置分别算清',prompt:'输入 [1,2]、权重 [2,3]、偏置 1，神经元分数是多少？',steps:['对应相乘：[1×2,2×3]=[2,6]。','把贡献相加：2+6=8。','只加一次偏置：8+1=9。'],solution:'乘加输出 9；输入、权重、偏置和输出各自承担不同职责。'},
+      code:'import torch\n\nx = torch.tensor([1., 2.])\nw = torch.tensor([2., 3.])\nb = 1.\ncontributions = x * w\nz = contributions.sum() + b\nprint(contributions)  # tensor([2., 6.])\nprint(z.item())       # 9.0',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html'
+    },
+    'network-activation':{
+      depth:{title:'乘加之后，为什么还要多算一步',parts:[['只叠乘加，仍可能压成一次乘加','第一层 h=2x+1，第二层 z=3h−2，展开为 z=6x+1。虽然写了两层，这个例子仍是一条直线；多写一层没有自动得到弯曲关系。'],['激活函数把中间值再变换一次','ReLU 的规则是取 0 与输入中的较大者：负数变成 0，正数原样保留。它对不同输入区域采用不同规则，使多层组合能够表达分段的关系。'],['看负区、零点和正区','输入 −2、0、2，ReLU 输出 0、0、2。负区的局部导数为 0，正区为 1；零点数学上不可导，PyTorch 的常见反向约定取 0。其他激活函数会以不同方式变换数值。']],example:'先算 z=−2，再接 ReLU，结果为 0；先算 z=2，再接 ReLU，结果仍为 2。',symbols:'z 是激活前数值，a 是激活后数值，ReLU 是 Rectified Linear Unit，常译为修正线性单元。'},
+      worked:{title:'按区域计算 ReLU',prompt:'输入向量 [−2,0,2]，经过 ReLU 后得到什么？',steps:['对 −2 比较 max(0,−2)，取 0。','对 0 比较 max(0,0)，取 0。','对 2 比较 max(0,2)，取 2。每个位置分别计算，形状不变。'],solution:'输出 [0,0,2]。本例展示逐元素激活，不改变向量长度。'},
+      code:'import torch\n\nz = torch.tensor([-2., 0., 2.])\na = torch.relu(z)\nprint(a)               # tensor([0., 0., 2.])\nprint(tuple(a.shape))  # (3,)',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.nn.ReLU.html'
+    },
+    'network-outputs':{
+      depth:{title:'先问输出要回答哪个问题',parts:[['分类输出通常先给每类一个分数','类别顺序规定为猫、狗时，logits=[−1,2] 表示猫分数 −1、狗分数 2。logit 是概率转换前的原始分数，不受 0 到 1 的范围限制。'],['编号与类别名称要一起保存','最高分位于位置 1，按当前约定表示狗。把类别顺序换成狗、猫，同样的数字就会被解释成另一类；输出维度相同不代表类别映射正确。'],['回归输出直接对应某个数值目标','若任务预测温度，输出 18.5 可以表示摄氏 18.5 度，取决于标签单位和训练约定。回归值与类别分数解释不同；并非所有输出都需要转成概率。']],example:'分类分数 [−1,2] 按“猫、狗”顺序倾向狗；温度回归的 18.5 则是另一个任务的数值预测。',symbols:'logits 是一组原始类别分数；argmax 返回最高分位置的编号；类别名称表把编号翻译为含义。'},
+      worked:{title:'把最高分的位置翻译成类别',prompt:'类别顺序为猫、狗，分数是 [−1,2]，最高分类别是什么？',steps:['位置 0 对应猫，分数 −1；位置 1 对应狗，分数 2。','比较两个分数：2 大于 −1，所以最高分位置为 1。','查类别名称表：编号 1 是狗。argmax 只挑位置，不计算概率，也不参与这种形式的梯度训练。'],solution:'最高分类别为狗；分数 2 不能当作概率 2。'},
+      code:'import torch\n\nclasses = ["猫", "狗"]\nlogits = torch.tensor([-1., 2.])\nclass_id = logits.argmax().item()\nprint(class_id)           # 1\nprint(classes[class_id])  # 狗\nprint(logits)             # 原始分数，不是概率',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.argmax.html'
+    },
+    'losses':{
+      depth:{title:'先写清正确答案长什么样，再选择计分方法',parts:[['单标签分类：多个类别中选一个','若每张图在猫、狗、兔中恰有一个类别，真实是兔就可用编号 2 表示。编号只是位置编码，不表示兔是猫的两倍；不能直接把类别编号差当成预测误差。'],['多标签分类：几个答案可以同时成立','一张图同时有猫和狗时，可以标成 [1,1,0]。三个位置分别回答某类是否存在。逐类计分不意味着这些类别在现实中统计独立；猫与狗仍可能经常一起出现。'],['回归：答案是带单位或明确含义的数','若正确温度为 5 度、模型预测 2 度，带符号误差为 2−5=−3。平方误差为 9。标签的形状和数值含义都要与模型输出、损失计算保持一致。']],example:'“兔”可编码为类别编号 2；“同时有猫、狗”可编码 [1,1,0]；“5 度”是连续数值目标。这三种标签处理不同任务。',symbols:'标签是已知答案，预测是模型给出的答案；损失是两者按所选规则计算的训练代价。'},
+      worked:{title:'同一组类别，两种不同的标签问题',prompt:'类别顺序为猫、狗、兔，如何分别表示“只有兔”和“猫、狗都在”？',steps:['若任务规定三选一，“只有兔”的类别位置为 2，可用一个整数 2 表示。','若任务允许同时出现多个类别，“猫、狗都在”写成 [1,1,0]。','前者回答哪一类，后者分别回答每类是否存在；先定任务才能选择合适损失。'],solution:'单标签编号 2 与多标签向量 [1,1,0] 含义不同，不能只因类别数相同就交换使用。'},
+      code:'import torch\n\n# 三选一：一个样本、一个类别编号\nsingle_label = torch.tensor([2], dtype=torch.long)\n# 多选：一个样本、每类一个 0/1 目标\nmulti_label = torch.tensor([[1., 1., 0.]])\n# 回归：一个样本的连续值目标\nregression_target = torch.tensor([[5.]])\nprint(tuple(single_label.shape))       # (1,)\nprint(tuple(multi_label.shape))        # (1, 3)\nprint(tuple(regression_target.shape))  # (1, 1)',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html'
+    },
+    'loss-probabilities':{
+      depth:{title:'从同一组分数看两种概率规则',parts:[['Sigmoid 对每个分数分别计算','Sigmoid 把一个分数映射到 0 与 1 之间。输入 0 得 0.5，输入 2 得约 0.881。多标签任务可为每类各算一个概率；这些概率可以同时很高，总和不必为 1。'],['Softmax 让互斥类别共同分配概率','类别顺序为猫、狗、兔，分数 [2,1,0.1] 取指数约为 [7.389,2.718,1.105]。总和约 11.212，各项除以这一个总和，得到约 [0.6590,0.2424,0.0986]。'],['计算展示概率与训练接口是两件事','为了理解或展示可以手动计算概率。训练时，CrossEntropyLoss 接收多分类原始 logits；BCEWithLogitsLoss 接收二元或多标签原始 logits。两个接口内部已组合相应变换，不应先手动转换再传入。']],example:'相同分数 [2,1,0.1]：Softmax 总和为 1；逐类 Sigmoid 得约 [0.881,0.731,0.525]，总和大于 1。',symbols:'exp(z) 表示指数；Softmax 用各项指数除以指数总和；Sigmoid 则分别处理各个分数。'},
+      worked:{title:'用共同分母算三个互斥类别的概率',prompt:'logits=[2,1,0.1]，猫、狗、兔的 Softmax 概率约是多少？',steps:['分别取指数：[7.3891,2.7183,1.1052]。','求共同分母：7.3891+2.7183+1.1052≈11.2125。','各项除以 11.2125，得到约 [0.6590,0.2424,0.0986]；小数显示的舍入可能让相加略有误差。'],solution:'三类 Softmax 概率总和为 1；逐类 Sigmoid 使用另一条规则，总和没有这个限制。'},
+      code:'import torch\n\nz = torch.tensor([2., 1., 0.1])\np = torch.softmax(z, dim=0)  # dim=0 是本例的类别轴\nindependent_scores = torch.sigmoid(z)\nprint(p)                       # 约 [0.6590,0.2424,0.0986]\nprint(p.sum().item())           # 约 1.0\nprint(independent_scores)       # 约 [0.8808,0.7311,0.5250]\n# 训练时 CrossEntropyLoss / BCEWithLogitsLoss 仍接收原始 z',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html'
+    },
+    'loss-cross-entropy':{
+      depth:{title:'只沿着真实类别的概率计算这一次损失',parts:[['先找到真实类别的位置','类别顺序为猫、狗、兔，真实是兔时，类别索引为 2，独热表示为 [0,0,1]。标签来自标准答案，不能用模型自己最高分的类别代替。'],['取出该位置的概率，再取负对数','沿用概率 [0.6590,0.2424,0.0986]，真实类概率约 0.0986。硬标签的单样本交叉熵等于它的负自然对数，约为 2.317。自然对数 ln 是以 e 为底的对数。'],['正确类概率越高，惩罚越小','若真实类概率提高到 0.8，损失约为 −ln(0.8)=0.223。这个显式损失只留下真实类项，但 Softmax 各概率共同依赖整组分数，反向求导时其他类别也会收到梯度。']],example:'真实类为兔时，取概率表第三项；不是取最高分的猫，也不是对类别编号 2 取对数。',symbols:'y 是真实类别编号；pᵧ 是该类别概率；L=−ln(pᵧ) 适用于本例未加权的单样本硬标签情况。'},
+      worked:{title:'把分数、标签、真实类概率和损失连起来',prompt:'分数 [2,1,0.1]，真实类别为兔（编号 2），单样本交叉熵约是多少？',steps:['先做 Softmax 得到概率约 [0.6590,0.2424,0.0986]。这一步用于手算理解。','按真实编号 2 取第三项 pᵧ≈0.0986。','计算 −ln(pᵧ)≈2.317。实际代码直接让稳定损失接口处理原始 logits。'],solution:'交叉熵约 2.317；传给 CrossEntropyLoss 的是 logits 与真实类别索引。'},
+      code:'import torch\nimport torch.nn.functional as F\n\nlogits = torch.tensor([[2., 1., 0.1]])  # [样本数, 类别数]\ntarget = torch.tensor([2], dtype=torch.long)\nloss = F.cross_entropy(logits, target)\n# 下面只用于对照手算；不把 p 传回 cross_entropy\np = logits.softmax(dim=1)\nprint(p[0, 2].item())  # 约 0.0986\nprint(loss.item())     # 约 2.3170',
+      source:'https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html'
+    }
+  };
   const foundationUnitKeypoints={
     'ai-foundations':['神经网络把输入数值经过若干计算步骤变成输出。','单个神经元常先算加权和，再加偏置，得到原始分数。'],
     'ai-layers':['权重控制对应输入的贡献，偏置改变结果的整体偏移。','训练用损失衡量预测，再用梯度指导可学习参数更新。'],
     'tensor':['张量用多个轴组织数值，shape 按顺序记录每条轴的长度。','轴数是 shape 中长度值的个数；元素总数是各轴长度的乘积。'],
     'tensor-indexing':['常见张量索引从 0 开始；整数索引选中某位置并通常移除该轴。','切片选择一段范围，通常保留该轴，结果形状随选择方式变化。'],
     'tensor-operations':['逐元素运算按对应位置计算；维度不完全相等时要符合广播规则。','矩阵乘法要求左列数等于右行数，结果形状取两个外侧维度。'],
-    'tensor-layout':['reshape 改变元素分组形状，不改变逻辑元素总数；必要时可能复制数据。','转置重排轴；shape 与 stride 会随轴顺序改变。'],
+    'tensor-layout':['reshape 改变元素分组形状，不改变逻辑元素总数；必要时可能复制数据。','转置重排轴；shape 与张量内存步幅会随轴顺序改变。'],
     'network':['单个神经元的线性部分常写作 z=Σᵢwᵢxᵢ+b。','权重决定各输入的贡献，偏置是输入之外可学习的平移量。'],
     'network-activation':['激活函数逐位置变换神经元输出；非线性使网络不再只是线性变换。','若层间没有非线性，多个线性或仿射层仍可合成一个仿射变换。'],
     'network-outputs':['分类模型通常先给每类一个 logit；logits 不是已归一化的概率。','回归模型输出连续数值；输出层形式取决于任务和目标范围。'],
@@ -249,7 +325,7 @@
     ],
     'tensor-layout':[
       tier('第 1 关 · 认概念','把 12 个数 reshape 成 (3,4)，元素总数会怎样？',['仍是 12 个','变成 7 个','自动复制成 24 个'],0,'reshape 改变逻辑分组和形状，不会增加或减少元素总数。'),
-      tier('第 3 关 · 场景迁移','连续存储的 (2,3) 矩阵 stride 为 (3,1)，转置后 stride 通常是什么？',['(1,3)','(3,1)','(2,3)'],0,'转置交换轴的访问顺序，因此 stride 从 (3,1) 变为 (1,3)。')
+      tier('第 3 关 · 场景迁移','连续存储的 (2,3) 矩阵的张量内存步幅为 (3,1)，转置后张量内存步幅通常是什么？',['(1,3)','(3,1)','(2,3)'],0,'转置交换轴的访问顺序，因此张量内存步幅从 (3,1) 变为 (1,3)。')
     ],
     'network':[
       tier('第 1 关 · 认概念','在线性分数 z=wx+b 中，输入 x 增加 1 时，分数改变多少？',['改变 w','改变 b','总是改变 1'],0,'z 对 x 的变化率是 w；权重决定输入变化会给分数带来多大影响。'),
@@ -264,8 +340,8 @@
       tier('第 3 关 · 场景迁移','两个类别的 logits 都是 0，经过 Softmax 后概率是多少？',['[0.5,0.5]','[0,0]','[1,1]'],0,'两个分数相等，Softmax 会在两个互斥类别间平均分配概率。')
     ],
     'losses':[
-      tier('第 1 关 · 认概念','“一张图可以同时有猫和狗”属于哪类分类问题？',['多标签分类','单标签多分类','连续值回归'],0,'猫和狗可以同时为真，因此标签彼此独立，属于多标签分类。'),
-      tier('第 3 关 · 场景迁移','多标签任务中，猫和狗可以同时出现，常见输出组合是什么？',['每类独立 Sigmoid，并配合 BCE 类损失','跨类别 Softmax，并只保留一个类别','回归一个类别编号并用 MSE'],0,'多标签的各类标签可独立成立，通常对每个 logit 使用 Sigmoid/BCEWithLogitsLoss。')
+      tier('第 1 关 · 认概念','“一张图可以同时有猫和狗”属于哪类分类问题？',['多标签分类','单标签多分类','连续值回归'],0,'多个类别可以同时成立，属于多标签分类；逐类计分并不意味着现实中的类别事件统计独立。'),
+      tier('第 3 关 · 场景迁移','多标签任务中，猫和狗可以同时出现，常见输出组合是什么？',['逐类概率与二元交叉熵','跨类别 Softmax，并只保留一个类别','回归一个类别编号并用 MSE'],0,'可将原始 logits 直接交给 BCEWithLogitsLoss，它内部组合 Sigmoid 与二元交叉熵；若使用 BCELoss，才先把分数转换成概率。不要在 BCEWithLogitsLoss 前重复做 Sigmoid。')
     ],
     'loss-probabilities':[
       tier('第 1 关 · 认概念','哪个场景更适合 Softmax？',['猫、狗、兔中只能选一个','猫和狗可能同时出现','预测图片亮度数值'],0,'Softmax 用于互斥类别，让各类概率总和为 1。'),
@@ -400,16 +476,35 @@
         });
         const sectionNames=sections.map(s=>stripNumber(s.title)).filter(Boolean);
         const teaching=key==='dl'?foundationUnitGuides[spec.id]:null;
+        const companion=key==='dl'?foundationUnitExamples[spec.id]:null;
+        const chapterExercises=teaching?[
+          foundationUnitExerciseTiers[spec.id][0],
+          {...teaching.exercise,stage:'第 2 关 · 解释与计算'},
+          foundationUnitExerciseTiers[spec.id][1]
+        ].map((exercise,n)=>{
+          const count=exercise.options.length,offset=(Object.keys(foundationUnitGuides).indexOf(spec.id)+n)%count;
+          const options=exercise.options.slice(offset).concat(exercise.options.slice(0,offset));
+          const answer=(exercise.answer-offset+count)%count;
+          // Content-based IDs keep old answers from being applied to a different question.
+          let hash=2166136261;
+          for(const char of JSON.stringify([exercise.q,options,answer]))hash=Math.imul(hash^char.charCodeAt(0),16777619);
+          return {...exercise,options,answer,id:'q-'+(hash>>>0).toString(36)};
+        }):(isLast?(base.chapterExercises||[]):[]);
         const goals=teaching?.goals||sectionNames.slice(0,2).map(name=>'理解“'+name+'”在本课中解决什么问题。');
         if(!teaching&&goals.length<2)goals.push('结合图示或算例，说清输入、关键步骤和结果之间的关系。');
         const l={...base,id:spec.id,title:spec.title,desc:spec.desc,sections,time:spec.time,level:base.curriculumOptional?'选学':'基础',
           goals,keypoints:foundationUnitKeypoints[spec.id]||goals,prereq:spec.prereq||base.prereq,prereqLinks:[],curriculumIntro:spec.desc,curriculumKey:key,
-          curriculumOptional:false,curriculumPhase:'',chapterExercises:spec.chapterExercises||(teaching?[{...foundationUnitExerciseTiers[spec.id][0]}, {...teaching.exercise,stage:'第 2 关 · 手算与推理'}, {...foundationUnitExerciseTiers[spec.id][1]}]:(isLast?(base.chapterExercises||[]):[])),
+          curriculumOptional:false,curriculumPhase:'',chapterExercises:spec.chapterExercises||chapterExercises,
           quiz:isLast?base.quiz:undefined,worked:isFirst?base.worked:undefined,code:isFirst?(base.code||''):'',starterCode:isFirst?(base.starterCode||''):'',
           language:isFirst?(base.language||'Python'):'课堂图解',visual:isFirst?(base.visual||''):'',figureKeys:isFirst?(base.figureKeys||[]):[],
           foundation:{...(base.foundation||{}),title:spec.title,question:spec.desc,why:'完成本课后，你可以用自己的话说明“'+spec.title+'”的含义，以及它和前后知识的关系。',
             example:base.foundation?.example||spec.desc,terms:(base.foundation?.terms||[]).slice()}};
         if(isLast)l.worked=isFirst?base.worked:undefined;
+        if(companion)Object.assign(l,{
+          foundationDepth:companion.depth,worked:companion.worked,starterCode:companion.code,code:'',language:'Python',
+          codeGuide:{where:companion.code.includes('import torch')?'在已安装 PyTorch 的 Python 环境运行；无需图片数据集。':'在 Python 环境运行；本例只用数字乘加。',input:companion.worked.prompt,output:companion.worked.solution},
+          sources:[{label:'PyTorch 官方说明与接口约定',url:companion.source}]
+        });
         pieces.push(l);newById.set(l.id,l);
         for(const s of sections){
           sectionOwner.set(spec.id+'|'+s.id,{lesson:spec.id,section:s,source:entry.from});

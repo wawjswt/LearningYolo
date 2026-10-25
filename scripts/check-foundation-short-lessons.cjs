@@ -39,11 +39,61 @@ for (const [, src] of html.matchAll(/<script src="([^"?]+)(?:\?[^"]*)?"><\/scrip
   if (/^https?:/.test(src) || src === 'sidebar.js') continue;
   let source = readFileSync(join(root, src), 'utf8');
   if (src === 'textbook-ui-v3.js') source = source.replace(/  render\(\);\s*\}\)\(\);\s*$/, '})();');
+  if (src === 'textbook-cv-editorial.js') source = source.replace('  const visuals={', '  window.cvNumericCheck={computeWindow,windowState,windowView,scaleView};\n  const visuals={');
   vm.runInContext(source, context, { filename: src });
 }
 const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
+
+test('CV convolution uses the same windows as the text and handles shared input contributions', () => {
+  const {computeWindow,windowState} = context.cvNumericCheck;
+  const s = windowState('conv');
+  assert.deepEqual(Array.from(computeWindow(s.values,3,1,0,'conv',0).outputs), [-4,-4,-4,-4]);
+  s.values[4] = 9;
+  assert.deepEqual(Array.from(computeWindow(s.values,3,1,0,'conv',0).outputs), [-8,-4,-4,0]);
+  const padded = computeWindow([1,2,3,4,5,6,7,8,9],3,1,1,'conv',0);
+  assert.equal(padded.out,4); assert.equal(padded.outputs[0],-1); assert.equal(padded.outputs.at(-1),9);
+  assert.equal(padded.terms.filter(t=>!t.inside).length,3);
+  assert.equal(computeWindow(s.values,3,2,0,'conv',0,2).out,1);
+  assert.equal(computeWindow(s.values,3,2,0,'conv',0,2).outputs[0],-6);
+});
+
+test('CV pooling checks mean, negative inputs and moving an impulse across a window boundary', () => {
+  const {computeWindow,windowState} = context.cvNumericCheck;
+  const s=windowState('pooling');
+  assert.deepEqual(Array.from(computeWindow(s.values,4,2,0,'max',0).outputs),[4,3,6,8]);
+  assert.deepEqual(Array.from(computeWindow(s.values,4,2,0,'avg',0).outputs),[2.5,1.5,3.5,5.5]);
+  assert.equal(computeWindow([-1,-2,-3,-4],2,1,0,'max',0).outputs[0],-1);
+  const pulse=Array(16).fill(0); pulse[1]=9;
+  assert.deepEqual(Array.from(computeWindow(pulse,4,2,0,'max',0).outputs),[9,0,0,0]);
+  pulse[1]=0;pulse[5]=9;
+  assert.deepEqual(Array.from(computeWindow(pulse,4,2,0,'max',0).outputs),[9,0,0,0]);
+  pulse[5]=0;pulse[2]=9;
+  assert.deepEqual(Array.from(computeWindow(pulse,4,2,0,'max',0).outputs),[0,9,0,0]);
+});
+
+test('CV labs are mounted once in the appropriate lessons and preprocessing computes actual numbers', () => {
+  for (const [id,attribute] of [['cnn','data-cv-window-lab="conv"'],['pooling','data-cv-window-lab="pooling"'],['pooling-tradeoffs','data-cv-window-lab="pool-shift"'],['image','data-cv-scale ']]) {
+    assert.equal(context.lesson(id).split(attribute).length-1,1,id);
+  }
+  assert.doesNotMatch(context.lesson('cnn'),/data-cnn-convolution|data-bw-root="cnn"/);
+  assert.match(context.cvNumericCheck.scaleView(128,false),/0\.50196/);
+  assert.match(context.cvNumericCheck.scaleView(128,false),/0\.00784/);
+  assert.match(context.cvNumericCheck.scaleView(128,true),/−1\.99213/);
+  assert.match(context.cvNumericCheck.scaleView(0,false),/−2/);
+  assert.match(context.cvNumericCheck.scaleView(255,false),/>2</);
+});
+
+test('generated CV code parses for convolution, bias, padding and both pooling rules', () => {
+  const {windowState,windowView}=context.cvNumericCheck;
+  const conv=windowState('conv');conv.padding=1;conv.stride=2;conv.bias=-3;
+  const avg=windowState('pooling');avg.mode='avg';avg.stride=1;
+  const examples=[windowState('conv'),conv,windowState('pooling'),avg];
+  const snippets=examples.map(s=>windowView(s).match(/<code id="cv-window-code-[^"]+">([\s\S]*?)<\/code>/)[1]);
+  const result=spawnSync('python',['-X','utf8','-c','import ast,html,json,sys\nfor code in json.load(sys.stdin): ast.parse(html.unescape(code))'],{encoding:'utf8',input:JSON.stringify(snippets)});
+  assert.equal(result.status,0,result.stderr||String(result.error));
+});
 
 function mountWorkshop(id, collections = {}) {
   const nodes = new Map();

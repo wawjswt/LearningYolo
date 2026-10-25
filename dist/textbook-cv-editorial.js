@@ -78,7 +78,7 @@
   course('image-preprocessing',['比较拉伸、裁剪和补边对同一张图的影响。','把一个点从原图换到补边图，再准确换回来。'],['拉伸可改变比例，裁剪舍弃区域，等比缩放补边保留比例并增加空白。','坐标变换要同时记录缩放量与补边量；逆变换先去补边再除缩放量。'],'会读图像的高、宽和像素位置。',['image']);
   section('image-preprocessing',0,'先决定怎样把长方形放进正方形',[
     '原图宽400、高200，要放进200×200输入。直接拉伸会使宽缩为一半、高保持不变，圆看起来变成椭圆。等比缩放后中心裁剪则可能截掉两侧内容。等比缩放再补边（letterbox）可先缩成宽200、高100，再在上、下各补50行。',
-    '本课坐标原点在左上，x向右、y向下；图像尺寸先明确写“宽×高”。原点(100,40)经上述等比缩放变成(50,20)，再加上方50行，得到输入图位置(50,70)。边界框的每个角点也按同样规则处理。',
+    '本课坐标原点在左上，x向右、y向下；图像尺寸先明确写“宽×高”。原图中的点(100,40)经上述等比缩放变成(50,20)，再加上方50行，得到输入图位置(50,70)。边界框的每个角点也按同样规则处理。',
     '缩放量记r=0.5，左补边pₓ=0、上补边pᵧ=50，便有x′=rx+pₓ、y′=ry+pᵧ。这里撇号表示处理后的坐标。框不能只缩宽高而忘记移动位置；裁剪时还要记录被移走的原点。'
   ],q('点(100,40)按本例缩放并补边后在哪里？',['(50,20)','(50,70)','(100,90)'],1,'先乘0.5，再给y加50。'),{cvVisual:'geometry'});
   section('image-preprocessing',1,'沿记录的步骤把框还原',[
@@ -101,7 +101,7 @@
   section('cnn',2,'多通道：先分别计算，再合成一个数',[
     '现在同一窗口有两个输入通道。第一张表[1,2;3,4]配权重[1,0;0,−1]，得到−3；第二张表全为1，配权重全为2，得到8。把两张表的贡献相加，再加偏置1，最终输出−3+8+1=6。',
     '这一个滤波器必须为每个输入通道准备一张权重表。因此两个输入通道、2×2窗口的完整滤波器有2×2×2=8个权重，加一个偏置。它把所有输入通道合成一个输出通道，不能把每个输入通道的中间结果直接当成最终通道。',
-    '如果需要3个输出通道，就准备3组这样的完整滤波器，各自计算一张输出表。输入通道数由送进来的数据决定，输出通道数由这一层的配置决定。下方互动用三张通道表演示同一求和规则，可以暂时关闭一张表，观察它对输出的贡献。'
+    '如果需要3个输出通道，就准备3组这样的完整滤波器，各自计算一张输出表。输入通道数由送进来的数据决定，输出通道数由这一层的配置决定。这一小节的互动另用三张通道表演示同一求和规则，可以暂时关闭一张表，观察它对输出的贡献。'
   ],q('两个通道分别贡献−3和8，偏置1，这个输出数是多少？',['6','两通道直接保留为[−3,8]','5'],0,'普通卷积对输入通道求和，再加该输出通道的偏置。'));
 
   course('cnn-shapes',['根据核、步幅、填充计算输出高宽。','给定输入输出通道，算出普通卷积的参数量。'],['普通卷积每个输出通道读取全部输入通道；参数量与输出位置数不同。','核3、步幅1、填充1可保持高宽；步幅2的结果还取决于输入尺寸和取整。'],'已手算过单通道与多通道卷积。',['cnn']);
@@ -124,16 +124,19 @@
   section('pooling',0,'用四个小窗口算完一张图',[
     '输入[1,4,2,3;2,3,0,1;5,6,8,7;1,2,3,4]，用2×2窗口、步幅2、不补边。左上四数[1,4;2,3]最大值4；右上最大值3；左下最大值6；右下最大值8。最大池化得到[4,3;6,8]。',
     '同样四个窗口改取平均，依次得到2.5、1.5、3.5、5.5，输出为[2.5,1.5;3.5,5.5]。最大值保留最强响应；平均值汇总整个窗口。两者都用一个数代替四个数，因此无法仅凭输出恢复所有原值。',
-    '池化通常对每个通道分别进行。本例若有16张4×4通道表，就分别算出16张2×2表，通道数保持16。窗口规则固定，这种最大或平均池化本身没有要学习的卷积权重。'
+    '池化通常对每个通道分别进行。本例若有16张4×4通道表，就分别算出16张2×2表，通道数保持16。窗口规则固定，这种最大或平均池化本身没有要学习的卷积权重。',
+    '“最大”指数字本身最大，不是绝对值最大。窗口[−1,−2;−3,−4]的最大值是−1，不能取−4，也不会自动变成0。特征图在未接ReLU等激活前可以包含负数；可以在计算台把输入改为负数核对。',
+    '这里明确设置窗口2×2、步幅2。在PyTorch中，MaxPool2d(2)与AvgPool2d(2)未单独指定stride时，步幅默认跟随核大小；Conv2d的默认stride则是1。读代码时把窗口大小和移动步幅分别确认。'
   ],q('窗口[1,4;2,3]的最大池化、平均池化结果依次是什么？',['4和2.5','10和4','4和4'],0,'最大数为4，总和10除以4得到2.5。'),{cvVisual:'pool'});
   section('pooling',1,'尺寸变小，具体丢了什么？',[
     '4×4变2×2，每通道元素从16个减到4个。后续若在这个更小网格上卷积，通常能减少空间位置上的计算；代价是窗口内部的细位置被压缩。例如只有一个9，处在左上窗口的任意一格，最大值都可能还是9。',
-    '下面的窗口互动可以先保持强响应在同一窗口里移动，再跨越窗口边界。前者输出可能不变，后者会把响应移到另一个输出格。这解释了局部移动下的稳定性，也说明池化并没有保证任何移动都不改变输出。'
+    '在本课窗口计算台中先切换到只有一个9：点选一个输入格，再点“只把9放在选中输入格”，比较窗口内移动与跨窗口移动。前者输出可能不变，后者会把响应移到另一个输出格。这解释了局部移动下的稳定性，也说明池化并没有保证任何移动都不改变输出。'
   ],q('同一个最大值在同一池化窗口内移动，其他值较小时，最大池化输出会怎样？',['可能保持不变','一定恢复其精确坐标','必然变成0'],0,'输出记录最大值，没有记录该最大值在窗口里的完整位置。'));
   section('pooling',2,'把步幅、感受野与高宽分开',[
     '步幅1、2×2、不补边的池化把4×4变3×3；改用合适的填充，某些池化配置可以保持高宽。因而“池化”这个名字不等于“高宽必然减半”。尺寸按核、步幅、填充及具体取整模式计算。',
     '感受野指一个输出可能受到原输入哪些位置影响。2×2池化读取邻域，扩大了对应范围；1×1、步幅2卷积虽减少输出位置，却只读取上一层的一个位置，不在这一层扩大单个输出的理论感受野。它增大相邻输出对应原输入的间隔，后续大窗口再在这个间隔上汇合信息。',
-    'PyTorch池化还提供ceil_mode等边界选项；平均池化遇到填充时，是否把填充值计入平均也有配置。先用本课不补边的小例子理解，再按实际接口核对边缘输出。'
+    'ceil_mode决定是否采用向上取整的窗口计数规则，默认False；边界还有额外的窗口合法性限制，不能仅把任何尺寸公式中的floor改成ceil就结束。上面的计算台固定False、不补边，先把完整窗口的位置数清楚。',
+    '补边还要区分运算：PyTorch最大池化在边界按负无穷处理，使虚拟位置不会压过真实的负数；它不是给最大值比较补0。平均池化用0补边，count_include_pad默认True，会把补出的0也计入平均分母。例如2×2窗口只有一个真实值4，其余3格是补0时，默认平均为4/4=1；False时只除真实格数，得到4。'
   ],q('1×1、步幅2卷积对理论感受野边长和采样间隔有什么影响？',['边长一定翻倍','本层不扩大边长，采样间隔变大','二者都必然不变'],1,'一个输出只取上一层一个位置；步幅2跳着取位置。'));
 
   course('pooling-tradeoffs',['比较强响应在窗口内移动和跨窗口移动的结果。','说清池化与步幅卷积的规则及参数差别。'],['局部汇总可减弱窗口内的小位移影响，也会丢失精细位置。','池化按固定规则汇总；步幅卷积使用学习到的权重。'],'会计算最大池化与卷积乘加。',['pooling','cnn']);
@@ -502,25 +505,32 @@
   }
   for(const l of byId.values())l.prereqLinks=l.prereqLinks.map(link=>({...link,title:catalog.find(item=>item.id===link.id)?.title||link.title}));
   // 开篇旧讲义中的解释已融入正文；既有互动移到第一次解释之后。
-  const workshopSections={tasks:0,image:0,cnn:0,pooling:0,iou:1,metrics:1,dataset:0,'data-quality':0,augmentation:0,transfer:0,quaternion:1};
+  const workshopSections={tasks:0,iou:1,metrics:1,dataset:0,'data-quality':0,augmentation:0,transfer:0,quaternion:1};
   for(const [id,index] of Object.entries(workshopSections))byId.get(id).sections[index].cvWorkshop=true;
   const playerRef=(id,i)=>{const s=byId.get(id).sections[i];return {lesson:id,key:s.playgroundId||i,legacy:s.legacyIndex};};
-  const singleConv={component:'single-convolution'},channels=playerRef('cnn',1),claims=playerRef('cnn-priors-limits',0),connections=playerRef('cnn-priors-limits',1);
-  byId.get('cnn').sections[0].cvPlayers=[singleConv];
+  const channels=playerRef('cnn',1),claims=playerRef('cnn-priors-limits',0),connections=playerRef('cnn-priors-limits',1);
+  byId.get('image').sections.forEach(s=>s.cvPlayers=[]);
+  byId.get('cnn').sections[0].cvPlayers=[];
   byId.get('cnn').sections[1].cvPlayers=[];
+  byId.get('cnn').sections[1].cvLab='conv';
   byId.get('cnn').sections[2].cvPlayers=[{component:'channel-math'}];
-  byId.get('cnn-shapes').sections[0].cvPlayers=[channels];
+  byId.get('cnn-shapes').sections[0].cvPlayers=[];
+  byId.get('cnn-shapes').sections[1].cvPlayers=[channels];
+  byId.get('cnn-shapes').sections[2].cvVisual='shape-contract';
+  byId.get('pooling').sections.forEach(s=>s.cvPlayers=[]);
+  byId.get('pooling-tradeoffs').sections.forEach(s=>s.cvPlayers=[]);
+  byId.get('pooling-tradeoffs').sections[0].cvLab='pool-shift';
   byId.get('cnn-priors').sections[1].cvPlayers=[playerRef('cnn-priors',1),connections];
   byId.get('cnn-priors').sections[2].cvOptionalPlayers=[claims];
   byId.get('cnn-priors-limits').sections[0].cvPlayers=[];
   byId.get('cnn-priors-limits').sections[1].cvPlayers=[];
-  const visualAfter={rgb:1,scale:1,geometry:2,conv:0,pool:0,mask:0,classifier:1,rf:2,pyramid:0,matching:1,pr:2,checks:2,coverage:1,crop:1,'aug-results':1};
+  const visualAfter={rgb:1,scale:1,geometry:2,conv:0,pool:1,'shape-contract':0,mask:0,classifier:1,rf:2,pyramid:0,matching:1,pr:2,checks:2,coverage:1,crop:1,'aug-results':1};
   for(const l of byId.values())for(const s of l.sections)if(s.cvVisual)s.cvVisualAfter=visualAfter[s.cvVisual]??0;
 
   const references={
     image:[['https://docs.pytorch.org/vision/stable/models.html#using-the-pre-trained-models','Torchvision预训练权重与输入变换']],
     'cnn-shapes':[['https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html','PyTorch Conv2d尺寸、权重与groups']],
-    pooling:[['https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html','PyTorch MaxPool2d与取整选项']],
+    pooling:[['https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html','PyTorch MaxPool2d与边界规则'],['https://docs.pytorch.org/docs/stable/generated/torch.nn.AvgPool2d.html','PyTorch AvgPool2d与平均分母']],
     transfer:[['https://docs.pytorch.org/tutorials/beginner/transfer_learning_tutorial.html','PyTorch迁移学习：微调与固定特征']],
     'fine-tuning':[['https://docs.pytorch.org/tutorials/beginner/transfer_learning_tutorial.html','PyTorch迁移学习配置示例']],
     'cnn-alexnet':[['https://docs.pytorch.org/vision/stable/_modules/torchvision/models/alexnet.html','Torchvision AlexNet源码'],['https://papers.nips.cc/paper_files/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html','AlexNet原论文']],
@@ -554,13 +564,81 @@
     return '<figure class="cv-numeric-figure"><div class="cv-table-scroll" tabindex="0" role="region" aria-label="'+esc(title)+'"><table><caption>'+esc(title)+'</caption><thead><tr>'+heads.map(h=>'<th scope="col">'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map((c,i)=>'<'+(i?'td':'th scope="row"')+'>'+esc(c)+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('')+'</tbody></table></div>'+(note?'<figcaption>'+esc(note)+'</figcaption>':'')+'</figure>';
   }
   function flow(title,items,note){return '<figure class="cv-numeric-figure"><figcaption><strong>'+esc(title)+'</strong></figcaption><ol class="cv-number-flow">'+items.map(([label,value])=>'<li><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></li>').join('')+'</ol><figcaption>'+esc(note)+'</figcaption></figure>';}
+  const poolNumbers=[1,4,2,3,2,3,0,1,5,6,8,7,1,2,3,4];
+  const number=v=>String(Number(v.toFixed(5))).replace('-','−');
+  function computeWindow(values,size,stride,padding,mode,position,bias=0){
+    const out=Math.floor((size+2*padding-2)/stride)+1;
+    const weights=[1,0,0,-1],outputs=[],windows=[];
+    for(let row=0;row<out;row++)for(let col=0;col<out;col++){
+      const terms=weights.map((weight,index)=>{
+        const r=row*stride-padding+Math.floor(index/2),c=col*stride-padding+index%2;
+        const inside=r>=0&&r<size&&c>=0&&c<size;
+        return {r,c,inside,value:inside?values[r*size+c]:0,weight};
+      });
+      const sum=terms.reduce((a,t)=>a+t.value,0);
+      outputs.push(mode==='conv'?terms.reduce((a,t)=>a+t.value*t.weight,bias):mode==='max'?Math.max(...terms.map(t=>t.value)):sum/4);
+      windows.push(terms);
+    }
+    const selected=Math.max(0,Math.min(position,outputs.length-1));
+    return {out,outputs,selected,terms:windows[selected]};
+  }
+  function windowState(kind){
+    const conv=kind==='conv';
+    return {kind,size:conv?3:4,values:conv?[1,2,3,4,5,6,7,8,9]:kind==='pool-shift'?[0,9,...Array(14).fill(0)]:poolNumbers.slice(),stride:conv?1:2,padding:0,mode:conv?'conv':'max',position:0,pixel:conv?4:1,bias:0};
+  }
+  function windowView(state){
+    const {kind,size,values,stride,padding,mode,bias}=state;
+    const result=computeWindow(values,size,stride,padding,mode,state.position,bias),{out,selected,terms}=result;
+    const span=size+2*padding;
+    let input='';
+    for(let r=-padding;r<size+padding;r++)for(let c=-padding;c<size+padding;c++){
+      const inside=r>=0&&r<size&&c>=0&&c<size,index=r*size+c;
+      const active=terms.some(t=>t.r===r&&t.c===c);
+      const cls='cv-lab-cell'+(active?' is-window':'')+(!inside?' is-padding':'');
+      input+=inside?'<button type="button" class="'+cls+'" data-cv-pixel="'+index+'" aria-label="选中输入行 '+r+' 列 '+c+'，值 '+values[index]+'" aria-pressed="'+(index===state.pixel)+'">'+number(values[index])+'</button>':'<span class="'+cls+'" aria-label="补出的零">0</span>';
+    }
+    const output=result.outputs.map((value,index)=>'<button type="button" class="cv-lab-cell'+(index===selected?' is-output':'')+'" data-cv-output="'+index+'" aria-label="查看输出行 '+Math.floor(index/out)+' 列 '+index%out+'，值 '+value+'" aria-pressed="'+(index===selected)+'">'+number(value)+'</button>').join('');
+    const expected=Array.from({length:out},(_,r)=>result.outputs.slice(r*out,(r+1)*out));
+    const inputRows=Array.from({length:size},(_,r)=>'    ['+values.slice(r*size,(r+1)*size).join(', ')+']').join(',\n');
+    const code='import torch\nimport torch.nn.functional as F\n\n# 单张、单通道；先写成 H×W 表，再加 N 和 C 两条轴\nx = torch.tensor([\n'+inputRows+'\n], dtype=torch.float32)[None, None]\n'+(mode==='conv'?'weight = torch.tensor([[[[1., 0.], [0., -1.]]]])\nbias = torch.tensor(['+bias+'.])\ny = F.conv2d(x, weight, bias, stride='+stride+', padding='+padding+')':'y = F.'+(mode==='max'?'max_pool2d':'avg_pool2d')+'(x, kernel_size=2, stride='+stride+')')+'\nprint(y[0, 0])\n# 期望输出（按行）：'+JSON.stringify(expected)+'\nprint(tuple(y.shape))  # (1, 1, '+out+', '+out+')';
+    const row=Math.floor(selected/out),col=selected%out;
+    const expression=mode==='conv'?terms.map(t=>number(t.value)+'×('+number(t.weight)+')').join(' + ')+' + 偏置('+bias+')':mode==='max'?'max('+terms.map(t=>number(t.value)).join(', ')+')':'('+terms.map(t=>number(t.value)).join(' + ')+') ÷ 4';
+    const rows=terms.map(t=>[t.inside?'输入['+t.r+','+t.c+']':'补边['+t.r+','+t.c+']',number(t.value),...(mode==='conv'?[number(t.weight),number(t.value*t.weight)]:[])]);
+    return '<div class="cv-lab-boards"><div><h4>输入 · '+size+'×'+size+(padding?'，四周各补 '+padding:'')+'</h4><div class="cv-lab-grid" style="--cv-cols:'+span+'" role="group" aria-label="选一个输入格以修改数值">'+input+'</div><p>紫色格参与当前窗口；补边时才出现虚线格。下标从 0 开始。</p></div>'+(mode==='conv'?'<div><h4>固定权重 · 2×2</h4><div class="cv-lab-grid" style="--cv-cols:2">'+[1,0,0,-1].map(w=>'<span class="cv-lab-cell">'+number(w)+'</span>').join('')+'</div><p>同一组权重在所有输出位置复用。</p></div>':'')+'<div><h4>输出 · '+out+'×'+out+'</h4><div class="cv-lab-grid" style="--cv-cols:'+out+'" role="group" aria-label="点击输出格反查输入窗口">'+output+'</div><p>绿色格是当前正在拆解的输出。</p></div></div>'
+      +'<p class="cv-lab-result" role="status" aria-live="polite">输出['+row+','+col+'] = '+expression+' = <strong>'+number(result.outputs[selected])+'</strong></p>'
+      +table('当前窗口：四个输入怎样得到一个输出',mode==='conv'?['来源位置','输入值','对应权重','乘积']:['来源位置','输入值'],rows,mode==='conv'?'四个乘积相加后，只加一次这个输出通道的偏置。':'最大池化取四数最大值；平均池化把四数相加，再除以 4。')
+      +'<div class="cv-lab-size">高和宽分别计数：\\(\\lfloor('+size+'+2\\times'+padding+'-2)/'+stride+'\\rfloor+1='+out+'\\)。输出形状为 [1,1,'+out+','+out+']：前两个 1 分别是批次和通道数。</div>'
+      +'<details class="advanced-section"><summary>对照 PyTorch：代码随当前输入和设置更新</summary><div class="code-block"><div class="code-head"><span>Python · 当前演示</span><button type="button" class="copy" data-copy-fragment="cv-window-code-'+kind+'">复制本段代码</button></div><pre><code id="cv-window-code-'+kind+'">'+esc(code)+'</code></pre></div></details>';
+  }
+  function windowLabMarkup(kind){
+    const s=windowState(kind),conv=kind==='conv';
+    return '<section class="cv-lab" data-cv-window-lab="'+kind+'" data-values="'+s.values.join(',')+'" data-position="0" data-pixel="'+s.pixel+'" aria-label="'+(conv?'卷积窗口计算台':'池化窗口计算台')+'"><span class="chapter-kicker">改一个数，追踪它怎样影响输出</span><h3>'+(conv?'点输出格，找回它读取的输入窗口':kind==='pool-shift'?'移动同一个 9，比较窗口内与跨窗口移动':'同一张表，切换最大池化与平均池化')+'</h3><p>'+(conv?'先用正文的 3×3 数字表和 2×2 权重，检查四个输出是否都是 −4。再选一个输入格，修改它的值；观察哪些输出一起变化。':'先核对左上窗口；再切换汇总规则或改变步幅。一个输出只汇总它所覆盖窗口里的数，不会把所有通道混成一个。')+'</p>'
+      +'<div class="cv-lab-controls"><label>窗口移动步幅<select data-cv-setting="stride" aria-label="窗口移动步幅"><option value="1"'+(conv?' selected':'')+'>1 格</option><option value="2"'+(!conv?' selected':'')+'>2 格</option></select></label>'
+      +(conv?'<label>输入四周补零<select data-cv-setting="padding" aria-label="输入四周补零"><option value="0">不补</option><option value="1">每边补 1 格</option></select></label><label>输出偏置 b <output data-cv-bias-value>0</output><input type="range" min="-3" max="3" step="1" value="0" data-cv-setting="bias" aria-label="卷积输出偏置"></label>':'<label>窗口汇总规则<select data-cv-setting="mode" aria-label="窗口汇总规则"><option value="max">最大池化</option><option value="avg">平均池化</option></select></label>')
+      +'<label>选中输入格的值 <small data-cv-pixel-location>行 '+Math.floor(s.pixel/s.size)+'，列 '+s.pixel%s.size+'</small><output data-cv-pixel-value>'+s.values[s.pixel]+'</output><input type="range" min="-9" max="9" step="1" value="'+s.values[s.pixel]+'" data-cv-setting="value" aria-label="选中输入格的数值"></label>'+(conv?'':'<button type="button" data-cv-pulse>只把 9 放在选中输入格</button>')+'<button type="button" data-cv-lab-reset>恢复正文算例</button></div><div data-cv-window-view>'+windowView(s)+'</div><p class="cv-lab-note">'+(conv?'单输入通道、单输出通道，核固定 2×2、dilation=1，采用 Conv2d 的互相关方向；未接激活。补边按 0 计算。':'单通道、核固定 2×2、不补边、ceil_mode=False；输出高宽向下取整。其他边界规则放在理解基本窗口之后学习。')+' 浏览器按这些规则实时计算，没有运行或训练 PyTorch 模型。代码需在已安装 PyTorch 的 Python 中运行。</p></section>';
+  }
+  function updateWindowLab(root){
+    const state=windowState(root.dataset.cvWindowLab),field=key=>root.querySelector('[data-cv-setting="'+key+'"]');
+    state.values=root.dataset.values.split(',').map(Number);state.position=Number(root.dataset.position);state.pixel=Number(root.dataset.pixel);
+    state.stride=Number(field('stride').value);state.padding=Number(field('padding')?.value||0);state.bias=Number(field('bias')?.value||0);state.mode=field('mode')?.value||'conv';
+    root.querySelector('[data-cv-pixel-value]').textContent=state.values[state.pixel];root.querySelector('[data-cv-pixel-location]').textContent='行 '+Math.floor(state.pixel/state.size)+'，列 '+state.pixel%state.size;if(field('bias'))root.querySelector('[data-cv-bias-value]').textContent=state.bias;field('value').value=state.values[state.pixel];
+    const view=root.querySelector('[data-cv-window-view]'),codeOpen=view.querySelector('details')?.open;view.innerHTML=windowView(state);if(codeOpen)view.querySelector('details').open=true;window.renderLessonMath?.(view);
+  }
+  function scaleMarkup(){
+    return '<section class="cv-lab" data-cv-scale aria-label="像素数值预处理实验"><span class="chapter-kicker">跟着一个像素数值走</span><h3>改变原像素，逐步核对转换结果</h3><p>先试 0、128、255。转换成浮点数只改变数值表示；除以 255 才改变尺度。教学模型约定 μ=0.5、标准差 s=0.25。</p><label class="cv-pr-control">原像素 x：<output data-cv-scale-value>128</output><input type="range" min="0" max="255" step="1" value="128" data-cv-scale-input aria-label="原始像素值"></label><label class="cv-lab-toggle"><input type="checkbox" data-cv-double-scale>模拟错误：把已缩放到 0–1 的数再次除以 255</label><div data-cv-scale-result>'+scaleView(128,false)+'</div><p class="cv-lab-note">均值与标准差在这里固定，不从当前像素估计。实际模型应使用对应权重规定的预处理设置。标准化后出现负数可以是正常结果。</p></section>';
+  }
+  function scaleView(x,double){
+    const scaled=x/255,value=double?scaled/255:scaled,out=(value-.5)/.25;
+    return flow('每一列对应一次操作',[['原 uint8 整数',String(x)],['仅转 float32',x+'.0'],['除以 255',number(scaled)],...(double?[['再次除以 255',number(value)]]:[]),['减 0.5，再除 0.25',number(out)]],'数值均按当前输入重算；显示小数经过舍入。')+'<p class="cv-lab-result" role="status" aria-live="polite">'+(double?'现在比模型约定多除了一次 255：标准化前为 '+number(value)+'，标准化后为 '+number(out)+(x===0?'。当前像素为0，重复除法后仍为0；换128或255看差异。':'。这改变了模型收到的输入。'):'标准化：('+number(scaled)+'−0.5) ÷ 0.25 = '+number(out)+'。负数只表示低于本例约定的中心。')+'</p>';
+  }
   const visuals={
     rgb:()=>'<figure class="cv-numeric-figure"><figcaption><strong>把四个像素拆成三张通道表</strong></figcaption><div class="cv-pixel-grid"><div style="--pixel:#dd3030">红<br><span>[255,0,0]</span></div><div style="--pixel:#248b3d">绿<br><span>[0,255,0]</span></div><div style="--pixel:#2d59c3">蓝<br><span>[0,0,255]</span></div><div style="--pixel:#fff">白<br><span>[255,255,255]</span></div></div>'+table('相同位置在三个通道中的数值',['位置','红R','绿G','蓝B'],[['左上',255,0,0],['右上',0,255,0],['左下',0,0,255],['右下',255,255,255]],'这是2×2教学图。屏幕色块仅帮助辨认颜色，旁边数字才是本例数据。')+'</figure>',
     mask:()=>table('L形物体的4×4二值掩码',['行/列','第1列','第2列','第3列','第4列'],[['第1行',0,0,0,0],['第2行',0,1,1,0],['第3行',0,1,0,0],['第4行',0,0,0,0]],'数出3个1。包围它的2×2矩形还包含第3行第3列的背景。'),
-    scale:()=>flow('同一个通道值，四个不同步骤',[['uint8原值','128'],['只转float','128.0'],['除255','0.50196'],['减0.5，再除0.25','0.00784']],'均值0.5、标准差0.25是本课教学设置；真实模型使用权重规定的输入处理。'),
+    scale:()=>scaleMarkup(),
     geometry:()=>'<figure class="cv-numeric-figure"><figcaption><strong>宽400、高200 → 等比缩放并补到200×200</strong></figcaption><svg class="cv-geometry" viewBox="0 0 600 255" role="img" aria-label="原图点100,40缩放并上补50行后位于50,70"><rect x="20" y="75" width="240" height="120" rx="3" fill="#e9f1f5" stroke="#427a9b"/><circle cx="80" cy="99" r="5" fill="#6656a5"/><text x="25" y="58">原图 400×200</text><text x="85" y="95">(100,40)</text><path d="M280 135h55l-8 -5m8 5l-8 5" fill="none" stroke="#6656a5" stroke-width="2"/><rect x="370" y="25" width="200" height="200" fill="#e7e2d9" stroke="#aaa293"/><rect x="370" y="75" width="200" height="100" fill="#e9f1f5" stroke="#427a9b"/><circle cx="420" cy="95" r="5" fill="#6656a5"/><text x="425" y="91">(50,70)</text><text x="380" y="53">上补50</text><text x="380" y="206">下补50</text><text x="370" y="248">输入 200×200；r=0.5</text></svg><figcaption>右侧坐标相对补边图左上角，图中位置按实际几何比例绘制。</figcaption></figure>',
     conv:()=>table('一个输出数的四项贡献',['位置','输入','权重','乘积'],[['左上',1,1,1],['右上',2,0,0],['左下',3,0,0],['右下',4,'−1','−4'],['求和＋偏置0','—','—','−3']],'窗口移动后，换输入位置，权重表保持同一组。'),
-    pool:()=>table('同一4×4输入的四个不重叠窗口',['输出位置','窗口四数','最大值','均值'],[['左上','1,4,2,3',4,2.5],['右上','2,3,0,1',3,1.5],['左下','5,6,1,2',6,3.5],['右下','8,7,3,4',8,5.5]],'核2×2、步幅2、无填充。按“左上、右上；左下、右下”排成2×2输出。'),
+    pool:()=>windowLabMarkup('pooling'),
+    'shape-contract':()=>table('把两层的输入、参数与输出逐项对上',['步骤','输入 NCHW','权重形状','含偏置参数数','输出 NCHW'],[['第一层：3×3，s=1，p=1','[1,3,8,8]','[16,3,3,3]','16×3×3×3+16=448','[1,16,8,8]'],['第二层：3×3，s=2，p=1','[1,16,8,8]','[32,16,3,3]','32×16×3×3+32=4640','[1,32,4,4]']],'第一层的16个输出通道必须对上第二层要求的16个输入通道。输出空间变小与通道变多是两项独立配置；两层共5088个参数。'),
     classifier:()=>flow('一个小分类器的形状链',[['一张灰度图','[1,1,4,4]'],['卷积＋ReLU','[1,2,4,4]'],['2×2池化','[1,2,2,2]'],['展平','[1,8]'],['线性分类头','[1,3]']],'最左边的1都是批次大小；输出三个数对应猫、狗、兔，标签在损失步骤另行参与。'),
     rf:()=>'<figure class="cv-numeric-figure"><figcaption><strong>第一层的三个窗口，回溯到同一行输入</strong></figcaption><div class="cv-rf-trace"><div>输入位置</div><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><div>第一输出</div><span class="cv-rf-a">1、2、3</span><div>第二输出</div><span class="cv-rf-b">2、3、4</span><div>第三输出</div><span class="cv-rf-c">3、4、5</span><div>第二层汇合</div><span class="cv-rf-all">并集是1到5，共5个位置</span></div><figcaption>有颜色的范围表示依赖位置，并不表示每个位置实际贡献相等。</figcaption></figure>'+table('分别记录输出高宽、范围R与间隔J',['层','核/步幅/填充','输出高×宽','R','J'],[['输入','—','32×32',1,1],['卷积1','3/1/1','32×32',3,1],['卷积2','3/1/1','32×32',5,1],['池化','2/2/0','16×16',6,2],['卷积3','3/1/1','16×16',10,2]],'假设各层膨胀率1、局部窗口，无额外跨空间分支；R按内部位置的理论范围计算。'),
     pyramid:()=>table('同一个640输入中的16像素宽目标',['特征网格','相邻位置间隔','目标投影宽度'],[['80×80','8输入像素','16/8=2格'],['40×40','16输入像素','16/16=1格'],['20×20','32输入像素','16/32=0.5格']],'投影宽度是几何示意；特征响应与感受野还取决于各层计算。'),
@@ -575,6 +653,7 @@
     ids:[...byId.keys()],
     renderParagraph(s,index){return s.cvVisual&&index===s.cvVisualAfter?visuals[s.cvVisual]?.()||'':'';},
     renderPlayers(s){
+      if(s.cvLab)return {main:windowLabMarkup(s.cvLab),extra:''};
       const render=refs=>refs.map(ref=>{
         const html=ref.component==='single-convolution'?window.visionlabCnnComponents.renderConvolution():ref.component==='channel-math'?window.channelConvolution.renderMath():window.lessonPlaygrounds?.render(ref.lesson,ref.key,ref.legacy)||'';
         return html.replace('堆叠局部层会扩大有效感受野','图中局部层的理论感受野随堆叠扩大').replace('与上方的 3×3 基础卷积配置不同','这里与正文的2×2窗口使用同一乘加规则');
@@ -584,9 +663,24 @@
     }
   };
   document.addEventListener('input',event=>{
+    const scale=event.target.closest?.('[data-cv-scale]');
+    if(scale){const x=Number(scale.querySelector('[data-cv-scale-input]').value),double=scale.querySelector('[data-cv-double-scale]').checked;scale.querySelector('[data-cv-scale-value]').textContent=x;scale.querySelector('[data-cv-scale-result]').innerHTML=scaleView(x,double);return;}
+    const setting=event.target.closest?.('[data-cv-setting]');
+    if(setting){const root=setting.closest('[data-cv-window-lab]');if(setting.dataset.cvSetting==='value'){const values=root.dataset.values.split(',').map(Number);values[Number(root.dataset.pixel)]=Number(setting.value);root.dataset.values=values.join(',');}else root.dataset.position='0';updateWindowLab(root);return;}
     const input=event.target.closest?.('[data-cv-pr-range]');if(!input)return;
     const root=input.closest('.cv-pr-example'),k=Number(input.value),tp=[1,1,2,3][k-1],fp=k-tp;
     root.querySelector('[data-cv-pr-k]').textContent=k;
     root.querySelector('[data-cv-pr-result]').textContent='TP='+tp+'，FP='+fp+'，FN='+(3-tp)+'；Precision='+(tp/k).toFixed(4)+'，Recall='+(tp/3).toFixed(4);
+  });
+  document.addEventListener('click',event=>{
+    const button=event.target.closest?.('[data-cv-pixel],[data-cv-output],[data-cv-lab-reset],[data-cv-pulse]');if(!button)return;
+    const root=button.closest('[data-cv-window-lab]');if(!root)return;
+    if(button.dataset.cvPixel!==undefined)root.dataset.pixel=button.dataset.cvPixel;
+    if(button.dataset.cvOutput!==undefined)root.dataset.position=button.dataset.cvOutput;
+    if(button.hasAttribute('data-cv-pulse')){const values=root.dataset.values.split(',').map(()=>0);values[Number(root.dataset.pixel)]=9;root.dataset.values=values.join(',');}
+    if(button.hasAttribute('data-cv-lab-reset')){const state=windowState(root.dataset.cvWindowLab);root.dataset.values=state.values.join(',');root.dataset.position='0';root.dataset.pixel=String(state.pixel);for(const key of ['stride','padding','bias','mode']){const field=root.querySelector('[data-cv-setting="'+key+'"]');if(field)field.value=String(state[key]);}}
+    updateWindowLab(root);
+    if(button.dataset.cvPixel!==undefined)root.querySelector('[data-cv-pixel="'+root.dataset.pixel+'"]').focus();
+    if(button.dataset.cvOutput!==undefined)root.querySelector('[data-cv-output="'+root.dataset.position+'"]').focus();
   });
 })();

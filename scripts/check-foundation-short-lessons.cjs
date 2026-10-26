@@ -46,6 +46,71 @@ const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
+test('AlexNet exposes every operation with a continuous tensor contract, including unchanged shapes', () => {
+  assert.ok(context.visionlabAlexnetFlow, 'AlexNet needs a complete layer trace');
+  const trace=context.visionlabAlexnetFlow.trace(1,224);
+  assert.equal(trace.length,24); // input + 22 network operations + optional Softmax
+  for(let i=1;i<trace.length;i++)assert.deepEqual(trace[i].input,trace[i-1].output,trace[i].name);
+  const featureShapes=[[1,64,55,55],[1,64,55,55],[1,64,27,27],[1,192,27,27],[1,192,27,27],[1,192,13,13],[1,384,13,13],[1,384,13,13],[1,256,13,13],[1,256,13,13],[1,256,13,13],[1,256,13,13],[1,256,6,6]];
+  assert.deepEqual(JSON.parse(JSON.stringify(trace.slice(1,14).map(r=>r.output))),featureShapes);
+  assert.deepEqual(Array.from(trace[15].output),[1,9216]);
+  assert.deepEqual(Array.from(trace[22].output),[1,1000]);
+  assert.equal(trace.reduce((n,r)=>n+r.params,0),61100840);
+  assert.equal(trace.filter(r=>r.params>0).length,8);
+  assert.equal(trace[1].params,23296);assert.equal(trace[4].params,307392);
+  assert.equal(trace[17].params,37752832);
+});
+
+test('AlexNet adaptive pooling and batch size follow the chosen input rather than a fixed picture', () => {
+  const trace=context.visionlabAlexnetFlow?.trace(2,256);
+  assert.ok(trace,'a second input size must be calculated');
+  assert.deepEqual(Array.from(trace[13].output),[2,256,7,7]);
+  assert.deepEqual(Array.from(trace[14].output),[2,256,6,6]);
+  assert.deepEqual(Array.from(trace[15].output),[2,9216]);
+  assert.deepEqual(Array.from(trace[22].output),[2,1000]);
+  const rendered=context.lesson('cnn-alexnet');
+  assert.match(rendered,/data-ax-flow-detail/);
+  assert.match(rendered,/features\.12/);
+  assert.match(rendered,/classifier\.6/);
+  assert.doesNotMatch(rendered,/96 个 11×11 卷积核|Conv3–5|结构示意省略了部分/);
+});
+
+test('AlexNet displayed Python prints the same layer shapes and parameter counts as real Torchvision',
+  {skip:!process.env.VISIONLAB_TORCH_PYTHON}, () => {
+    const api=context.visionlabAlexnetFlow;
+    const cases=[[1,224],[2,224],[4,224],[1,256],[2,256],[4,256]].map(([n,size])=>({
+      code:api.code(n,size),
+      expected:api.trace(n,size).map(r=>({path:r.path,input:r.input,output:r.output,params:r.params})),
+      weights:api.trace(n,size).filter(r=>r.params).map(r=>({path:r.path,shape:r.weight}))
+    }));
+    const program=[
+      'import ast, contextlib, io, json, re, sys, torch',
+      'torch.set_num_threads(1)',
+      'for case in json.load(sys.stdin):',
+      '    ast.parse(case["code"])',
+      '    output=io.StringIO()',
+      '    scope={}',
+      '    with contextlib.redirect_stdout(output): exec(case["code"], scope)',
+      '    for row in case["weights"]:',
+      '        assert list(scope["model"].get_submodule(row["path"]).weight.shape)==row["shape"]',
+      '    actual=[]',
+      '    for line in output.getvalue().splitlines():',
+      '        m=re.match(r"^(.+?)\\s+(\\([0-9, ]+\\))\\s*->\\s*(\\([0-9, ]+\\))\\s+params=(\\d+)$",line)',
+      '        if m: actual.append({"path":m[1].strip(),"input":list(ast.literal_eval(m[2])),"output":list(ast.literal_eval(m[3])),"params":int(m[4])})',
+      '    assert actual==case["expected"], (actual,case["expected"])',
+      '    assert "total parameters: 61100840" in output.getvalue()',
+      'patch=torch.stack([torch.ones(11,11)*i for i in [1,2,3]])[None]',
+      'assert torch.nn.functional.conv2d(patch,torch.ones(1,3,11,11),torch.ones(1)).item()==727',
+      'assert torch.nn.functional.adaptive_avg_pool2d(torch.arange(49.).reshape(1,1,7,7),(6,6))[0,0,0,0].item()==4',
+      'print("Six real forward passes match every displayed operation.")'
+    ].join('\n');
+    const result=spawnSync(process.env.VISIONLAB_TORCH_PYTHON,['-X','utf8','-c',program],{
+      encoding:'utf8',input:JSON.stringify(cases),timeout:120000
+    });
+    assert.equal(result.status,0,result.stderr||String(result.error));
+    assert.match(result.stdout,/Six real forward passes/);
+});
+
 test('IoU handles identity, containment, touching and invalid boxes with continuous coordinates', () => {
   const {boxOverlap}=context.cvNumericCheck;
   const a=[0,0,10,10],b=[5,0,15,10];

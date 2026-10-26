@@ -104,4 +104,52 @@
 .ax-footer-note{margin:0;padding:10px 12px;border-left:2px solid #d2b081;background:#f7f1e7;color:#6b6256;font-size:10px;line-height:1.65}
 .alexnet-playground button:focus-visible,.alexnet-playground input:focus-visible,.alexnet-playground select:focus-visible{outline:2px solid #75649f;outline-offset:2px}
 @media(max-width:700px){.ax-subhead{align-items:flex-start;flex-direction:column}.ax-subhead>p{text-align:left}.ax-stage-detail{grid-template-columns:1fr;gap:8px}.ax-idea-panel{grid-template-columns:1fr;min-height:0}.ax-idea-tabs button{flex:1 1 auto}.ax-pool-demo{grid-template-columns:1fr}.ax-pool-demo .ax-demo-readout{grid-column:auto}.ax-augment-demo{grid-template-columns:1fr}.ax-scene-frame svg{height:100px}.ax-quiz-grid{grid-template-columns:1fr}}
+
+/* The walkthrough keeps full NCHW labels and unchanged-shape operations visible. */
+[data-ax-flow]{font-size:14px;line-height:1.9}
+[data-ax-flow] p{margin:12px 0}
+.ax-flow-controls,.ax-flow-nav{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding:14px;background:#f0edf6;border:1px solid #e0d8ec;border-radius:6px}
+.ax-flow-controls label,.ax-flow-nav label{display:grid;gap:5px;flex:1 1 160px;font-size:13px;font-weight:650;color:#435465}
+.ax-flow-controls select,.ax-flow-nav select{min-width:0;width:100%;padding:10px 8px;border:1px solid #bcb0d0;border-radius:4px;background:#fff;color:#354353;font:inherit}
+.ax-flow-controls button,.ax-flow-nav button{padding:10px 12px;min-height:44px;border:1px solid #bcb0d0;border-radius:4px;background:#fff;color:#584279;font:inherit;font-size:13px;font-weight:600;line-height:1.6;cursor:pointer}
+.ax-flow-nav{margin:16px 0;background:#faf8fc;align-items:center}
+.ax-flow-nav label{flex-basis:240px}
+.ax-flow-nav button:disabled{opacity:.45;cursor:default}
+.ax-flow-controls :focus-visible,.ax-flow-nav :focus-visible,.ax-flow-reference summary:focus-visible{outline:3px solid #9c85ca;outline-offset:2px}
+.ax-flow-detail{padding:20px;border:1px solid #d9cfe8;border-left:4px solid #8e72b6;border-radius:5px;background:#fffefb}
+.ax-flow-kicker{font:600 12px/1.6 ui-monospace,Consolas,monospace;color:#77618e}
+.ax-flow-detail h4{margin:8px 0 12px;font-size:18px;line-height:1.7;color:#304353}
+.ax-flow-svg{display:block;width:100%;margin:8px 0;background:#f8f7fa;border-radius:5px}
+.ax-flow-svg text{fill:#3e4e60;font:13px "Microsoft YaHei",sans-serif}
+.ax-flow-svg .ax-flow-svg-small{font-size:11px}
+.ax-flow-calc{padding:12px;background:#f1edf8;color:#513c75;font-weight:650;overflow-wrap:anywhere}
+.ax-flow-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0}
+.ax-flow-facts>div{padding:12px;background:#eef4f0;border-radius:4px;min-width:0}
+.ax-flow-facts dt{font-size:12px;line-height:1.6;color:#526c61}
+.ax-flow-facts dd{margin:6px 0 0;font:700 19px/1.4 ui-monospace,Consolas,monospace;color:#315c4d;overflow-wrap:anywhere}
+[data-ax-flow] .ax-flow-note{font-size:12px;line-height:1.85;color:#667580}
+.ax-flow-reference{padding:14px;margin-top:14px;border:1px solid #e0d8e8;border-radius:5px;background:#fffefb}
+.ax-flow-reference>summary{cursor:pointer;font-size:14px;font-weight:650;color:#594277;line-height:1.8}
+.ax-flow-reference[open]>summary{margin-bottom:14px}
+.ax-flow-table-wrap{max-width:100%;overflow-x:auto;scrollbar-width:thin}
+.ax-flow-table{border-collapse:collapse;width:100%;min-width:560px;text-align:left;font-size:12px;line-height:1.7}
+.ax-flow-table caption{text-align:left;padding:8px 0;color:#5d6975}
+.ax-flow-table th,.ax-flow-table td{padding:12px 10px;border-bottom:1px solid #e3dee9;vertical-align:top}
+.ax-flow-table thead{background:#eee8f5;color:#574275}
+.ax-flow-table tbody tr:nth-child(even){background:#f8f6fb}
+.ax-flow-table small{display:block;margin-top:6px;font:11px/1.7 ui-monospace,Consolas,monospace;color:#657181}
+.ax-flow-table code{white-space:nowrap;font-size:12px}
+.ax-flow-arrow{display:block;color:#8b78ad}
+.ax-pool-grid{grid-template-columns:repeat(5,28px);grid-template-rows:repeat(5,28px)}
+.alexnet-playground>.ax-panel>.ax-subhead h4{font-size:16px}
+.alexnet-playground>.ax-panel>.ax-subhead>p{font-size:12px}
+@media(max-width:600px){.ax-flow-detail{padding:14px}.ax-flow-facts{grid-template-columns:1fr}.ax-flow-facts>div{display:flex;justify-content:space-between;align-items:center;gap:10px}.ax-flow-facts dd{margin:0;font-size:17px}.ax-flow-nav label{flex-basis:100%;order:-1}.ax-flow-nav button{flex:1}.ax-flow-controls button{width:100%}.ax-flow-reference{padding:10px}}
 @media(prefers-reduced-motion:reduce){.alexnet-playground *{scroll-behavior:auto!important;transition:none!important}}
+
+.ax-channel-example{margin:18px 0;padding:14px;border:1px solid #d9dfdf;border-radius:5px;background:#f7faf8}
+.ax-channel-example figcaption{font-weight:700;color:#3d5c51;margin-bottom:10px}
+.ax-channel-parts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ax-channel-parts>div{display:grid;gap:6px;padding:10px;border-top:3px solid #b77472;background:#fff}
+.ax-channel-parts>div:nth-child(2){border-color:#639c7e}.ax-channel-parts>div:nth-child(3){border-color:#638bb2}
+.ax-channel-parts span{font-size:12px}.ax-channel-example small{display:block;font-size:12px;line-height:1.8;color:#617270}
+@media(max-width:600px){.ax-channel-parts{grid-template-columns:1fr}}

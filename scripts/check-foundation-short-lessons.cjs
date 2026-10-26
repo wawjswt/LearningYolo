@@ -46,6 +46,64 @@ const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
+test('ResNet begins with its identity and motivation before introducing residual notation', () => {
+  const c=courses.find(l=>l.id==='cnn-residual');
+  const intro=c.sections[0].paragraphs.join(' ');
+  assert.match(c.sections[0].paragraphs[0],/残差网络.*Residual Network.*ResNet/);
+  assert.match(intro,/20层.*56层/);
+  assert.match(intro,/训练误差/);
+  assert.match(intro,/恒等映射/);
+  assert.match(c.sections[1].paragraphs.join(' '),/不是.*损失|不是.*标签/);
+  assert.match(c.sections[1].paragraphs.join(' '),/ReLU/);
+  const main=c.sections.map(s=>s.paragraphs.join(' ')).join(' ');
+  assert.ok(main.indexOf('残差网络')<main.indexOf('F(x)'));
+  const shapeLesson=context.lesson('cnn-residual-shapes');
+  assert.match(shapeLesson,/Conv1×1\(16→32, stride=2\)/);
+  assert.doesNotMatch(shapeLesson,/64→128|64×8×8/);
+});
+
+test('ResNet names and training pathologies remain whole concepts in glossary explanations', () => {
+  for(const [text,id] of [['残差网络','resnet-family'],['Residual Network','resnet-family'],['残差块','residual-block'],['残差学习','residual-learning'],['梯度消失','vanishing-gradient'],['梯度爆炸','exploding-gradient']]){
+    assert.equal(context.visionlabGlossary.firstTerm(text)?.id,id,text);
+  }
+});
+
+test('named architectures and training mechanisms define the object before giving configuration details', () => {
+  const required={
+    'cnn-architectures':['LeNet','手写数字'],
+    'cnn-vgg':['VGG','卷积神经网络'],
+    'feature-pyramid':['特征金字塔','分辨率'],
+    'network-activation':['激活函数','非线性'],
+    'optimizer':['优化器','学习率'],
+    'optimizer-momentum':['动量','Adam'],
+    'optimizer-tuning':['权重衰减','AdamW'],
+    'training-accumulation':['梯度累积','显存'],
+    'fine-tuning':['微调','预训练']
+  };
+  for(const [id,terms] of Object.entries(required)){
+    const first=courses.find(l=>l.id===id).sections[0].paragraphs[0];
+    for(const term of terms)assert.ok(first.includes(term),`${id}: opening must explain ${term}`);
+  }
+});
+
+test('ResNet separates addition from activation and its shape code agrees with a real BasicBlock',
+  {skip:!process.env.VISIONLAB_TORCH_PYTHON}, () => {
+    const codes=['cnn-residual','cnn-residual-shapes'].map(id=>({id,code:courses.find(l=>l.id===id).sections.find(s=>s.code).code}));
+    const program=[
+      'import contextlib, io, json, sys',
+      'for item in json.load(sys.stdin):',
+      '    output=io.StringIO(); scope={}',
+      '    with contextlib.redirect_stdout(output): exec(item["code"],scope)',
+      '    if item["id"]=="cnn-residual":',
+      '        assert "sum: [3.2, -1.0]" in output.getvalue()',
+      '        assert "block output: [3.2, 0.0]" in output.getvalue()',
+      '        assert "x gradient: [1.0, 0.0]" in output.getvalue()',
+      '    else: assert output.getvalue().count("(1, 32, 4, 4)")==3'
+    ].join('\n');
+    const r=spawnSync(process.env.VISIONLAB_TORCH_PYTHON,['-X','utf8','-c',program],{encoding:'utf8',input:JSON.stringify(codes),timeout:60000});
+    assert.equal(r.status,0,r.stderr||String(r.error));
+});
+
 test('AlexNet exposes every operation with a continuous tensor contract, including unchanged shapes', () => {
   assert.ok(context.visionlabAlexnetFlow, 'AlexNet needs a complete layer trace');
   const trace=context.visionlabAlexnetFlow.trace(1,224);

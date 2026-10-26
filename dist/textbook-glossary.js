@@ -286,7 +286,11 @@
   add('detect-module','Detect 检测头模块','YOLOv5 模型末端按多个尺度生成目标框、物体性和类别预测的代码模块。','像在几种比例的地图上同时寻找物体并写出候选结果。',['Detect','Detect module'],'architecture',{contextNote:'训练和推理模式的返回值不同；后处理筛选与 NMS 也不等同于检测头内部的卷积计算。'});
   add('lenet5','LeNet-5','早期用于手写数字识别的卷积神经网络，由卷积/下采样阶段和后续分类层组成。','像一条小型图像流水线，逐层看笔画并判断数字。',['LeNet-5','LeNet'],'cnn');
   add('vgg-family','VGG 网络家族','以重复堆叠小卷积核和池化层为特点的一组图像分类网络，数字后缀表示具体配置版本。','像用许多相同尺寸的小观察窗一层层组合视觉线索。',['VGG','VGG-16','VGG-19','VGG-16/19'],'cnn');
-  add('resnet-family','ResNet 残差网络家族','使用残差捷径连接的深层网络家族，常见不同深度版本以层数标记。','像在很多加工步骤旁保留直达通路，让原始信息可以继续向前。',['ResNet','ResNet-18/34','ResNet-50/101/152'],'cnn');
+  add('resnet-family','ResNet 残差网络家族','由多个残差块组成的网络家族：在可学习特征变换之外保留捷径，并将两路逐元素相加。它针对普通网络加深后更难优化的退化现象，不保证任意加深都更准确。','像把原稿与需要修改的部分相加，而非每次从头重写全部内容。',['ResNet','残差网络','残差神经网络','Residual Network','Residual Networks','ResNet-18/34','ResNet-50/101/152'],'cnn-residual');
+  add('residual-block','残差块（residual block）','残差网络中的一个计算单元。输入分成可学习变换分支与捷径，形状对齐后逐元素相加；具体版本可能在相加后再激活。它不等同于整张网络，也不等同于只有一条捷径。','输入3，分支给出0.2，相加为3.2；如果块末有ReLU，还要再按激活规则处理。',['残差块','residual block'],'cnn-residual');
+  add('residual-learning','残差学习（residual learning）','把希望实现的特征变换写为输入加一份可学习变化，即H(x)=x+F(x)。F(x)表示相对块输入的修正，不是最后的预测误差；训练仍使用原任务标签与损失。','希望把3变成3.2时，先保留3，再学补上的0.2。',['残差学习','residual learning'],'cnn-residual');
+  add('vanishing-gradient','梯度消失（vanishing gradient）','反向传播到某些位置的梯度很小，使相关参数可能学习缓慢的现象。它与深层网络训练误差更高的退化、训练好而新数据差的过拟合不是同一个定义。','若连续乘上许多个绝对值小于1的局部导数，传到较早层的信号可能变小；实际还须检查网络的其他路径。',['梯度消失','vanishing gradient','vanishing gradients'],'cnn-residual');
+  add('exploding-gradient','梯度爆炸（exploding gradient）','反向传播的梯度幅度变得很大，可能导致过大更新或数值溢出的现象。裁剪可限制有限梯度的幅度，但不能自动修复已有NaN或所有训练异常。','若连续局部导数乘积不断放大，某些梯度可能远大于初始传入信号。',['梯度爆炸','exploding gradient','exploding gradients'],'optimizer-tuning');
   add('basicblock','BasicBlock（基础残差块）','一些 ResNet 结构中的基本模块，通常把卷积变换结果与捷径分支合并。','像把加工后的线索和抄送来的原线索相加，再交给下一层。',['BasicBlock'],'cnn');
   add('imagenet','ImageNet 图像数据集','一个用于视觉研究的大型图像数据资源；不同基准任务会使用其中不同类别划分与评测设置。','像一座带类别标签的大型图片资料库。',['ImageNet'],'cnn',{contextNote:'预训练模型所说的 ImageNet 权重，不意味着模型只会识别 ImageNet 类别；迁移后还要针对新任务调整。'});
   add('mnist','MNIST 手写数字数据集','一组常用于入门演示的手写数字灰度图像及其数字标签。','像一本每页都是数字小图并附标准答案的练习册。',['MNIST'],'cnn');
@@ -403,6 +407,13 @@
     ['扩散模型','diffusion-model',['model']],
     ['批量归一化','batch-normalization',['normalization']],
     ['超参数','hyperparameter',['parameter']],
+    ['残差网络','resnet-family',['residual']],
+    ['残差神经网络','resnet-family',['residual']],
+    ['Residual Network','resnet-family',['residual']],
+    ['残差块','residual-block',['residual']],
+    ['残差学习','residual-learning',['residual']],
+    ['梯度消失','vanishing-gradient',['gradient']],
+    ['梯度爆炸','exploding-gradient',['gradient']],
     ['主路径','computation-path',['path']],
     ['前向路径','computation-path',['path']],
     ['计算路径','computation-path',['path']],

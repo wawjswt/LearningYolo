@@ -122,8 +122,9 @@
   ]);
   write('anchors',1,'先算宽高比例，再判断能否匹配',[
     '参考20×10，真实框30×10。宽比例30/20=1.5，倒数2/3；高比例为1。取比例与倒数中的最大值为1.5，小于默认anchor_t=4，因此通过。真实框若宽80、高10，最大比例为4，因使用严格小于4而不通过。',
-    '这一筛选只使用宽高，不使用候选类别分数，也不先计算当前预测框IoU。通过后再结合目标中心确定负责的网格和邻格。大、小目标不靠人工只指定一个尺度，而由每个尺度的这些实际规则判断。'
-  ],{learningFigure:'ratios'});
+    '这一筛选只使用宽高，不使用候选类别分数，也不先计算当前预测框IoU。通过后再结合目标中心确定负责的网格和邻格。大、小目标不靠人工只指定一个尺度，而由每个尺度的这些实际规则判断。',
+    '现在接上火焰贯穿例子：输入画布中的目标是32×16像素。每个尺度都要把目标和该尺度的3组Anchor换成同一种网格单位，再逐组计算“目标/参考”和“参考/目标”里最大的比例。代码使用最大比例严格小于4作为通过条件。'
+  ],{learningFigure:'ratios',beginnerFigure:'anchor-matches'});
   write('anchors',4,'AutoAnchor先检查标签形状，尚未测模型',[
     '用两组教学参考20×10、40×20，检查三个真实宽高20×10、40×20、200×100。按最大比例严格小于4，前两个目标各匹配两组，第三个一组也没有。至少一组可用的目标占2/3，称BPR；每个目标平均可用组数(2+2+0)/3=4/3，称AAT。',
     'BPR是Best Possible Recall在这里的几何适配统计，AAT是Anchors Above Threshold。二者只检查标签宽高与参考是否接近，完全没有运行分类和定位预测；BPR高不能当成验证Recall高。实际标准头有9组参考，本例只用2组以便手算。',
@@ -293,6 +294,79 @@
     '例如night_03是真烟雾却低分，reflection_08是反光但高分，frame_12有车却漏标。三者分别指向场景覆盖/识别、背景误报、标注修订，不能统一叫“检测效果不好”。每行保留图片、标注、原始分数、最终结果与复核依据。',
     '先统计同一种错误在固定验证清单出现多少，再选择一个动作并规定观察结果。补雨夜小烟雾后比较该组Recall与总体误报；修验证漏标后注明评价数据版本已变。阈值试验与重新训练也分别记录，避免把后处理收益算成参数学习收益。'
   ]);
+
+  // 第二批：把一个标注继续接到目标匹配、损失、更新、验证和部署。
+  function append(id,index,...paragraphs){
+    const section=courses.get(id)?.sections[index];
+    if(!section)throw Error('Missing YOLO section '+id+'/'+index);
+    section.paragraphs.push(...paragraphs);
+    return section;
+  }
+  const anchorMatchSection=courses.get('anchors').sections[1];
+  anchorMatchSection.beginnerFigure='anchor-matches';
+  anchorMatchSection.paragraphs.push('匹配计算式为 \\(r=\\max(\\frac{w_t}{w_a},\\frac{w_a}{w_t},\\frac{h_t}{h_a},\\frac{h_a}{h_t})\\)。其中 \\(w_t,h_t\\) 是输入画布上的真实目标宽高，\\(w_a,h_a\\) 是换成同一网格单位后的Anchor宽高；只有 \\(r<4\\) 才通过。取最大值是为了让“目标远大于参考”和“目标远小于参考”都受同一阈值约束。');
+  append('yolo-assignment',0,
+    '磁盘原图中的同一火焰框先写作“1 0.53 0.44 0.05 0.05”：中心和宽高比例都相对1000×500原图。等比例缩小并在方形输入上下补边后，内存目标变成[0,1,0.53,0.47,0.05,0.025]；最前面的0是批次里的图片编号，不是类别。这个变换结果直接接自前一课的同一框。',
+    '分配时，P3把中心和宽高乘80，得到中心(42.4,37.6)、宽高(4,2)格；P4乘40，得到(21.2,18.8)、宽高(2,1)格；P5乘20，得到(10.6,9.4)、宽高(1,0.5)格。每一级中心的行列与宽高都使用该级自己的网格单位。',
+    '把9组参考逐一筛完后，本例有3组P3、2组P4通过，P5没有通过。再看中心相对所在格的小数部分，每个通过的Anchor本例各产生中心格、一个水平邻格和一个垂直邻格，共15条索引记录。先发生宽高匹配，再判断邻格；这不是模型已预测出15个正确框。'
+  );
+  append('yolo-assignment',1,
+    '严格边界也会改变记录数：中心小数恰好0.5时，邻格代码用小于或大于0.5判断，不包含等于；宽高比例恰好等于anchor_t=4也不通过。若一张背景图没有标签，或某个目标没有任何Anchor通过，就没有该目标的框/类别正样本，但各输出位置仍可能接受物体性为0的监督。'
+  );
+  append('yolo-loss',1,
+    '把相同火焰框接到一个已经匹配的P3候选上。下面的预测数是为手算而设定的理想演练，并非网站运行模型得到的结果：预测框与真实框完全相同，所以 \\(\\mathrm{CIoU}=1\\)，\\(L_{box}=1-\\mathrm{CIoU}=0\\)；当前标准设置把截断后的CIoU作为物体性目标，因此 \\(y_{obj}=1\\)。若物体性预测 \\(p_{obj}=0.9\\)，则 \\(L_{obj}=-\\ln(0.9)\\approx0.10536\\)。',
+    '类别顺序是烟雾0、火焰1；若两个独立Sigmoid分数为[0.2,0.8]，正确目标是[0,1]。平均类别BCE为 \\(L_{cls}=\\frac{-\\ln(1-0.2)-\\ln(0.8)}{2}\\approx0.22314\\)。此处同一框的局部未加权合计为 \\(0+0.10536+0.22314\\approx0.32850\\)；训练时还会计算其他正样本、全部物体性位置、尺度权重和gain，不能把0.32850说成完整batch损失。'
+  );
+  append('yolo-loss',0,
+    '三项各自回答不同问题，使用的候选范围也不同：框项只比较匹配到目标的位置，形式是1−CIoU；类别项只在有类别答案的正样本计算独立BCE；物体性项对每个网格与Anchor位置计算BCE，未匹配位置通常目标为0。没有正样本时，框和类别项可以为0，物体性项仍可由背景位置产生。'
+  );
+  append('yolo-loss',2,
+    '真实v7.0路径是：每个尺度先分别归约框、类别、物体性，再把相应项乘超参数gain；三个尺度的物体性项还乘该尺度的balance权重后相加。最后三项相加并乘当前批次大小，作为反向传播标量；返回的三项日志则保持分开。标签平滑和Focal Loss可由超参数开启，标准默认示例不应把这些可选设置混进上述手算。'
+  );
+
+  append('train-yolo',0,
+    '准备目录时，图片和同名标签按train/val分开；data YAML要把两处路径、类别数nc=2和顺序names=[smoke, fire]写对。例如文件可写path为数据根目录、train为images/train、val为images/val、nc为2、names为[smoke, fire]。模型YAML选择结构，hyp YAML记录学习率、增强和各项gain。运行前先人工打开图片与标签叠加图，避免把路径可读误当成标注正确。',
+    '命令的--project runs/train与--name smoke-fire指定期望的输出路径runs/train/smoke-fire；如果已存在同名目录，默认会自动改成下一个可用名称。正常保存通常可在实际目录检查opt.yaml、hyp.yaml、results.csv、训练曲线和weights/best.pt、weights/last.pt。目录存在只证明运行写过文件，不证明模型效果合格。'
+  );
+  append('train-yolo',3,
+    '把“梯度怎样改参数”缩成一个可手算的小模型：令 \\(L(w)=(w-3)^2\\)、初始 \\(w=1\\)，则 \\(\\frac{dL}{dw}=2(w-3)=-4\\)。学习率 \\(\\eta=0.1\\) 时，梯度下降一步得到 \\(w_{new}=w-\\eta\\frac{dL}{dw}=1-0.1\\times(-4)=1.4\\)。负梯度表示往更大的w移动会降低这一小模型的loss。',
+    '对应的PyTorch演示代码只训练一个数w，用来解释反向传播和SGD更新；真实YOLO有大量参数、三项损失、梯度缩放与更新间隔，不能把这个数值当成它的一次实测更新。梯度累积会先收集多个batch的梯度，所以一个batch不一定触发一次参数更新。'
+  );
+  const oneWeightStep=courses.get('train-yolo').sections[3];
+  Object.assign(oneWeightStep,{code:'import torch\nw = torch.tensor(1.0, requires_grad=True)\noptimizer = torch.optim.SGD([w], lr=0.1)\nloss = (w - 3.0) ** 2\noptimizer.zero_grad()\nloss.backward()\nprint(w.grad.item())  # -4.0\noptimizer.step()\nprint(w.item())       # 1.4',codeLabel:'Python · 单参数梯度下降演示',codeNote:'需安装PyTorch。这里只演示一个标量参数，不是YOLO训练日志；真实训练还会按梯度累积、AMP与学习率计划决定更新。'});
+  append('yolo-checkpoints',1,
+    '按目的区分三种操作：①新项目初始化，用--weights加载兼容参数作为起点，再开始一条新的训练进度；②微调旧权重以适应新类别或数据时，重建新任务模型，只复制名称与形状兼容的参数，新的Detect输出层按新类别数初始化；③同一实验意外中断，才用--resume恢复未清理检查点里的轮次、优化器等状态。best.pt适合选模型做推理，但一般不等同于完整的中断恢复包。'
+  );
+  append('yolo-augment',1,
+    '先用最简单的水平翻转算一次同步规则。原图宽1000，火焰框中心 \\(x=530\\)、宽50；翻转后 \\(x\'=W-x=1000-530=470\\)，宽仍50，左边界从505变成445。归一化x从0.53变0.47，y、宽、高不变。若图翻了而标签仍写0.53，模型看到的图像位置和答案就不一致。Mosaic同理要把每张来源图的框随缩放、平移和裁剪一起变换。',
+    '是否增强应按目标属性判断：颜色可能是火焰识别线索，过强HSV变化可能改变任务信息；水平翻转是否合理也取决于拍摄方向与类别定义。每次只改一个增强设置，在相同的独立验证集比较各类漏检和误报。'
+  );
+  append('yolo-evaluation',0,
+    '不要混淆三个门槛：分数阈值决定候选是否进入后处理；NMS IoU阈值比较预测框彼此是否重复；验证IoU阈值比较一个预测框与人工真实框是否足够重叠。它们看的对象不同，数值即使碰巧相同，也不能互相代替。'
+  );
+  append('yolo-evaluation',1,
+    'val.py完成的是独立验证：冻结训练参数，对验证图前向预测，执行NMS，再把预测与真实框按类别及IoU要求一对一匹配，最后按置信度累计TP/FP/FN、PR曲线和AP。改变NMS会改变送去评价的预测集合；改变评价IoU则改变“找对”的标准。报告结果时把数据划分、类别顺序、分数/NMS参数与评价方式一起记录。'
+  );
+  const inferenceThroughLine=courses.get('inference').sections.find(section=>section.id==='inference-s-h1993c6k');
+  if(!inferenceThroughLine)throw Error('Missing YOLO inference through-line section');
+  inferenceThroughLine.beginnerFigure='through-inference';
+  inferenceThroughLine.paragraphs.push('把训练时的人工火焰框接回推理：为演练假设某个候选恰好预测出输入画布框[339.2,300.8,32,16]、物体性0.9、火焰分数0.8，因此组合分数 \\(0.9\\times0.8=0.72\\)；这是假设值，不是模型实测。该候选通过分数筛选后，与另外几条候选做NMS；NMS只比较预测框之间的重叠，不查看标签。最后去掉上下各160像素补边并除以0.64，回到原图框[530,220,50,25]，角点为(505,207.5)到(555,232.5)。');
+  append('inference',1,
+    '本课四候选图沿用同一输入画布坐标：A火焰框就是贯穿算例的理想框，B是人为设定的同类重复框，C是低分的另一处候选，D是重叠的烟雾候选。切到跨类别去重时A/D会互相抑制；按类别去重则可都保留。A是教学中假设完全命中真实标签，不表示网络真的给出了这个框。'
+  );
+  append('yolo-export',0,
+    '导出前后至少对齐四站：①同一张原图预处理后必须得到同样形状、颜色顺序和数值范围；②比较Detect原始/解码输出的维度与数值；③按同一分数组合、置信度筛选和NMS规则处理；④把坐标用同一补边和比例还原。若导出选项把NMS集成进图，接口就会不同，先查看输出名称和形状再决定应用侧还做哪些步骤。'
+  );
+  append('debugging',2,
+    '按现象找最早出错的证据：框整体偏移，先记录原图、输入画布、补边、缩放比和还原角点；类别错，先核对data YAML名称顺序、标签首列和Detect类别索引；漏检，依次记录raw候选、物体性筛选、组合分数筛选、NMS和验证匹配；最后画面无框，若NMS后仍有候选就查坐标转换、裁边与绘图过滤。一次只改一个有证据支持的环节，并用同一图片复核。'
+  );
+  anchorMatchSection.beginnerAfter=anchorMatchSection.paragraphs.length-1;
+  inferenceThroughLine.beginnerAfter=inferenceThroughLine.paragraphs.length-1;
+  Object.assign(courses.get('train-yolo').sections[3],{beginnerFigure:'training-update',beginnerAfter:courses.get('train-yolo').sections[3].paragraphs.length-1});
+  Object.assign(courses.get('yolo-augment').sections[1],{beginnerFigure:'augment-flip',beginnerAfter:courses.get('yolo-augment').sections[1].paragraphs.length-1});
+  Object.assign(courses.get('yolo-evaluation').sections[1],{beginnerFigure:'evaluation-gates',beginnerAfter:courses.get('yolo-evaluation').sections[1].paragraphs.length-1});
+
+
 
   // 在概念实际出现处补足入门台阶；保留原小节ID、代码及互动。
   function orient(id,index,paragraphs){
@@ -510,7 +584,7 @@
   // 新索引图已覆盖旧邻格演示，避免同节出现两套相同滑杆。
   courses.get('yolo-assignment').sections[1].suppressLegacyPlayer=true;
   Object.assign(courses.get('yolo-data').sections[0],{code:'1 0.5 0.4 0.2 0.16',codeLabel:'TXT · 一行火焰检测标签',codeNote:'该行属于对应图片的同名标签文件，不是Python代码。'});
-  Object.assign(courses.get('train-yolo').sections[0],{code:'python train.py --data data/smoke-fire.yaml --cfg models/yolov5l.yaml --weights yolov5l.pt --imgsz 640 --batch-size 4 --epochs 1',codeLabel:'终端 · 已准备依赖的YOLOv5仓库根目录 · 一轮检查',codeNote:'请先准备实际图片、标签、data YAML和可用权重。1表示先跑一轮；4张的batch与l模型不一定适合所有设备，内存不足可减batch或选更小规模的模型。流程正确后再设置正式轮数。网站不会自动执行命令。'});
+  Object.assign(courses.get('train-yolo').sections[0],{code:'python train.py --data data/smoke-fire.yaml --cfg models/yolov5l.yaml --weights yolov5l.pt --imgsz 640 --batch-size 4 --epochs 1 --project runs/train --name smoke-fire',codeLabel:'终端 · 已准备依赖的YOLOv5仓库根目录 · 一轮检查',codeNote:'请先准备实际图片、标签、data YAML和可用权重。1表示先跑一轮；4张的batch与l模型不一定适合所有设备，内存不足可减batch或选更小规模的模型。流程正确后再设置正式轮数。网站不会自动执行命令。'});
   Object.assign(courses.get('yolo-assignment').sections[0],{code:'# 普通Python：核对本例中心格索引与局部目标\nfrom math import floor\nb, cls, x, y, w, h = (0, 1, .53, .47, .05, .025)\ngx, gy = x * 80, y * 80\ngi, gj = floor(gx), floor(gy)\nprint((b, 1, gj, gi))  # (0, 1, 37, 42)\nprint(round(gx - gi, 1), round(gy - gj, 1), w * 80, h * 80)\n# 0.4, 0.6, 4.0, 2.0',codeLabel:'Python · 可独立运行的中心格换算',codeNote:'仅核对本例已匹配的Anchor1，不替代完整build_targets的多尺度/多Anchor筛选。'});
   Object.assign(courses.get('yolo-loss').sections[1],{code:'import math\nimport torch\nimport torch.nn.functional as F\nclass_z = torch.tensor([math.log(4), -math.log(4)])\nclass_target = torch.tensor([0., 1.])\nclass_loss = F.binary_cross_entropy_with_logits(class_z, class_target)\nobj_z = torch.tensor(0., requires_grad=True)\nobj_target = torch.tensor(0.6)\nobj_loss = F.binary_cross_entropy_with_logits(obj_z, obj_target)\nobj_loss.backward()\nprint(f"class BCE = {class_loss.item():.4f}")  # 1.6094\nprint(f"object BCE = {obj_loss.item():.4f}")  # 0.6931\nprint(f"object gradient = {obj_z.grad.item():.4f}")  # -0.1000',codeLabel:'Python · PyTorch中独立核对两项BCE',codeNote:'需要PyTorch。这里只计算未加权教学字段；完整YOLO损失还包括正样本、尺度归约、CIoU及gain。'});
   const headIntro=courses.get('yolo-head').sections[0];
@@ -614,7 +688,47 @@
     'export-contract':()=>table('一个明确的2类导出接口示例',['约定','示例值'],[['输入','[1,3,640,640]，float32，RGB，除255'],['模型内部','包含Detect解码，不含NMS'],['输出','[1,25200,7]，cx/cy/w/h/obj/cls0/cls1'],['类别','0=smoke，1=fire'],['外部处理','组合分数、筛选、NMS、去补边/缩放']],'只对这里明确的导出设置成立；实际输出以文件与运行环境为准。'),
     'export-debug':()=>table('从差异形态定位最先检查的步骤',['看到的差异','先查什么'],[['原始输出维度不同','类别数、布局、是否含NMS'],['输入数值已不同','颜色、dtype、除255、图像尺寸'],['宽高倍数异常','网格/Anchor解码是否重复或遗漏'],['原始数值接近但最终条数不同','分数离阈值的距离及NMS'],['框整体平移','补边与坐标还原']],'每次从同一输入逐段比较；不要同时改多个环节。'),
     'debug-data':()=>table('错误文件→观察证据→动作',['问题','直接看什么','下一步'],[['图片找不到','最终绝对路径','修相对路径基准或文件位置'],['标签数为0','标签文件与图片回看','区分背景、缺文件与漏标'],['类别越界','类别表、标签首项','按0开始的编号修正'],['框画偏','原尺寸、格式、变换后角点','修单位、宽高与几何变换']],'先用具体文件复现，再看网络结构。'),
-    'empty-stages':()=>flow('假设数量账本：框在哪一道门消失？',[['标准raw','25,200'],['物体性预筛后','600'],['组合分数筛选后','240'],['NMS后','2'],['显示时','应核对这2条坐标']],'人工数量示例；每段保存数量和分数范围，定位最早异常处。')
+    'empty-stages':()=>flow('假设数量账本：框在哪一道门消失？',[['标准raw','25,200'],['物体性预筛后','600'],['组合分数筛选后','240'],['NMS后','2'],['显示时','应核对这2条坐标']],'人工数量示例；每段保存数量和分数范围，定位最早异常处。'),
+    'anchor-matches':()=>{
+      const [ow,oh]=teachingCase.originalWH,[ih,iw]=teachingCase.inputHW;
+      const [cx,cy,bw,bh]=teachingCase.targetXYWH,scale=Math.min(iw/ow,ih/oh),padX=(iw-ow*scale)/2,padY=(ih-oh*scale)/2;
+      const pxW=bw*scale,pxH=bh*scale,pxX=cx*scale+padX,pxY=cy*scale+padY;
+      const matchRows=[];let matches=0,positions=0;
+      teachingCase.anchorsPx.forEach((scaleAnchors,si)=>{
+        const stride=teachingCase.strides[si],tw=pxW/stride,th=pxH/stride,gx=pxX/stride,gy=pxY/stride,fx=gx-Math.floor(gx),fy=gy-Math.floor(gy);
+        let perScale=0;
+        scaleAnchors.forEach((anchor,ai)=>{
+          const aw=anchor[0]/stride,ah=anchor[1]/stride;
+          const ratio=Math.max(tw/aw,aw/tw,th/ah,ah/th),ok=ratio<4;
+          if(ok){matches++;perScale++;const xNeighbor=fx<.5&&gx>1||fx>.5&&iw/stride-gx>1,yNeighbor=fy<.5&&gy>1||fy>.5&&ih/stride-gy>1;positions+=1+Number(xNeighbor)+Number(yNeighbor);}
+          matchRows.push(['P'+(si+3)+' · Anchor '+ai,'目标'+tw.toFixed(2)+'×'+th.toFixed(2)+'格','参考'+aw.toFixed(4)+'×'+ah.toFixed(4)+'格',ratio.toFixed(4),ok?'通过（<4）':'不通过']);
+        });
+        matchRows.push(['P'+(si+3)+' 小计',perScale+' / 3组通过','','',perScale+'组；邻格规则另算']);
+      });
+      return table('火焰框的9组宽高匹配；先筛参考，再找网格',['尺度与参考','目标宽×高','Anchor宽×高','最大比例','结果'],matchRows,
+        '计算：r=max(w目标/w参考,w参考/w目标,h目标/h参考,h参考/h目标)，只有r<4通过。本例共'+matches+'组通过；按同一中心的小数位置，每组另有中心格和2个邻格，共'+positions+'条索引。尺寸单位已按步幅换成该层网格格数，阈值等于4也不通过。');
+    },
+    'through-inference':()=>table('同一火焰框：训练答案怎样接到推理坐标',['站点','这一步的数值','参照对象与含义'],[
+      ['原图人工框','1 0.53 0.44 0.05 0.05','1000×500原图；中心、宽高比例'],
+      ['输入内存目标','[0,1,0.53,0.47,0.05,0.025]','640×640画布；批次号、类别、归一化框'],
+      ['假设理想预测','[339.2,300.8,32,16]','画布像素的中心x、中心y、宽、高；人工设定'],
+      ['类别组合分数','0.90×0.80=0.72','物体性×火焰分数；假设值'],
+      ['角点与逆变换','[323.2,292.8,355.2,308.8] → [505,207.5,555,232.5]','先在画布取角点；减上补边160，再除缩放0.64'],
+      ['NMS与验证','NMS看预测框彼此；验证再看真实框','NMS不读取标签；验证会按类别与IoU匹配']
+    ],'这是把同一个人工标注框完整走一遍的算例，并假设预测恰好命中；它不表示运行了模型或测得了实际检测效果。'),
+    'augment-flip':()=>table('水平翻转：图片和标签要一起变',['量','变换前','翻转后','原因'],[
+      ['图像宽度','1000像素','1000像素','只镜像左右位置'],
+      ['框中心x','530像素 / 0.53','470像素 / 0.47','x′=图宽−x'],
+      ['框宽','50像素 / 0.05','50像素 / 0.05','左右镜像不改变尺寸'],
+      ['中心y、高','220像素、25像素','220像素、25像素','垂直位置与高度未变化'],
+      ['原始角点','[505,207.5] 到 [555,232.5]','[445,207.5] 到 [495,232.5]','重新由中心和宽高得到']
+    ],'若图像翻转而框仍留在x=0.53，监督答案就会落在错误位置。'),
+    'evaluation-gates':()=>table('三个门槛分别看哪两样东西',['门槛','比较对象','回答的问题','不能代替'],[
+      ['置信度阈值','候选分数与阈值','这条预测送不送入NMS？','真实框匹配'],
+      ['NMS IoU阈值','预测框与预测框','两条预测是否重复？','检测是否定位正确'],
+      ['验证IoU阈值','预测框与人工真实框','这条预测是否达到评价定位要求？','NMS去重']
+    ],'三个数值即使相同，作用顺序和比较对象也不同；完整验证还要求类别一致与一对一匹配。'),
+    'training-update':()=>flow('训练一次batch：由误差走到参数变化',[['读一批','图片+标签'],['前向','模型产生三尺度预测'],['比较','ComputeLoss得到box / obj / cls'],['反向','loss.backward()累计梯度'],['到更新时','optimizer.step()改参数'],['清梯度','准备下一次累积']],'这些步骤解释一次训练更新；启用梯度累积时，多个batch可能先累加后才更新一次。')
   };
 
   const card=(name,value)=>'<div class="yd-value"><span>'+esc(name)+'</span><strong>'+esc(value)+'</strong></div>';
@@ -660,13 +774,13 @@
     root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('原始z → Sigmoid',z.toFixed(2)+' → '+p.toFixed(4))+card('物体性目标',target.toFixed(2))+card('单字段BCE',value.toFixed(4))+card('局部梯度p−y',grad.toFixed(4))+card('这个框的1−CIoU',(1-ciou).toFixed(2))+'</div><svg viewBox="0 0 560 230" role="img" aria-label="横轴原始分数z，纵轴BCE，绿点为当前分数">'+grid+'<path d="M55 25V185H510" fill="none" stroke="#b8b4ad"/>'+[-4,-2,0,2,4].map(a=>'<text x="'+toX(a)+'" y="207" text-anchor="middle">'+a+'</text>').join('')+'<text x="12" y="24">BCE</text><text x="515" y="207">z</text><text x="35" y="190">0</text><path d="'+path+'" fill="none" stroke="#795bb1" stroke-width="3"/><circle cx="'+toX(z)+'" cy="'+toY(value)+'" r="6" fill="#4b8b73"/><path d="M'+toX(z)+' 185V'+toY(value)+'" stroke="#4b8b73" stroke-dasharray="4 4"/></svg><p class="yd-explanation">当前p='+p.toFixed(4)+'，目标y='+target.toFixed(2)+'。'+(Math.abs(grad)<0.0001?'局部梯度接近0。':grad>0?'局部梯度为正，小幅减小z会使此项损失下降。':'局部梯度为负，小幅增大z会使此项损失下降。')+'这只是当前单字段、未加权的方向，整网更新还需合并其他损失与参数路径。</p>';
   }
   const nmsData=[
-    {id:'A',cls:0,name:'烟雾',score:.72,obj:.9,cp:.8,box:[50,40,150,140]},
-    {id:'B',cls:0,name:'烟雾',score:.68,obj:.8,cp:.85,box:[60,45,160,145]},
-    {id:'C',cls:1,name:'火焰',score:.56,obj:.8,cp:.7,box:[180,40,260,120]},
-    {id:'D',cls:1,name:'火焰',score:.76,obj:.95,cp:.8,box:[52,42,152,142]}
+    {id:'A',cls:1,name:'火焰',score:.72,obj:.9,cp:.8,box:[323.2,292.8,355.2,308.8]},
+    {id:'B',cls:1,name:'火焰',score:.68,obj:.8,cp:.85,box:[325.2,293.8,357.2,309.8]},
+    {id:'C',cls:1,name:'火焰',score:.56,obj:.8,cp:.7,box:[500,340,540,370]},
+    {id:'D',cls:0,name:'烟雾',score:.76,obj:.95,cp:.8,box:[322,292,354,308]}
   ];
   function overlap(a,b){const w=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0])),h=Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1])),inter=w*h;return inter/((a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-inter);}
-  function nmsMarkup(){return panel('nms','四个候选，一步步筛成最后的框','图与表使用人工候选，分数预置为显示值。先按组合分数筛选，再按分数从高到低去重；切换类别模式观察A/D怎样变化。','<div class="yd-controls"><label class="yd-slider">组合分数门槛<input type="range" min="0.1" max="0.9" step="0.02" value="0.6" data-yl-conf aria-label="组合分数门槛"></label><label class="yd-slider">NMS IoU门槛<input type="range" min="0.3" max="0.9" step="0.05" value="0.45" data-yl-iou aria-label="NMS IoU门槛"></label><label class="yd-check"><input type="checkbox" data-yl-agnostic aria-label="跨类别去重">跨类别去重</label></div>');}
+  function nmsMarkup(){return panel('nms','同一火焰框与三条候选：逐步筛选','A是假设完全命中贯穿例子的火焰框；B/C/D是为观察筛选而设定的候选值。先按组合分数筛选，再按分数从高到低去重；切换类别模式观察A/D怎样变化。画面只放大640×640输入中的局部区域。','<div class="yd-controls"><label class="yd-slider">组合分数门槛<input type="range" min="0.1" max="0.9" step="0.02" value="0.6" data-yl-conf aria-label="组合分数门槛"></label><label class="yd-slider">NMS IoU门槛<input type="range" min="0.3" max="0.9" step="0.05" value="0.45" data-yl-iou aria-label="NMS IoU门槛"></label><label class="yd-check"><input type="checkbox" data-yl-agnostic aria-label="跨类别去重">跨类别去重</label></div>');}
   function updateNms(root){
     const conf=Number(root.querySelector('[data-yl-conf]').value),limit=Number(root.querySelector('[data-yl-iou]').value),agnostic=root.querySelector('[data-yl-agnostic]').checked,kept=[],decisions=new Map();
     for(const item of [...nmsData].sort((a,b)=>b.score-a.score)){
@@ -679,7 +793,7 @@
       const [x1,y1,x2,y2]=item.box,color=item.cls?'#bb7648':'#497e9c',keep=kept.some(k=>k.id===item.id);
       return '<rect x="'+x1+'" y="'+y1+'" width="'+(x2-x1)+'" height="'+(y2-y1)+'" fill="'+color+'" fill-opacity="'+(keep?'.12':'.02')+'" stroke="'+color+'" stroke-width="'+(keep?'2.5':'1')+'"'+(keep?'':' stroke-dasharray="5 4"')+'/><text x="'+(x1+5)+'" y="'+(y1+17+index*13)+'" fill="'+color+'">'+item.id+' '+item.name+'</text>';
     }).join('');
-    root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('组合分数门槛',conf.toFixed(2))+card('NMS IoU门槛',limit.toFixed(2))+card('类别规则',agnostic?'跨类别去重':'按类别去重')+card('最终保留',kept.map(k=>k.id).join('、')||'0条')+'</div><svg viewBox="0 0 320 185" role="img" aria-label="人工候选框图，实线保留，虚线删除"><text x="20" y="20">烟雾蓝色、火焰橙色；实线保留</text>'+drawing+'</svg>'+table('逐条决策记录',['候选','类别','物体性×类别','组合分数','结果'],nmsData.map(item=>[item.id,item.name,item.obj+'×'+item.cp,item.score.toFixed(2),decisions.get(item.id)]),'A/B的IoU约'+overlap(nmsData[0].box,nmsData[1].box).toFixed(3)+'。此处不画真实标签，NMS不使用真实标签；评价匹配在另外一步进行。');
+    root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('组合分数门槛',conf.toFixed(2))+card('NMS IoU门槛',limit.toFixed(2))+card('类别规则',agnostic?'跨类别去重':'按类别去重')+card('最终保留',kept.map(k=>k.id).join('、')||'0条')+'</div><svg viewBox="300 260 300 150" role="img" aria-label="640输入画布局部放大，A是贯穿算例火焰框，实线保留候选，虚线删除"><text x="302" y="270">输入画布像素局部放大</text><rect x="300" y="280" width="300" height="120" fill="#e6eee7" stroke="#c6c1b8"/>'+drawing+'</svg>'+table('逐条决策记录',['候选','类别','输入画布角点xyxy','物体性×类别','组合分数','结果'],nmsData.map(item=>[item.id,item.name,'['+item.box.map(v=>Number(v.toFixed(1))).join(', ')+']',item.obj+'×'+item.cp,item.score.toFixed(2),decisions.get(item.id)]),'A是人工假设恰好命中目标的理想框；B同类重叠框约IoU='+overlap(nmsData[0].box,nmsData[1].box).toFixed(3)+'。默认按类别NMS时D与A不会互相抑制；NMS本身不查看真实标签。');
   }
   Object.assign(figures,{assignment:assignmentMarkup,loss:lossMarkup,nms:nmsMarkup});
   function update(root){({'label-geometry':updateLabelGeometry,assignment:updateAssignment,loss:updateLoss,nms:updateNms}[root.dataset.ylKind])?.(root);}

@@ -76,6 +76,60 @@ test('beginner definitions include concrete samples before technical details', (
   for(const [i,want] of [.665,.245,.090].entries())assert.ok(Math.abs(exps[i]/total-want)<.0005);
 });
 
+test('YOLO second batch carries one labelled box through matching, loss and inference', () => {
+  const text = id => courses.find(item => item.id === id).sections.flatMap(section => section.paragraphs).join(' ');
+  const caseData = run('window.visionlabYoloLearning.teachingCase');
+  assert.deepEqual(Array.from(caseData.targetXYWH), [530,220,50,25]);
+  assert.match(text('yolo-assignment'), /\[0,1,0\.53,0\.47,0\.05,0\.025\]/);
+  assert.match(text('yolo-assignment'), /3组P3.*2组P4.*P5.*没有通过/);
+  const lossText = text('yolo-loss');
+  assert.match(lossText, /CIoU\}=1.*L_\{box\}=1-\\mathrm\{CIoU\}=0/);
+  assert.match(lossText, /L_\{obj\}=-\\ln\(0\.9\).*0\.10536/);
+  assert.match(lossText, /L_\{cls\}=.*0\.22314/);
+  const anchorFigure = courses.find(item => item.id === 'anchors').sections.find(section => section.beginnerFigure === 'anchor-matches');
+  assert.ok(anchorFigure, 'Anchor lesson exposes the nine-match calculation');
+  context.__testSection = anchorFigure;
+  const anchorMarkup = run('window.visionlabYoloLearning.renderParagraph(window.__testSection, window.__testSection.beginnerAfter)');
+  assert.match(anchorMarkup, /P3/);
+  assert.match(anchorMarkup, /P4/);
+  assert.match(anchorMarkup, /P5/);
+  assert.match(anchorMarkup, /3\.8125/);
+  assert.match(anchorMarkup, /5\.625/);
+  const inference = courses.find(item => item.id === 'inference').sections.find(section => section.id === 'inference-s-h1993c6k');
+  assert.ok(inference);
+  context.__testSection = inference;
+  const inferenceMarkup = run('window.visionlabYoloLearning.renderParagraph(window.__testSection, window.__testSection.beginnerAfter)');
+  assert.match(inferenceMarkup, /339\.2/);
+  assert.match(inferenceMarkup, /300\.8/);
+  assert.match(inferenceMarkup, /505/);
+  assert.match(inferenceMarkup, /232\.5/);
+});
+
+test('YOLO training explains an optimizer update numerically and distinguishes it from a batch', () => {
+  const lesson = courses.find(item => item.id === 'train-yolo');
+  const body = lesson.sections.flatMap(section => section.paragraphs).join(' ');
+  assert.match(body, /L\(w\)=\(w-3\)\^2/);
+  assert.match(body, /w=1/);
+  assert.match(body, /2\(w-3\)=-4/);
+  assert.match(body, /\\eta=0\.1/);
+  assert.match(body, /1\.4/);
+  const updateCode = lesson.sections.find(section => section.codeLabel === 'Python · 单参数梯度下降演示');
+  assert.ok(updateCode);
+  assert.match(updateCode.code, /loss\.backward\(\)[\s\S]*optimizer\.step\(\)/);
+  assert.match(body, /梯度累积.*一个batch.*不一定.*一次参数更新/);
+  assert.match(body, /runs\/train\/.*weights/);
+});
+
+test('YOLO validation, export and troubleshooting give ordered checks rather than vague advice', () => {
+  const text = id => courses.find(item => item.id === id).sections.flatMap(section => section.paragraphs).join(' ');
+  assert.match(text('yolo-evaluation'), /TP.*FP.*FN.*Precision.*Recall.*AP/);
+  assert.match(text('yolo-evaluation'), /三个门槛.*NMS IoU阈值.*验证IoU阈值/);
+  assert.match(text('yolo-checkpoints'), /初始化.*微调.*恢复/);
+  assert.match(text('yolo-augment'), /图像.*框.*同步/);
+  assert.match(text('yolo-export'), /同一张原图预处理.*原始\/解码输出.*NMS/);
+  assert.match(text('debugging'), /框整体偏移.*类别错.*漏检.*画面无框/);
+});
+
 test('basic examples stay in the relevant lesson and appear before their later use', () => {
   const lesson=id=>courses.find(c=>c.id===id);
   const body=id=>lesson(id).sections.flatMap(s=>s.paragraphs).join(' ');

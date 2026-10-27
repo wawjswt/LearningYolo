@@ -62,6 +62,25 @@ test('beginner definitions include concrete samples before technical details', (
   for(const [i,want] of [.665,.245,.090].entries())assert.ok(Math.abs(exps[i]/total-want)<.0005);
 });
 
+test('basic examples stay in the relevant lesson and appear before their later use', () => {
+  const lesson=id=>courses.find(c=>c.id===id);
+  const body=id=>lesson(id).sections.flatMap(s=>s.paragraphs).join(' ');
+  assert.doesNotMatch(body('loss-regression'),/Softmax 保持 logits/);
+  assert.match(body('loss-probabilities'),/Softmax 保持 logits/);
+  assert.match(body('loss-regression'),/Huber=1×\(2−0.5\)=1.5/);
+  assert.match(body('loss-theory-cross-entropy'),/0.693 nat.*1.204 nat.*0.511/);
+  const layout=lesson('tensor-layout').sections;
+  assert.match(layout[1].title,/内存、shape/);
+  assert.match(layout[2].title,/连续性/);
+  assert.match(body('gradient'),/输入 x=2、参考答案 y=5/);
+  assert.match(body('training-loop'),/训练可以有随机裁剪.*验证通常使用确定性处理/);
+  assert.match(body('metrics'),/IoU（交并比）是两个框重叠面积/);
+  assert.match(body('yolo-evaluation'),/精确率Precision/);
+  assert.match(body('train-yolo'),/P（精确率）.*R（召回率）.*AP/);
+  assert.ok(Math.abs(-.5*Math.log(.9)-.5*Math.log(.1)-1.2039728)<1e-6);
+  assert.ok(Math.abs((-.5*Math.log(.9)-.5*Math.log(.1))-Math.log(2)-.5108256)<1e-6);
+});
+
 test('the introductory Linear example matches PyTorch parameter and output shapes', {skip:!process.env.VISIONLAB_TORCH_PYTHON}, () => {
   const code='import torch\nm=torch.nn.Linear(2,3)\nassert tuple(m.weight.shape)==(3,2)\nassert tuple(m.bias.shape)==(3,)\nassert sum(p.numel() for p in m.parameters())==9\nassert tuple(m(torch.zeros(16,2)).shape)==(16,3)';
   const result=spawnSync(process.env.VISIONLAB_TORCH_PYTHON,['-c',code],{encoding:'utf8'});

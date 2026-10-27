@@ -3,6 +3,7 @@
   // 章节保留原有稳定 ID 和旧锚点，阅读顺序独立于历史编号。
   const narrativeOrder={
     'tensor-operations':[1,0],
+    'tensor-layout':[0,2,1],
     'optimizer-momentum':[0,2,3,1],
     'anchors':[0,3,1,5,2,4],
     'train-yolo':[0,3,1,2],
@@ -14,6 +15,7 @@
     const previous=lesson.sections.slice();
     previous.forEach((section,index)=>{section.narrativePlaygroundIndex=index;});
     lesson.sections=order.map(index=>previous[index]);
+    if(id==='optimizer-momentum')lesson.sections[0].title='批次怎样影响梯度';
     lesson.sections.forEach((section,index)=>{section.title=(index+1)+'. '+String(section.title).replace(/^\s*\d+\s*[.、．]\s*/,'');});
   }
   const narrativeBridges={
@@ -21,6 +23,7 @@
       '先算两种乘法和形状匹配，再看如何改变张量的排列与轴。',
       '前面比较了数值运算；下面整理怎样改变形状，为这些运算准备输入。'
     ],
+    'tensor-layout':['','先用一组具体数字认识存储位置和读取间隔，再判断换轴后的布局。','知道原始张量与步幅后，再观察换轴为什么可能需要复制。'],
     'optimizer-momentum':[
       '',
       '知道一批数据怎样产生梯度后，先看优化器怎样把当前梯度和历史方向合起来。',

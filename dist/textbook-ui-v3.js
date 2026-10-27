@@ -403,7 +403,7 @@
     const items=matched();
     const glossaryMatches=query?window.visionlabGlossary?.search(query)||[]:[];
     const subtitle=query?'按标题、小节和正文匹配；点击结果可直达命中位置。':filter==='yolo'?'从检测背景开始，按仓库、网络、训练、部署的顺序学习；每阶段都有明确目标与验收问题。':filter==='dl'?'先学输入、张量、神经网络与损失，再沿梯度、优化器、训练和泛化逐步深入。':filter==='cv'?'先确定视觉任务与输入，再学习卷积、经典网络、检测指标和数据实践。':'按学习路线阅读，或搜索课程、概念与代码。每课提供目标、图解和练习。';
-    const count=query?'找到 '+items.length+' 个课程位置与 '+glossaryMatches.length+' 个术语':filter==='yolo'?'YOLOv5专题 · '+items.length+'课 · 5个阶段':filter==='dl'?'深度学习 · '+items.length+'课 · 5个阶段':filter==='cv'?'计算机视觉 · '+items.length+'课 · 4个阶段':'共 '+items.length+' 课 · '+lessons.length+' 课课程';
+    const count=query?'找到 '+items.length+' 个课程位置与 '+glossaryMatches.length+' 个术语':filter==='yolo'?'YOLOv5专题 · '+items.length+'课 · 5个阶段':filter==='dl'?'深度学习 · '+items.length+'课 · 5个阶段':filter==='cv'?'计算机视觉 · '+items.length+'课 · '+(window.visionlabFoundationCurriculum?.phases?.cv?.length||4)+'个阶段':'共 '+items.length+' 课 · '+lessons.length+' 课课程';
     const terms=glossaryMatches.length?'<section class="glossary-search-results"><h2>术语速查</h2><ul>'+glossaryMatches.map(item=>'<li><a href="#dictionary/'+esc(item.id)+'"><strong>'+esc(item.title)+'</strong><span>'+esc(item.plainExplanation)+'</span><small>查看定义、例子与相关课程 ↗</small></a></li>').join('')+'</ul><p><a href="#dictionary">打开完整术语词典 ↗</a></p></section>':'';
     return heading(query?'搜索结果：'+esc(query):filter==='yolo'?'YOLOv5 系统课程':filter==='dl'?'深度学习课程路线':filter==='cv'?'计算机视觉课程路线':'课程目录',subtitle,'THE TEXTBOOK')
       +filters()+'<p class="catalog-count">'+count+'</p>'+terms+courseList(items);

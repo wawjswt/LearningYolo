@@ -58,13 +58,69 @@
       '接下来的 YOLOv5 课程会把这些职责落到具体模块和代码：从目标检测问题出发，再走到网络、数据、训练和推理。本课的图与数字用于理解流程，不替代对特定版本实现的核对。'
     ],q('远处小车漏检，最有依据的第一步是什么？',['只增加训练轮数','回看漏检图、标注及筛选设置，再控制变量排查','把真实标签改成预测结果'],1,'先看错误样本、标签与阈值等证据，才能提出可验证的改进。'),{summaryVisual:'links'})
   ];
+  // Preserve the old section anchors and answer keys when inserting new material.
   sections.forEach((s,i)=>{s.legacyIndex=i;});
+  const insertAfter=(id,section,index)=>{section.legacyIndex=index;sections.splice(sections.findIndex(s=>s.id==='cv-synthesis-'+id)+1,0,section);};
+  insertAfter('data',makeSection('window','把一个局部窗口滑完：从像素得到一张特征图',[
+    '先把左侧汽车附近的一小块区域抽象成单通道的 3×3 数表：第一行 [1,2,0]，第二行 [3,4,1]，第三行 [2,5,6]。这些是为了手算而构造的数值，不是示意图实际采集的像素。卷积核是一张记录权重的小表，权重决定对应位置的数乘多少；偏置是相乘求和后再加的数。这里用权重 [[1,0],[0,−1]]、偏置 0。步长 1 表示每次移动一格，不补边表示不在输入周围添加额外数值。',
+    '2×2 窗口在 3×3 数据上从左到右、从上到下可以放四次。左上窗口是 [[1,2],[3,4]]，对应乘加得到 1−4=−3；右上窗口是 [[2,0],[4,1]]，得到 2−1=1。左下与右下分别得到 −2、−2；按位置放回去，输出是 [[−3,1],[−2,−2]]。',
+    '输出高和宽各是 (3−2)/1+1=2，因此得到一张 2×2 特征图。特征图是按空间位置排列的一组响应数值，每个输出数对应一个输入窗口；ReLU 对这四个数逐个处理，负数变 0，结果为 [[0,1],[0,0]]。图中按钮可检查四个窗口，先自己算再点击。',
+    '这只是单通道、一个卷积核的例子。实际 RGB 输入有三个通道：一个输出通道需要对每个输入通道分别乘加、再求和；多个卷积核生成多个输出通道。输入 [1,3,3,3] 若用 4 个 2×2 卷积核、步长 1、不补边，输出为 [1,4,2,2]；含偏置时参数数目为 4×(3×2×2+1)=52。'
+  ],q('上面的 3×3 单通道输入，经 2×2 卷积核、步长 1、不补边得到多大的特征图？',['2×2','3×3','4×4'],0,'窗口能横向放两处、纵向放两处，所以输出 2×2。'),{summaryVisual:'windows',subheadings:{0:'先认识滑动窗口',1:'四次乘加',2:'输出形状与激活',3:'扩展到 RGB'},code:'import torch\nfrom torch import nn\n\nx = torch.randn(1, 3, 3, 3)  # batch、通道、高、宽\nconv = nn.Conv2d(3, 4, kernel_size=2, stride=1, padding=0)\ny = conv(x)\nprint(y.shape)  # torch.Size([1, 4, 2, 2])\nprint(sum(p.numel() for p in conv.parameters()))  # 52',codeNote:'代码检查多通道的形状和参数数目；随机权重与上面手算的单通道核不是同一组数。'}),100);
+  insertAfter('features',makeSection('scale','从局部到整车：感受野、步长与多尺度',[
+    '一层卷积只能直接看到输入中的一个局部窗口。感受野指某个输出位置在更早一层输入中可能受哪些位置影响。例如连续两层 3×3 卷积、步长都为 1：第二层的一个输出综合第一层相邻 3×3 个位置；展开到最初输入，理论上可覆盖 5×5 的区域。边界处是否有补边会影响实际参与的原图像素。',
+    '感受野大小回答“这个位置可能参考多大范围”；总步长回答“特征图相邻位置在输入上大约间隔多少像素”。两者不是同一个数。总步长为 8 的特征图，相邻位置对应输入上的间隔约为 8 像素，但每个位置的感受野通常大于 8×8。',
+    '回到 640×640 输入，示意网络输出 80×80、40×40、20×20 三张特征图，分别对应总步长 8、16、32。左车中心约为输入坐标 (138.7,320)；在按 8 像素划分的教学网格里，向下取整可定位到第 17 列、第 40 行，索引从 0 开始。实际检测器如何分配目标、是否使用相邻位置，取决于具体实现。',
+    '高分辨率特征提供更密的位置采样，低分辨率特征每个位置往往能结合更大范围的信息。融合多尺度特征是为了让检测头同时利用细节和上下文；这并不表示每个尺寸的物体只能由某一个尺度负责。'
+  ],q('步长为 8 的特征图，相邻位置对应输入约隔 8 像素；这是否表示感受野一定是 8×8？',['是，两者永远相等','否，感受野还取决于前面的网络结构','取决于图片文件名'],1,'总步长是采样间隔，感受野是输出可能受到的输入范围。'),{summaryVisual:'scale',subheadings:{0:'输出位置能看到哪里',1:'分清感受野与总步长',2:'把左车放进教学网格',3:'为什么融合不同尺度'}}),101);
+  insertAfter('prediction',makeSection('target-loss','让左车参与训练：标签、匹配与损失如何接上',[
+    '训练时，模型已经给很多位置产生了预测，而标注只有左车、右车和行人三个目标。目标分配的工作是按照模型规则决定哪些预测位置负责哪些真实目标。负责左车的位置会收到左车类别及坐标的监督；其他位置如何参与背景或物体性损失，取决于检测器的设计。',
+    '先用一个与具体检测器无关的教学算例：把左车真实框设为 (60,120,200,180)，某次训练中的预测框为 (80,120,220,180)。上一节已经算出两者 IoU=0.75。为了展示“框越准，惩罚越小”的思路，暂时把框损失定义为 1−IoU=0.25；真实模型可能使用更复杂的框损失。',
+    '假设这个位置使用互斥二分类，类别顺序为 [汽车,行人]，预测概率为 [0.8,0.2]，左车的独热标签是 [1,0]。独热标签是把正确类别位置写成 1、其他位置写成 0 的表示。单个位置的交叉熵为 \\(L_{cls}=-\\ln(0.8)\\approx0.223\\)：正确类别概率越小，这项惩罚越大。',
+    '若仅为演示将两项各乘 1 后相加，局部示例为 0.25+0.223≈0.473。真实训练还要考虑正负位置、批次与尺度的归约、权重以及可能的其他损失；YOLOv5 的类别分支使用独立的 sigmoid/BCE，不能把这个 Softmax 两类示例直接当作它的实际损失。这里的 0.8 是训练时假设的分类概率，前文推理时的 0.95 是另一时刻的假设分数。'
+  ],q('这个教学例子中，左车预测框 IoU=0.75，若框损失定义为 1−IoU，损失是多少？',['0.25','0.75','1.75'],0,'1−0.75=0.25；实际模型的框损失公式可能不同。'),{summaryVisual:'target-loss',subheadings:{0:'先找到负责的位置',1:'比较框的位置',2:'比较类别',3:'合并时需要注意什么'}}),102);
+  insertAfter('metrics',makeSection('ap-walk','把三次预测排成表：从 P-R 到 AP',[
+    '沿用本课的两个真实汽车和三个已去重候选，按分数从高到低依次检查：0.95 的左车是 TP，0.75 的背景误报是 FP，0.35 的右车是 TP。每加入一个预测，就重新计算一次累计精确率和召回率；真实汽车总数始终是 2。',
+    '第一步：TP=1、FP=0，所以 P=1/1=1，R=1/2=0.5。第二步加入误报：TP=1、FP=1，P=1/2=0.5，R 仍为 0.5。第三步加入右车：TP=2、FP=1，P=2/3≈0.667，R=1。中间那次误报让精确率下降，却没有找回新目标，因此召回率不变。',
+    '为了手算，采用一种常见的连续精确率包络积分：对每个召回率位置，取该位置及其右侧的最高精确率，再按召回率的增长量求面积。本例召回率从 0 到 0.5 的高度为 1，从 0.5 到 1 的高度为 2/3，因此 \\(AP=0.5\\times1+0.5\\times\\frac23\\approx0.833\\)。',
+    '这是汽车类、固定 IoU 门槛下的一张示意图算例。实际 AP 通常在整个验证集上按类别汇总预测；不同评估协议对插值点、边界及多个 IoU 门槛有不同约定。如果另假设行人类 AP 为 0.50、只在同一个 IoU 门槛下对两类取简单平均，示例 mAP 约为 (0.833+0.50)/2=0.667；这个行人数值是额外假设，不是图中推断出的结果。'
+  ],q('加入中间的背景误报后，累计 TP=1、FP=1、真实汽车共 2 辆，此时 P、R 是多少？',['P=0.5，R=0.5','P=1，R=1','P=0.5，R=1'],0,'P=1/(1+1)=0.5；R=1/2=0.5。'),{summaryVisual:'ap-walk',subheadings:{0:'固定数据和排序',1:'逐个算 P 与 R',2:'计算包络面积',3:'从 AP 到 mAP'}}),103);
+  insertAfter('ap-walk',makeSection('hands-on','自己把三个候选框与两辆车配对',[
+    '下面的纯 Python 程序把前一节的假设候选变成可运行的计算：真实框有两辆车；三个候选分别是左车、背景误报和右车。先按分数过滤并降序排列，再逐个寻找尚未匹配、IoU 最高的真实框。达到 0.5 时记为 TP，否则记为 FP；剩余真实框计为 FN。',
+    '试着先预测结果：门槛 0.70 时只留下左车和背景，得到 TP=1、FP=1、FN=1；门槛 0.30 时右车也留下，得到 TP=2、FP=1、FN=0。代码只演示一张图的单类匹配，假设候选已经过 NMS，不包含网络训练、其他类别或完整 AP 协议。'
+  ],q('当置信度门槛设为 0.70 时，右车的 0.35 候选未保留，对汽车类评价会产生什么？',['一个 FN','一个新的 TP','一个新的 FP'],0,'右车真实目标没有与保留候选匹配，因此计入 FN。'),{summaryVisual:'hands-on',code:`truth = [(60,120,200,180), (340,110,480,180)]
+pred = [(0.95,(60,120,200,180)), (0.75,(220,30,310,85)),
+        (0.35,(340,110,480,180))]
+
+def iou(a, b):
+    w = max(0, min(a[2], b[2]) - max(a[0], b[0]))
+    h = max(0, min(a[3], b[3]) - max(a[1], b[1]))
+    intersection = w * h
+    area = lambda x: (x[2]-x[0]) * (x[3]-x[1])
+    return intersection / (area(a) + area(b) - intersection)
+
+def evaluate(threshold):
+    remaining = set(range(len(truth)))
+    tp = fp = 0
+    for score, box in sorted(pred, reverse=True):
+        if score < threshold:
+            continue
+        best = max(remaining, key=lambda i: iou(box, truth[i]), default=None)
+        if best is not None and iou(box, truth[best]) >= 0.5:
+            tp += 1
+            remaining.remove(best)
+        else:
+            fp += 1
+    return tp, fp, len(remaining)
+
+print(evaluate(0.70))  # (1, 1, 1)
+print(evaluate(0.30))  # (2, 1, 0)`,codeNote:'返回值依次是 TP、FP、FN。该程序假定所有框坐标合法、候选属于同一类别且已去重。'}),104);
   const lesson={
     id:'cv-synthesis',group:'cv',curriculumKey:'cv',curriculumPhase:'cv-synthesis',curriculumOptional:false,
     title:'视觉总复习：一张街景串起深度学习与检测',
     desc:'跟随同一组街景数据，从任务、图像与卷积走到训练、推理和评价，为 YOLOv5 学习搭好整条知识主线。',
     curriculumIntro:'把深度学习基础与视觉课程合成一条训练和推理路线；三维旋转属于选学，无需先学完。',
-    time:45,level:'总结',cvEdited:true,sections,
+    time:70,level:'总结',cvEdited:true,sections,
     goals:['沿一张街景说明图像、张量、卷积特征和检测输出之间的关系。','区分训练更新、验证评估与新图推理，并手算一次参数更新。','用置信度、IoU 匹配与 TP、FP、FN 算出一组 P、R，再走向 YOLOv5。'],
     prereq:'可先通读全程，再按需要回看张量、卷积、训练和检测指标；三维姿态专题不构成本课先修。',
     prereqLinks:[['tensor','张量：形状与轴'],['cnn','卷积：局部乘加'],['training-loop','训练循环：一次更新'],['metrics','检测指标：TP、FP 与 FN']].map(([id,title])=>({id,title})),
@@ -86,7 +142,7 @@
   cv.forEach((l,i)=>{l.curriculumNumber=i+1;l.curriculumTotal=cv.length;});
   const original=window.visionlabCvEditorial;
   const scene=()=>'<figure class="cv-synthesis-scene"><svg viewBox="0 0 600 300" role="img" aria-labelledby="cv-scene-title cv-scene-desc"><title id="cv-scene-title">路口目标检测标注示意</title><desc id="cv-scene-desc">图中有两辆汽车和一个行人，三个矩形分别框住目标并标出类别。</desc><rect width="600" height="300" rx="12" fill="#eef3f6"/><path d="M0 110H600V300H0z" fill="#d9e1e6"/><path d="M0 176H600" stroke="#fff" stroke-width="4" stroke-dasharray="30 18"/><path d="M0 104H600" stroke="#a9bac4" stroke-width="4"/><g fill="#a8baca"><path d="M25 35h55v68H25zM92 20h76v83H92zM465 40h95v63h-95z"/></g><g fill="#577ca4"><path d="M80 133h92l17 17v18H66v-18z"/><path d="M364 122h94l18 21v25H349v-21z"/></g><g fill="#31465d"><circle cx="90" cy="169" r="8"/><circle cx="166" cy="169" r="8"/><circle cx="374" cy="169" r="8"/><circle cx="452" cy="169" r="8"/></g><g stroke="#45586c" stroke-width="7" stroke-linecap="round"><path d="M273 123v27m-15-14 15-10 15 10m-15 14-11 21m11-21 11 21"/></g><circle cx="273" cy="111" r="9" fill="#45586c"/><g fill="none" stroke="#6952b2" stroke-width="3"><rect x="60" y="120" width="140" height="60" rx="5"/><rect x="340" y="110" width="140" height="70" rx="5"/></g><rect x="247" y="94" width="52" height="88" rx="5" fill="none" stroke="#208a79" stroke-width="3"/><g font-family="sans-serif" font-size="14" font-weight="bold"><text x="64" y="115" fill="#6952b2">车</text><text x="347" y="106" fill="#6952b2">车</text><text x="249" y="89" fill="#208a79">行人</text></g></svg><figcaption>示意图：这张路口图有两辆车和一名行人。检测标签分别记录每个目标的类别和矩形位置。</figcaption></figure>';
-  const timeline=()=>scene()+'<figure class="cv-synthesis-flow" aria-label="街景目标检测学习主线"><figcaption><span>一张图 · 两条路线</span><strong>先共享前向计算，再分成训练与推理</strong></figcaption><div class="cv-synthesis-steps"><a href="#lesson/cv-synthesis/section-cv-synthesis-story"><b>01</b><span>任务与标签</span><small>车、人和边界框</small></a><a href="#lesson/cv-synthesis/section-cv-synthesis-data"><b>02</b><span>图像 → 张量</span><small>[N,C,H,W]</small></a><a href="#lesson/cv-synthesis/section-cv-synthesis-features"><b>03</b><span>网络提特征</span><small>卷积 · 多尺度</small></a><a href="#lesson/cv-synthesis/section-cv-synthesis-prediction"><b>04</b><span>产生预测</span><small>分数 · 候选框</small></a></div><div class="cv-synthesis-branches"><p><strong>训练路线</strong> 标签 → 损失 → 梯度 → 参数更新</p><p><strong>推理路线</strong> 解码 → 筛选 → NMS → 原图结果</p></div><p>验证再将预测与标签匹配，计算指标；点击步骤可跳到对应小节。</p></figure>';
+  const timeline=()=>scene()+'<figure class="cv-synthesis-flow" aria-label="街景目标检测学习主线"><figcaption><span>一张图 · 两条路线</span><strong>先共享前向计算，再分成训练与推理</strong></figcaption><div class="cv-synthesis-steps"><a href="#lesson/cv-synthesis/section-cv-synthesis-story"><b>起点</b><span>任务与标签</span><small>车、人和边界框</small></a><a href="#lesson/cv-synthesis/section-cv-synthesis-data"><b>准备</b><span>图像 → 张量</span><small>[N,C,H,W]</small></a><a href="#lesson/cv-synthesis/section-cv-synthesis-features"><b>特征</b><span>网络提特征</span><small>卷积 · 多尺度</small></a><a href="#lesson/cv-synthesis/section-cv-synthesis-prediction"><b>预测</b><span>产生预测</span><small>分数 · 候选框</small></a></div><div class="cv-synthesis-branches"><p><strong>训练路线</strong> 标签 → 损失 → 梯度 → 参数更新</p><p><strong>推理路线</strong> 解码 → 筛选 → NMS → 原图结果</p></div><p>验证再将预测与标签匹配，计算指标；点击步骤可跳到对应小节。</p></figure>';
   const threshold=()=>`<section class="cv-synthesis-threshold" data-summary-threshold><span class="chapter-kicker">动手试试 · 街景中的两辆车</span><h3>调整分数门槛，看看会留下什么</h3><p>示意图里有 2 辆真实汽车；下面是已经去重的三个假设预测。匹配 IoU 门槛固定为 0.5，并按分数从高到低一对一匹配。行人不计入汽车类的结果。</p><svg class="cv-recap-match" viewBox="0 0 600 300" role="img" aria-label="同一张街景的汽车候选：左车0.95匹配，背景0.75误报，右车0.35匹配"><rect width="600" height="300" rx="10" fill="#edf2f5"/><path d="M0 110H600V300H0z" fill="#d9e1e6"/><path d="M80 133h92l17 17v18H66v-18zM364 122h94l18 21v25H349v-21z" fill="#577ca4"/><circle cx="273" cy="111" r="9" fill="#45586c"/><path d="M273 123v27m-15-14 15-10 15 10m-15 14-11 21m11-21 11 21" stroke="#45586c" stroke-width="7" fill="none"/><rect x="60" y="120" width="140" height="60" fill="none" stroke="#308b72" stroke-width="4"/><rect x="340" y="110" width="140" height="70" fill="none" stroke="#308b72" stroke-width="4"/><rect x="220" y="30" width="90" height="55" fill="none" stroke="#c16c61" stroke-width="4"/><text x="60" y="113" font-size="17" fill="#276c59">左车 0.95 · TP</text><text x="337" y="103" font-size="17" fill="#276c59">右车 0.35 · TP</text><text x="220" y="24" font-size="17" fill="#a04d45">背景 0.75 · FP</text></svg><p>图中先展示全部三个假设候选；下方拖动阈值查看哪些候选被保留。</p><label for="summary-confidence">置信度阈值 <output data-summary-value for="summary-confidence">0.70</output></label><input id="summary-confidence" data-summary-input type="range" min="0" max="1" step="0.05" value="0.70"><div class="cv-synthesis-candidates" aria-label="汽车候选分数和匹配结果"><span data-summary-candidate="0.95" aria-label="左车 0.95，TP，保留">左车 0.95 · TP</span><span data-summary-candidate="0.75" aria-label="背景误报 0.75，FP，保留">背景 0.75 · FP</span><span class="is-filtered" data-summary-candidate="0.35" aria-label="右车 0.35，TP，筛除">右车 0.35 · TP</span></div><div class="cv-synthesis-stats" data-summary-stats role="status" aria-live="polite">阈值 0.70：TP 1，FP 1，FN 1；P 50.0%，R 50.0%。</div><p class="cv-synthesis-hint">试试 0.30 和 1.00。保留数为 0 时 P 的分母为 0，本例显示“未定义”；R 仍可计算。</p></section>`;
   const diagram=(title,body,note)=>`<figure class="cv-recap-diagram"><figcaption><span>街景案例 · 图解</span><strong>${title}</strong></figcaption>${body}<p class="cv-recap-note">${note}</p></figure>`;
   const dataVisual=()=>diagram('图片和标签一起走进模型',`<div class="cv-recap-track"><div><b>原图</b><strong>600 × 300</strong><small>左车框 (60, 120, 200, 180)</small></div><span aria-hidden="true">→</span><div><b>等比缩放</b><strong>640 × 320</strong><small>宽、高与框都乘 16/15</small></div><span aria-hidden="true">→</span><div><b>上下补边</b><strong>640 × 640</strong><small>顶部与底部各 160 像素</small></div></div><svg class="cv-recap-coordinate" viewBox="0 0 640 640" role="img" aria-label="640乘640输入图，上下各160像素补边，中间是缩放后的街景，左侧汽车框从64、288到约213、352"><rect width="640" height="640" fill="#dfe3eb"/><rect y="160" width="640" height="320" fill="#eef3f6"/><path d="M0 277H640V480H0z" fill="#d9e1e6"/><path d="M70 303h100l20 19v19H70z" fill="#577ca4"/><path d="M390 290h100l20 20v30H390z" fill="#577ca4"/><circle cx="291" cy="279" r="10" fill="#45586c"/><path d="M291 290v30m-14-14 14-12 14 12m-14 14-12 22m12-22 12 22" stroke="#45586c" stroke-width="7" fill="none"/><rect x="64" y="288" width="149.3" height="64" fill="none" stroke="#694eb2" stroke-width="4"/><text x="20" y="95" fill="#56677a" font-size="24">上补边 160</text><text x="20" y="565" fill="#56677a" font-size="24">下补边 160</text><text x="68" y="281" fill="#5e459b" font-size="20">左车框</text></svg><div class="cv-recap-answer"><b>左车框在输入图中</b> (64, 288, 213.3, 352)　→　图片整理为 [1, 3, 640, 640]</div>`,'坐标顺序为左、上、右、下；框和图片必须一起变换。方框中的坐标为便于阅读的近似值。');
@@ -95,12 +151,30 @@
   const learningVisual=()=>diagram('训练时，预测和答案怎样改变参数？',`<div class="cv-recap-track cv-recap-four"><div><b>① 前向</b><strong>0.5 × 2 = 1</strong><small>预测为 1，目标为 3</small></div><span aria-hidden="true">→</span><div><b>② 比较</b><strong>(1 − 3)² = 4</strong><small>例子的平方损失</small></div><span aria-hidden="true">→</span><div><b>③ 反向</b><strong>梯度 −8</strong><small>损失对 w 的变化率</small></div><span aria-hidden="true">→</span><div><b>④ 更新</b><strong>w: 0.5 → 1.3</strong><small>学习率 0.1 的 SGD</small></div></div>`,'此处用单个数演示更新机制；真实检测器有大量参数及多个损失分量。');
   const validationVisual=()=>diagram('同一套模型，在不同阶段回答不同问题',`<div class="cv-recap-track"><div><b>训练</b><strong>用标签算损失</strong><small>反向传播并更新参数</small></div><span aria-hidden="true">→</span><div><b>验证</b><strong>预测与标签比较</strong><small>比较设置，不更新参数</small></div><span aria-hidden="true">→</span><div><b>新图推理</b><strong>输出框和类别</strong><small>无须事先提供答案</small></div></div>`,'测试集通常在方案确定后用于独立评估；不要把同一视频的相邻帧随意分到不同集合。');
   const inferenceVisual=()=>diagram('从输入图框回到原图，再与答案比较',`<div class="cv-recap-track"><div><b>输入图坐标</b><strong>(64, 288, 213.3, 352)</strong><small>640 × 640 的模型输入</small></div><span aria-hidden="true">→</span><div><b>去补边、还原缩放</b><strong>先减 160，再除以 16/15</strong><small>x 仅除以 16/15</small></div><span aria-hidden="true">→</span><div><b>原图坐标</b><strong>(60, 120, 200, 180)</strong><small>与左车标注一致</small></div></div><div class="cv-recap-answer">完全重合时：交集 8400、并集 8400，所以 <b>IoU = 1</b>。</div>`,'推理时先筛选和去重；评价时才拿保留的预测框与标注进行匹配。');
+  const windowsVisual=()=>diagram('四次滑动，拼出一张 2×2 特征图',`<div class="cv-recap-matrices"><div><b>单通道输入 3×3</b><div class="cv-recap-matrix three"><span>1</span><span>2</span><span>0</span><span>3</span><span>4</span><span>1</span><span>2</span><span>5</span><span>6</span></div></div><strong aria-hidden="true">×</strong><div><b>卷积核 2×2</b><div class="cv-recap-matrix"><span>1</span><span>0</span><span>0</span><span>−1</span></div></div><strong aria-hidden="true">→</strong><div><b>输出 2×2</b><div class="cv-recap-matrix"><span>−3</span><span>1</span><span>−2</span><span>−2</span></div></div></div><div data-recap-windows class="cv-recap-windows"><p>选择窗口，核对该位置的乘加：</p><div class="cv-recap-window-buttons" role="group" aria-label="选择卷积窗口"><button type="button" data-recap-window="0" aria-pressed="true">左上</button><button type="button" data-recap-window="1" aria-pressed="false">右上</button><button type="button" data-recap-window="2" aria-pressed="false">左下</button><button type="button" data-recap-window="3" aria-pressed="false">右下</button></div><p data-recap-window-result role="status" aria-live="polite">左上：1×1 + 2×0 + 3×0 + 4×(−1) = −3</p></div>`,'步长 1、不补边，偏置为 0；按钮选择的是四个可放置的窗口。');
+  const scaleVisual=()=>diagram('把左车放回三个尺度',`<div class="cv-recap-track"><div><b>输入图</b><strong>640 × 640</strong><small>左车中心约 (138.7, 320)</small></div><span aria-hidden="true">→</span><div><b>步长 8</b><strong>80 × 80</strong><small>教学网格：第 17 列、第 40 行</small></div><span aria-hidden="true">→</span><div><b>步长 16 / 32</b><strong>40 × 40 / 20 × 20</strong><small>采样间隔不同，位置更稀疏</small></div></div><div class="cv-recap-answer"><b>感受野</b>：能受多大输入范围影响　·　<b>总步长</b>：相邻位置的输入间隔</div>`,'教学网格的列、行从 0 开始；图中映射不等于具体检测器的目标分配规则。');
+  const targetVisual=()=>diagram('一个左车位置的教学损失',`<div class="cv-recap-track"><div><b>标注与预测框</b><strong>IoU = 0.75</strong><small>教学框损失：1 − 0.75 = 0.25</small></div><span aria-hidden="true">+</span><div><b>类别预测</b><strong>汽车概率 0.8</strong><small>交叉熵 −ln(0.8) ≈ 0.223</small></div><span aria-hidden="true">=</span><div><b>局部示例</b><strong>约 0.473</strong><small>两项系数都假设为 1</small></div></div>`,'这是互斥分类和简化框损失的教学演算，实际 YOLOv5 的损失定义与归约方式不同。');
+  const apVisual=()=>diagram('按分数排序，逐步记录 P 和 R',`<div class="cv-recap-table-wrap"><table class="cv-recap-table"><caption>汽车类：2 个真实目标</caption><thead><tr><th scope="col">加入候选</th><th scope="col">累计 TP / FP</th><th scope="col">P</th><th scope="col">R</th></tr></thead><tbody><tr><th scope="row">左车 0.95 · TP</th><td>1 / 0</td><td>1.000</td><td>0.500</td></tr><tr><th scope="row">背景 0.75 · FP</th><td>1 / 1</td><td>0.500</td><td>0.500</td></tr><tr><th scope="row">右车 0.35 · TP</th><td>2 / 1</td><td>0.667</td><td>1.000</td></tr></tbody></table></div><div class="cv-recap-answer">连续包络积分：<b>0.5 × 1 + 0.5 × 2/3 ≈ 0.833</b></div>`,'先固定类别和 IoU 门槛；这张表是人为设定的单图教学例子。');
+  const handsOnVisual=()=>diagram('先预测结果，再运行程序核对',`<div class="cv-recap-track"><div><b>真实框</b><strong>左车 + 右车</strong><small>共 2 个</small></div><span aria-hidden="true">→</span><div><b>三个候选</b><strong>0.95、0.75、0.35</strong><small>按分数从高到低匹配</small></div><span aria-hidden="true">→</span><div><b>输出</b><strong>TP、FP、FN</strong><small>0.70 → (1,1,1)<br>0.30 → (2,1,0)</small></div></div>`,'只比较汽车类；候选已去重，IoU 门槛为 0.5。');
   const links=()=>'<aside class="cv-synthesis-links"><strong>继续学习或补一处基础</strong><div><a href="#lesson/detection-intro">进入 YOLOv5：目标检测从哪里来 →</a><a href="#lesson/feature-pyramid">回看多尺度特征 →</a><a href="#lesson/metrics-map">回看 AP 与 mAP →</a><a href="#lesson/training-loop">回看训练循环 →</a></div></aside>';
   if(original){
     const old=original.renderParagraph.bind(original);
-    const visuals={journey:timeline,data:dataVisual,features:featuresVisual,prediction:predictionVisual,learning:learningVisual,validation:validationVisual,inference:inferenceVisual,threshold,links};
+    const visuals={journey:timeline,data:dataVisual,windows:windowsVisual,features:featuresVisual,scale:scaleVisual,prediction:predictionVisual,'target-loss':targetVisual,learning:learningVisual,validation:validationVisual,inference:inferenceVisual,threshold,'ap-walk':apVisual,'hands-on':handsOnVisual,links};
     original.renderParagraph=(s,i)=>old(s,i)+(i===0&&visuals[s.summaryVisual]?visuals[s.summaryVisual]():'');
   }
+  document.addEventListener('click',event=>{
+    const button=event.target.closest?.('[data-recap-window]');if(!button)return;
+    const root=button.closest('[data-recap-windows]');
+    const explanations=[
+      '左上：1×1 + 2×0 + 3×0 + 4×(−1) = −3',
+      '右上：2×1 + 0×0 + 4×0 + 1×(−1) = 1',
+      '左下：3×1 + 4×0 + 2×0 + 5×(−1) = −2',
+      '右下：4×1 + 1×0 + 5×0 + 6×(−1) = −2'
+    ];
+    const chosen=Number(button.dataset.recapWindow);
+    root.querySelectorAll('[data-recap-window]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+    root.querySelector('[data-recap-window-result]').textContent=explanations[chosen];
+  });
   document.addEventListener('input',event=>{
     const weight=event.target.closest?.('[data-recap-weight]');
     if(weight){

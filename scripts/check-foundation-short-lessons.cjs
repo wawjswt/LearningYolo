@@ -62,15 +62,17 @@ test('YOLO layer ledger follows real sources and produces correct rectangular de
 
 test('street-scene recap connects the same boxes and computes both interactive examples', () => {
   const lesson = courses.find(item => item.id === 'cv-synthesis');
-  const visual = section => context.visionlabCvEditorial.renderParagraph(lesson.sections[section], 0);
-  for (const section of [0,1,2,3,4,5,6,7,8]) assert.ok(visual(section).length > 50, `visual in section ${section+1}`);
-  assert.match(visual(1), /600 × 300.*640 × 320.*640 × 640/s);
-  assert.match(visual(1), /64, 288, 213\.3, 352/);
-  assert.match(visual(7), /左车 0\.95.*背景 0\.75.*右车 0\.35/s);
-  assert.match(lesson.sections[0].paragraphs.join(' '), /0 0\.2167 0\.5 0\.2333 0\.2/);
-  assert.match(lesson.sections[6].paragraphs.join(' '), /\\frac\{7200\}\{9600\}=0\.75/);
+  const section = name => lesson.sections.find(item => item.id === 'cv-synthesis-'+name);
+  const visual = name => context.visionlabCvEditorial.renderParagraph(section(name), 0);
+  for (const name of ['story','data','window','features','scale','prediction','target-loss','learning','validation','inference','metrics','ap-walk','hands-on','bridge']) assert.ok(visual(name).length > 50, `visual in ${name}`);
+  assert.match(visual('data'), /600 × 300.*640 × 320.*640 × 640/s);
+  assert.match(visual('data'), /64, 288, 213\.3, 352/);
+  assert.match(visual('metrics'), /左车 0\.95.*背景 0\.75.*右车 0\.35/s);
+  assert.match(section('story').paragraphs.join(' '), /0 0\.2167 0\.5 0\.2333 0\.2/);
+  assert.match(section('inference').paragraphs.join(' '), /\\frac\{7200\}\{9600\}=0\.75/);
   assert.equal((120*60)/(2*140*60-120*60), .75);
-  assert.equal(lesson.sections[7].exercise.revision, 'street-v2');
+  assert.equal(section('metrics').exercise.revision, 'street-v2');
+  assert.equal(section('metrics').legacyIndex, 7);
   assert.equal(lesson.chapterExercises[2].revision, 'street-v2');
 
   const handler = handlers.find(h => h.type === 'input' && h.fn.toString().includes('[data-recap-weight]'));
@@ -97,6 +99,24 @@ test('street-scene recap connects the same boxes and computes both interactive e
   assert.match(stats.textContent, /TP 2，FP 1，FN 0；P 66\.7%，R 100\.0%/);
   thresholdInput.value = '1.00'; handler.fn(event);
   assert.match(stats.textContent, /TP 0，FP 0，FN 2；P 未定义，R 0\.0%/);
+});
+
+test('street recap slides the window and its runnable matching example agrees with the lesson', () => {
+  const lesson = courses.find(item => item.id === 'cv-synthesis');
+  const windowHandler = handlers.find(h => h.type === 'click' && h.fn.toString().includes('[data-recap-window]'));
+  const output = {textContent:''};
+  const buttons = Array.from({length:4}, (_,i) => ({dataset:{recapWindow:String(i)},setAttribute(k,v){this[k]=v}}));
+  const root = {querySelector:()=>output,querySelectorAll:()=>buttons};
+  buttons.forEach(button=>button.closest=()=>root);
+  windowHandler.fn({target:{closest:()=>buttons[1]}});
+  assert.match(output.textContent, /2×1.*1×\(−1\) = 1/);
+  assert.equal(buttons[1]['aria-pressed'], 'true');
+  assert.equal(buttons[0]['aria-pressed'], 'false');
+  const code = lesson.sections.find(s=>s.id==='cv-synthesis-hands-on').code;
+  const result = spawnSync('python',['-X','utf8','-c',code],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(result.stdout.trim().replace(/\r/g,''),'(1, 1, 1)\n(2, 1, 0)');
+  assert.ok(Math.abs((.5*1+.5*2/3)-5/6)<1e-12);
 });
 
 test('beginner definitions include concrete samples before technical details', () => {

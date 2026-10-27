@@ -46,6 +46,28 @@ const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
+test('beginner definitions include concrete samples before technical details', () => {
+  const text=id=>courses.find(c=>c.id===id).sections.flatMap(s=>s.paragraphs).join(' ');
+  assert.match(text('ai-foundations'),/一张图片是一个样本.*标签.*数据集.*推理/);
+  assert.match(text('ai-foundations'),/2×1\+3×\(−1\)\+0.5=−0.5/);
+  assert.match(text('tensor'),/元素总数是 2×3=6.*两条轴/);
+  assert.match(text('network'),/Linear\(2,3\).*3×2\+3=9.*weight 形状是 \[3,2\].*\[16,2\].*\[16,3\]/);
+  assert.match(text('network-outputs'),/\[2,1,0\].*\[0.665,0.245,0.090\]/);
+  assert.match(text('loss-probabilities'),/\[7.389,2.718,1.105\].*11.212/);
+  assert.match(text('losses'),/\(4\+9\)\/2=6.5.*\(2\+3\)\/2=2.5/);
+  assert.match(text('gradient'),/8.8804.*−11.96.*导数−12/);
+  assert.match(text('gradient-chain-rule'),/a=2w.*−6×2=−12/);
+  assert.ok(Math.abs(((2*1.01-5)**2-9)/.01+11.96)<1e-9);
+  const logits=[2,1,0],exps=logits.map(Math.exp),total=exps.reduce((a,b)=>a+b,0);
+  for(const [i,want] of [.665,.245,.090].entries())assert.ok(Math.abs(exps[i]/total-want)<.0005);
+});
+
+test('the introductory Linear example matches PyTorch parameter and output shapes', {skip:!process.env.VISIONLAB_TORCH_PYTHON}, () => {
+  const code='import torch\nm=torch.nn.Linear(2,3)\nassert tuple(m.weight.shape)==(3,2)\nassert tuple(m.bias.shape)==(3,)\nassert sum(p.numel() for p in m.parameters())==9\nassert tuple(m(torch.zeros(16,2)).shape)==(16,3)';
+  const result=spawnSync(process.env.VISIONLAB_TORCH_PYTHON,['-c',code],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+});
+
 test('narrative order follows the calculation before tuning, diagnosis and reference material', () => {
   const expected={
     'tensor-operations':['tensor-s-hkdzb3y','tensor-s-heqw76k'],

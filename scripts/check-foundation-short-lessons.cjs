@@ -60,6 +60,45 @@ test('YOLO layer ledger follows real sources and produces correct rectangular de
   assert.equal(rectangle[24].candidates, 18900);
 });
 
+test('street-scene recap connects the same boxes and computes both interactive examples', () => {
+  const lesson = courses.find(item => item.id === 'cv-synthesis');
+  const visual = section => context.visionlabCvEditorial.renderParagraph(lesson.sections[section], 0);
+  for (const section of [0,1,2,3,4,5,6,7,8]) assert.ok(visual(section).length > 50, `visual in section ${section+1}`);
+  assert.match(visual(1), /600 × 300.*640 × 320.*640 × 640/s);
+  assert.match(visual(1), /64, 288, 213\.3, 352/);
+  assert.match(visual(7), /左车 0\.95.*背景 0\.75.*右车 0\.35/s);
+  assert.match(lesson.sections[0].paragraphs.join(' '), /0 0\.2167 0\.5 0\.2333 0\.2/);
+  assert.match(lesson.sections[6].paragraphs.join(' '), /\\frac\{7200\}\{9600\}=0\.75/);
+  assert.equal((120*60)/(2*140*60-120*60), .75);
+  assert.equal(lesson.sections[7].exercise.revision, 'street-v2');
+  assert.equal(lesson.chapterExercises[2].revision, 'street-v2');
+
+  const handler = handlers.find(h => h.type === 'input' && h.fn.toString().includes('[data-recap-weight]'));
+  assert.ok(handler);
+  const fields = Object.fromEntries(['[data-recap-weight-display]','[data-recap-weight-output]','[data-recap-conv-result]','[data-recap-relu-result]'].map(key => [key, {textContent:''}]));
+  const weightRoot = {querySelector: key => fields[key]};
+  const weightInput = {value:'1', closest: () => weightRoot};
+  handler.fn({target:{closest: key => key === '[data-recap-weight]' ? weightInput : null}});
+  assert.equal(fields['[data-recap-conv-result]'].textContent, 5);
+  assert.equal(fields['[data-recap-relu-result]'].textContent, 'ReLU 后为 5');
+  weightInput.value = '-2';
+  handler.fn({target:{closest: key => key === '[data-recap-weight]' ? weightInput : null}});
+  assert.equal(fields['[data-recap-conv-result]'].textContent, -7);
+  assert.equal(fields['[data-recap-relu-result]'].textContent, 'ReLU 后为 0');
+
+  const output = {textContent:''}, stats = {textContent:''};
+  const candidates = [.95,.75,.35].map(score => ({dataset:{summaryCandidate:String(score)},textContent:String(score),classList:{toggle(){}},setAttribute(){}}));
+  const thresholdRoot = {querySelector:key => key === '[data-summary-value]' ? output : stats, querySelectorAll:() => candidates};
+  const thresholdInput = {value:'0.70',closest:() => thresholdRoot};
+  const event = {target:{closest:key => key === '[data-summary-input]' ? thresholdInput : null}};
+  handler.fn(event);
+  assert.match(stats.textContent, /TP 1，FP 1，FN 1；P 50\.0%，R 50\.0%/);
+  thresholdInput.value = '0.30'; handler.fn(event);
+  assert.match(stats.textContent, /TP 2，FP 1，FN 0；P 66\.7%，R 100\.0%/);
+  thresholdInput.value = '1.00'; handler.fn(event);
+  assert.match(stats.textContent, /TP 0，FP 0，FN 2；P 未定义，R 0\.0%/);
+});
+
 test('beginner definitions include concrete samples before technical details', () => {
   const text=id=>courses.find(c=>c.id===id).sections.flatMap(s=>s.paragraphs).join(' ');
   assert.match(text('ai-foundations'),/一张图片是一个样本.*标签.*数据集.*推理/);

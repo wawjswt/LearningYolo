@@ -307,7 +307,7 @@
       rows.forEach((r,index)=>{s+=workedStep(index+1,rect(26,r.y,707,47,r.fill,'none',6,0)+tag(35,r.y+9,81,r.name,colors.paper,r.color)+text(260,r.y+29,r.input,12,colors.ink,600)+arrow(392,r.y+23,429,r.y+23,colors.slate,1.5)+text(506,r.y+29,r.target,11,colors.ink,600)+text(665,r.y+29,r.result,13,r.color,700))});
       s+=workedStep(4,text(380,258,'总损失 = batch × (gain_box·Lbox + gain_obj·Lobj + gain_cls·Lcls)',12,colors.ink,650));return s;
     }},
-    'worked-train-yolo':{concept:'前向、反向与权重更新',title:'训练一次 batch：从模型输出到参数更新',description:'图像和标签经过前向预测与损失计算；反向传播产生梯度，optimizer.step 才更新参数。验证结果用于比较最佳 checkpoint。',caption:'玩具参数仅说明梯度更新方向；YOLO 实际更新的是网络中的大量参数张量。',draw:()=>{
+    'worked-train-yolo':{concept:'前向、反向与权重更新',title:'训练一次 batch：从模型输出到参数更新',description:'图像和标签经过前向预测与损失计算；反向传播产生梯度，optimizer.step 才更新参数。验证结果用于比较最佳 checkpoint。',caption:'这里用一个参数演示梯度更新；YOLO 训练时会更新网络中的大量参数。',draw:()=>{
       let s='';
       const nodes=[
         {x:17,fill:colors.blueSoft,color:colors.blue,title:'样本',sub:'imgs + targets'},
@@ -319,7 +319,7 @@
       nodes.forEach((n,index)=>s+=workedStep(index<2?1:index+0,rect(n.x,63,128,75,n.fill,'none',7,0)+text(n.x+64,92,n.title,15,n.color,700)+text(n.x+64,118,n.sub,10,colors.ink,550)));
       for(let i=0;i<nodes.length-1;i++)s+=arrow(nodes[i].x+130,101,nodes[i+1].x-4,101,colors.slate,1.6);
       s+=workedStep(5,rect(70,172,286,66,colors.greenSoft,'none',7,0)+text(213,196,'验证挑选 checkpoint',13,colors.green,700)+text(213,219,'best.pt = 验证最好 · last.pt = 训练末尾',10,colors.ink,550));
-      s+=rect(385,172,350,66,colors.slateSoft,'none',7,0)+text(560,196,'单参数玩具例子',13,colors.muted,700)+text(560,219,'w: 1 − 0.1×0.6 → 0.94',12,colors.ink,600);
+      s+=rect(385,172,350,66,colors.slateSoft,'none',7,0)+text(560,196,'单参数计算示例',13,colors.muted,700)+text(560,219,'w: 1 − 0.1×0.6 → 0.94',12,colors.ink,600);
       s+=text(380,270,'实际训练含梯度累积与 AMP；验证过程不调用 optimizer.step()。',12,colors.ink,600);return s;
     }},
     'worked-yolo-augment':{concept:'输入尺寸、目标像素与特征图',title:'输入边长增加时，小目标和 P3 网格怎样变化',description:'把输入边长从 640 提高到 960，同一小目标从约 8 像素增至 12 像素；stride 8 的 P3 特征图从 80×80 增至 120×120。',caption:'P3 空间位置增加 2.25 倍；实际显存和速度比例还受 batch、网络结构及设备影响。',draw:()=>{

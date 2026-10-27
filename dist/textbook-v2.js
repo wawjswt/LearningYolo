@@ -463,7 +463,7 @@ const guidedWorkedExamples={
       '`pred=model(imgs)` 做前向计算并生成 P3/P4/P5 预测；此时参数还没有更新。',
       '`ComputeLoss(pred,targets)` 用标签和预测算出 box、objectness、分类损失。',
       '`loss.backward()` 计算参数梯度。梯度累积时，多个 batch 的梯度可能先相加。',
-      '`optimizer.step()` 才按梯度更新参数。用单个玩具参数理解这一步：`w=1`、梯度 `0.6`、学习率 `0.1`，更新为 `w=1−0.1×0.6=0.94`；这不是 YOLO 网络的真实参数值。',
+      '`optimizer.step()` 才按梯度更新参数。用一个参数的简化算例理解这一步：`w=1`、梯度 `0.6`、学习率 `0.1`，更新为 `w=1−0.1×0.6=0.94`；这不是 YOLO 网络的真实参数值。',
       '验证集用于比较 checkpoint：`best.pt` 保存验证表现最好的状态，`last.pt` 保存训练最后阶段的状态。'
     ],
     solution:'前向生成预测，损失函数给出优化目标，`backward()` 计算梯度，`optimizer.step()` 改参数。验证表现用来挑选 `best.pt`，训练末尾状态则是 `last.pt`。',

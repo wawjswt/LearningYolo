@@ -33,6 +33,17 @@
   ].map((r,i)=>({i,from:r[0],type:r[1],c:r[2],stride:r[3],n:r[4],args:r[5],note:r[6]}));
   const sourceIds=row=>Array.isArray(row.from)?row.from:[row.from===-1?row.i-1:row.from];
   const shape=(id,side=640)=>id<0?'3 × '+side+' × '+side:rows[id].c+' × '+side/rows[id].stride+' × '+side/rows[id].stride;
+  // 每行直接引用配置中的来源；矩形输入按高、宽分别计算。
+  function layerLedger(height,width,nc){
+    const tensors=rows.slice(0,24).map(r=>[1,r.c,height/r.stride,width/r.stride]);
+    const input=[1,3,height,width];
+    return rows.map(r=>{
+      const sources=sourceIds(r),inputs=sources.map(i=>i<0?input:tensors[i]);
+      if(r.i===24){const outputs=inputs.map(t=>[1,3,t[2],t[3],nc+5]);return {...r,sources,inputs,outputs,candidates:outputs.reduce((n,t)=>n+t[1]*t[2]*t[3],0)};}
+      return {...r,sources,inputs,output:tensors[r.i]};
+    });
+  }
+  window.visionlabYoloLayerLedger=layerLedger;
   const quiz=[
     question('这份YAML的head字段中，哪些层主要承担Neck的特征融合？',['10～23层','只有第24层','只有0～9层'],0,'按功能划分，0～9为Backbone，10～23融合特征，第24层Detect输出预测；YAML把10～24都写在head字段下。'),
     question('[-1,6,C3,[256]]中的6在本配置中表示什么？',['串联6个完整C3','一个C3内部含6个Bottleneck','输出6个通道'],1,'parse_model把重复次数注入C3的n参数，并把外层构造次数设为1。'),
@@ -157,13 +168,15 @@
   const table=(head,body)=>'<div class="yl-table-scroll" tabindex="0" aria-label="可横向滚动的数据表"><table><thead><tr>'+head.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
   const layerTable=(first,last)=>table(['层','来源','模块 / 内部次数','关键参数','输出 C×H×W'],rows.slice(first,last+1).map(r=>[r.i,sourceIds(r).join(', '),r.type+(r.type==='C3'?' · n='+r.n:''),r.args,shape(r.i)]));
   const figure=(file,alt,caption)=>'<figure class="yl-figure"><a href="'+asset+file+'" target="_blank" rel="noopener"><img src="'+asset+file+'" alt="'+alt+'" loading="lazy" width="1600" height="1000"><span>打开大图 ↗</span></a><figcaption>'+caption+'</figcaption></figure>';
-  function explorer(){return '<section class="yl-lab" data-yl-explorer><span class="yl-eyebrow">LAYER EXPLORER · 逐层追踪</span><h3>点一层，看它从哪里读入</h3><div class="yl-settings"><label>输入边长<select data-yl-side aria-label="模型输入边长"><option>320</option><option selected>640</option><option>960</option></select></label><label>类别数 nc<select data-yl-nc aria-label="检测类别数"><option>1</option><option>2</option><option selected>80</option></select></label></div><div class="yl-layer-buttons" role="group" aria-label="选择0到24层">'+rows.map(r=>'<button type="button" data-yl-layer="'+r.i+'" aria-pressed="false"><b>'+r.i+'</b> '+r.type+'</button>').join('')+'</div><div class="yl-detail" data-yl-detail aria-live="polite"></div><div class="yl-navigation"><button type="button" data-yl-prev>← 上一层</button><button type="button" data-yl-next>下一层 →</button></div><p class="yl-small">尺寸省略批次B，按C×H×W书写。输入选项均为32的倍数；教学计算不运行模型。</p></section>';}
+  function explorer(){return '<section class="yl-lab" data-yl-explorer><span class="yl-eyebrow">逐层追踪 · 从输入到检测头</span><h3>每一层收到了什么，又交出了什么？</h3><p>先选一层，猜它的输出尺寸，再查看来源、操作和结果。第12、16、19、22层各读取两份特征；第24层读取三份。</p><div class="yl-settings"><label>输入高×宽<select data-yl-side aria-label="模型输入高宽"><option value="320,320">320×320</option><option value="640,640" selected>640×640</option><option value="640,480">640×480</option><option value="960,960">960×960</option></select></label><label>类别数 nc<select data-yl-nc aria-label="检测类别数"><option>1</option><option selected>2</option><option>80</option></select></label></div><div class="yl-layer-buttons" role="group" aria-label="选择0到24层">'+rows.map(r=>'<button type="button" data-yl-layer="'+r.i+'" aria-pressed="false"><b>'+r.i+'</b> '+r.type+'</button>').join('')+'</div><div class="yl-detail" data-yl-detail aria-live="polite"></div><div class="yl-navigation"><button type="button" data-yl-prev>← 上一层</button><button type="button" data-yl-next>下一层 →</button></div><details><summary>展开0～24层完整尺寸账本</summary><div data-yl-ledger></div></details><p class="yl-small">形状按[B,C,H,W]写，B=1；这里只按配置计算尺寸，不运行模型。矩形输入的选项均可被32整除。</p></section>';}
   function updateExplorer(root){
-    const id=Number(root.dataset.layer||0),r=rows[id],side=Number(root.querySelector('[data-yl-side]').value),nc=Number(root.querySelector('[data-yl-nc]').value),ids=sourceIds(r);
-    const ins=ids.map(i=>'<div><span>'+ (i<0?'输入图片':'层'+i)+'</span><code>'+shape(i,side)+'</code></div>').join('');
-    const output=id===24?'三分支：'+[8,16,32].map(s=>'B×3×'+side/s+'×'+side/s+'×'+(nc+5)).join('；'):shape(id,side);
-    const result=id===24?'<p><b>'+3*(nc+5)+'输出通道 / 分支</b>；'+(3*((side/8)**2+(side/16)**2+(side/32)**2)).toLocaleString('en-US')+'个候选，单候选'+(nc+5)+'个数。</p>':'';
-    root.querySelector('[data-yl-detail]').innerHTML='<span class="yl-chip">'+(id<10?'Backbone':id<24?'Neck':'Detect')+'</span><h4>层'+id+' · '+r.type+'</h4><div class="yl-shape-flow">'+ins+'<b aria-hidden="true">→</b><div><span>输出</span><code>'+output+'</code></div></div><p>'+r.note+'</p>'+result+'<div class="yl-source-links">来源：'+ids.map(i=>i<0?'<span>输入图片</span>':'<button type="button" data-yl-layer="'+i+'">查看层'+i+'</button>').join(' ')+'</div>';
+    const id=Number(root.dataset.layer||0),[height,width]=root.querySelector('[data-yl-side]').value.split(',').map(Number),nc=Number(root.querySelector('[data-yl-nc]').value),ledger=layerLedger(height,width,nc),r=ledger[id],ids=r.sources;
+    const fmt=x=>'['+x.join(', ')+']';
+    const ins=ids.map((i,n)=>'<div><span>'+ (i<0?'输入图片':'层'+i)+'</span><code>'+fmt(r.inputs[n])+'</code></div>').join('');
+    const output=id===24?r.outputs.map(fmt).join('；'):fmt(r.output);
+    const result=id===24?'<p><b>每路输出卷积：'+3*(nc+5)+'通道</b>；三尺度共'+r.candidates.toLocaleString('en-US')+'个原始候选，每个候选'+(nc+5)+'个字段。训练返回三路；推理解码后合为[1, '+r.candidates+', '+(nc+5)+']。</p>':'';
+    root.querySelector('[data-yl-detail]').innerHTML='<span class="yl-chip">'+(id<10?'Backbone':id<24?'Neck':'Detect')+'</span><h4>层'+id+' · '+r.type+'</h4><div class="yl-shape-flow">'+ins+'<b aria-hidden="true">→</b><div><span>输出</span><code>'+output+'</code></div></div><p><b>做了什么：</b>'+r.args+'。'+r.note.replace(/640输入时[^。]*。/g,'')+'</p>'+result+'<div class="yl-source-links">来源：'+ids.map(i=>i<0?'<span>输入图片</span>':'<button type="button" data-yl-layer="'+i+'">查看层'+i+'</button>').join(' ')+'</div>';
+    root.querySelector('[data-yl-ledger]').innerHTML=table(['层','从哪里收到','做了什么','交出什么'],ledger.map(row=>[row.i, row.sources.map((source,i)=>(source<0?'图片':'层'+source)+' '+fmt(row.inputs[i])).join('；'),row.type+' · '+row.args,row.i===24?row.outputs.map(fmt).join('；'):fmt(row.output)]));
     root.querySelectorAll('.yl-layer-buttons button').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.ylLayer)===id)));
     root.querySelector('[data-yl-prev]').disabled=id===0;root.querySelector('[data-yl-next]').disabled=id===24;
   }
@@ -192,7 +205,7 @@
     if(index===6)return figure('sppf.webp','SPPF串联三次5×5池化，收集1、5、9、13范围，再拼接和卷积融合','所有池化stride=1、padding=2，20×20空间尺寸保持不变。')+sppfSteps();
     if(index===7)return layerTable(10,17)+'<p class="yl-readout">横向来源：层6 → 层12；层4 → 层16。融合后的层17进入P3检测分支。</p>';
     if(index===8)return layerTable(18,23)+'<p class="yl-readout">横向来源：层14 → 层19；层10 → 层22。层20、23分别进入P4、P5检测分支。</p>';
-    if(index===9)return table(['分支 / 来源','输入 C×H×W','训练张量（含B）','候选数'],[['P3 / 层17','256×80×80','B×3×80×80×85','19,200'],['P4 / 层20','512×40×40','B×3×40×40×85','4,800'],['P5 / 层23','1024×20×20','B×3×20×20×85','1,200']])+'<p class="yl-readout">想改变输入或nc，回到逐层浏览器并选择层24，比较候选数和单候选维度。</p><button class="yl-link" type="button" data-yl-jump="24">在逐层浏览器查看Detect ↑</button>';
+    if(index===9)return table(['分支 / 来源','输入 C×H×W','两类训练张量（含B）','候选数'],[['P3 / 层17','256×80×80','B×3×80×80×7','19,200'],['P4 / 层20','512×40×40','B×3×40×40×7','4,800'],['P5 / 层23','1024×20×20','B×3×20×20×7','1,200']])+'<p class="yl-readout">固定输入640×640、两类。想改变输入或nc，回到逐层浏览器并选择层24，比较候选数和单候选维度。</p><button class="yl-link" type="button" data-yl-jump="24">在逐层浏览器查看Detect ↑</button>';
     if(index===10)return decoder();
     if(index===11)return '<div class="yl-route"><span>预处理</span><b>→</b><span>Backbone</span><b>→</b><span>FPN / PAN</span><b>→</b><span>Detect解码</span><b>→</b><span>筛选 / NMS</span></div><p class="yl-small">随课配置保留Ultralytics YOLOv5原始许可说明，见<a href="'+asset+'LICENSE.txt" target="_blank" rel="noopener">AGPL-3.0许可文本</a>。官方仓库可能更新，逐层表以随课配置为准。</p>';
     return '';

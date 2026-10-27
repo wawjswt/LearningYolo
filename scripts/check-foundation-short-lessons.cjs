@@ -46,6 +46,20 @@ const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
+test('YOLO layer ledger follows real sources and produces correct rectangular detection shapes', () => {
+  const ledger = run('window.visionlabYoloLayerLedger');
+  const square = ledger(640, 640, 2);
+  const rectangle = ledger(640, 480, 2);
+  assert.equal(square.length, 25);
+  assert.deepEqual(Array.from(square[19].sources), [18, 14]);
+  assert.deepEqual(Array.from(square[22].sources), [21, 10]);
+  assert.deepEqual(Array.from(square[16].inputs, x => Array.from(x)), [[1,256,80,80],[1,256,80,80]]);
+  assert.deepEqual(Array.from(square[16].output), [1,512,80,80]);
+  assert.deepEqual(Array.from(square[24].outputs, x => Array.from(x)), [[1,3,80,80,7],[1,3,40,40,7],[1,3,20,20,7]]);
+  assert.deepEqual(Array.from(rectangle[24].outputs, x => Array.from(x)), [[1,3,80,60,7],[1,3,40,30,7],[1,3,20,15,7]]);
+  assert.equal(rectangle[24].candidates, 18900);
+});
+
 test('beginner definitions include concrete samples before technical details', () => {
   const text=id=>courses.find(c=>c.id===id).sections.flatMap(s=>s.paragraphs).join(' ');
   assert.match(text('ai-foundations'),/一张图片是一个样本.*标签.*数据集.*推理/);
@@ -494,6 +508,19 @@ test('legacy section answer remains readable and new section answers use the sta
   const rendered = context.lesson('tensor');
   assert.ok(rendered.includes('data-exercise-key="tensor:section:' + section.id + '"'));
   assert.match(rendered, /class="correct" aria-pressed="true"/);
+});
+
+test('changed YOLO exercise ignores an answer to the old question but restores its own answer', () => {
+  const section = courses.find(l => l.id === 'yolo-head').sections[0];
+  const base = 'yolo-head:section:' + section.id;
+  const revised = base + '@' + section.exercise.revision;
+  run('state.exerciseAnswers = ' + JSON.stringify({[base]: 2, ['yolo-head:section:' + section.legacyIndex]: 2}));
+  let card = context.lesson('yolo-head').split('id="section-' + section.id + '"')[1].split('class="quiz-result exercise-feedback"')[0];
+  assert.ok(card.includes('data-exercise-key="' + revised + '"'));
+  assert.doesNotMatch(card, /class="correct" aria-pressed="true"/);
+  run('state.exerciseAnswers[' + JSON.stringify(revised) + '] = 2');
+  card = context.lesson('yolo-head').split('id="section-' + section.id + '"')[1].split('class="quiz-result exercise-feedback"')[0];
+  assert.match(card, /class="correct" aria-pressed="true"/);
 });
 
 test('chapter quiz table-of-contents link scrolls inside the current lesson', () => {

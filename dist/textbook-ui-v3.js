@@ -107,8 +107,8 @@
   function exerciseCard(l,exercise,type,index,sectionId=''){
     const label=exercise.stage|| (type==='section'?'本节练习':'章末综合题 '+(index+1));
     const indexAttribute=type==='section'?'data-section-index':'data-exercise-index';
-    const key=l.id+':'+type+':'+(type==='section'?(sectionId||index):(exercise.id||index));
-    const saved=state.exerciseAnswers?.[key]??(type==='section'?state.exerciseAnswers?.[l.id+':section:'+index]:undefined);
+    const key=l.id+':'+type+':'+(type==='section'?(sectionId||index):(exercise.id||index))+(exercise.revision?'@'+exercise.revision:'');
+    const saved=state.exerciseAnswers?.[key]??(type==='section'&&!exercise.revision?state.exerciseAnswers?.[l.id+':section:'+index]:undefined);
     const selected=Number.isInteger(saved)&&saved>=0&&saved<exercise.options.length?saved:null;
     const sectionAttribute=type==='section'?' data-section-id="'+esc(sectionId||'')+'"':'';
     const options=exercise.options.map((option,i)=>{const active=selected===i,correct=active&&selected===exercise.answer;return '<button type="button" class="'+(active?(correct?'correct':'wrong'):'')+'" aria-pressed="'+active+'" data-exercise-key="'+esc(key)+'" data-exercise-answer="'+i+'" data-lesson="'+l.id+'" data-exercise-type="'+type+'" '+indexAttribute+'="'+index+'"'+sectionAttribute+'>'+String.fromCharCode(65+i)+'. '+rich(option)+'</button>'}).join('');
@@ -139,7 +139,7 @@
       const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,legacyIndex)||'';
       const cvWorkshop=s.cvWorkshop||s.foundationWorkshop?(window.renderFoundationWorkshop?.(l)||''):'';
       const content=paragraphs+cvWorkshop+advancedBlocks+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',legacyIndex,s.id):'');
-      const optional=s.depth==='advanced'?'<details class="advanced-section"><summary>选学深入内容 · 点击展开</summary><div class="advanced-section-body">'+content+'</div></details>':content;
+      const optional=s.depth==='advanced'?'<details class="advanced-section"><summary>'+esc(s.depthLabel||'选学深入内容 · 点击展开')+'</summary><div class="advanced-section-body">'+content+'</div></details>':content;
       const stableId=s.id||l.id+'-s'+String(legacyIndex+1).padStart(2,'0');
       return '<section class="text-section" id="section-'+stableId+'" data-lesson-id="'+l.id+'" data-section-id="'+stableId+'" data-section-index="'+i+'"><span class="legacy-section-anchor" id="section-'+(legacyIndex+1)+'" aria-hidden="true"></span><span class="section-number">'+String(i+1).padStart(2,'0')+'</span><h2>'+sectionTitle(s.title)+'</h2>'+optional+'</section>';
     }).join('');

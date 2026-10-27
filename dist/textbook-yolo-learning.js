@@ -516,6 +516,55 @@
   const headIntro=courses.get('yolo-head').sections[0];
   headIntro.paragraphs[1]='ModuleList是PyTorch中登记多个子模块的列表；这里登记三个各自带权重的1×1输出卷积。'+headIntro.paragraphs[1];
 
+  // 基础主线使用同一两类任务；记录原图，供标签课和后续课程取用。
+  const teachingCase=Object.freeze({id:'smoke-fire-throughline',names:Object.freeze(['smoke','fire']),originalWH:Object.freeze([1000,500]),inputHW:Object.freeze([640,640]),batch:1,targetClass:1,targetXYWH:Object.freeze([530,220,50,25]),strides:Object.freeze([8,16,32]),anchorsPx:Object.freeze([Object.freeze([Object.freeze([10,13]),Object.freeze([16,30]),Object.freeze([33,23])]),Object.freeze([Object.freeze([30,61]),Object.freeze([62,45]),Object.freeze([59,119])]),Object.freeze([Object.freeze([116,90]),Object.freeze([156,198]),Object.freeze([373,326])])])});
+  const hs=courses.get('yolo-head').sections;
+  headIntro.paragraphs=[
+    '检测头（Detection Head）是把特征转换成检测数据的末端模块。前面的Neck交来的是数字组成的特征表，还没有写明框的位置或类别；Detect把每个位置的特征变成一批候选答案。',
+    '先读一条已经解码的候选：[100,80,40,20,0.9,0.1,0.8]。前四个数是输入画布上的中心x、中心y、宽、高；0.9是物体性分数，最后两项分别是烟雾和火焰的分数。火焰组合分数为0.9×0.8=0.72。这是人工给定的例子，输出卷积本身先给出原始数，还需要解码。',
+    '每个网格位置准备三组参考宽高，称为Anchor（锚框），每组对应一条候选。参考框不是最终预测框；为什么要用它，后面Anchor课会继续解释。现在先数一条候选需要多少数。',
+    '输入为[1,3,640,640]时，第24层分别读取层17、20、23：P3是[1,256,80,80]，P4是[1,512,40,40]，P5是[1,1024,20,20]。每个形状依次表示批次、通道、高、宽。三路分别使用自己的1×1输出卷积。',
+    '两类任务中，每条候选需要4个框参数、1个物体性和2个类别数，合计7个字段；每个位置3条候选，所以每路输出卷积有3×7=21个通道。三路的通道变化分别为256→21、512→21和1024→21，高宽保持不变。',
+    '下面按读取特征、卷积、分组、换轴和路径分流逐步查看。80类模型每条候选有85个字段、每路255个通道，它与这里的两类任务是同一规则下的不同设置。'
+  ];
+  headIntro.exercise={q:'两类任务中，每个位置3组Anchor，Detect每个分支输出多少通道？',options:['7','14','21'],answer:2,why:'每组有4个框参数、1个物体性和2个类别数，3×(4+1+2)=21。',revision:'two-class-20261027'};
+  hs[1].paragraphs[1]=hs[1].paragraphs[1].replace('255个输出通道','21个输出通道');
+  hs[1].paragraphs[2]=hs[1].paragraphs[2].replace('256→255','256→21');
+  hs[2].title='3. 21个通道：怎样装下三条候选';
+  hs[2].paragraphs=[
+    '固定P3的一个位置，输出卷积给出21个原始数。每组参考宽高对应一条候选；每条候选依次装入4个框参数、1个物体性数、2个类别数。3组各7个数，所以总共21个通道。',
+    '按从0开始的通道编号，0～6属于Anchor 0，7～13属于Anchor 1，14～20属于Anchor 2。每组的第0～3项是框参数，第4项是物体性，第5、6项是烟雾和火焰的类别原始数。它们尚未解码，不能直接当作像素坐标或最终框。',
+    '用字母概括：D=4+1+nc，C_out=A×D。D是每条候选的字段数，nc是类别数，A是每个网格的Anchor数。这里A=3、nc=2，因此D=7、C_out=21。80类时D=85、C_out=255；网格数量不随类别数改变。'
+  ];
+  hs[2].exercise={q:'两类任务中，输出通道14属于哪个字段？',options:['Anchor 2的第0个框参数','第14个类别','Anchor 1的物体性'],answer:0,why:'每组7个字段，14=2×7+0，因此是Anchor 2的第0个框参数。',revision:'two-class-20261027'};
+  hs[3].depth='';
+  hs[3].paragraphs=[
+    '以P3为例，卷积先给出[1,21,80,80]。21个通道可以分为3组，每组7个字段：view后为[1,3,7,80,80]。接着permute把字段轴移到最后，得到[1,3,80,80,7]；这样指定图片、Anchor和行列后，就能取出那一条候选的7个数。',
+    '用四个数看清为什么要换轴：假设只有一组参考、两个字段和两个位置，按通道排列为[10,11,20,21]。第一字段在位置0、1分别为10、11；第二字段分别为20、21。正确换轴后，位置0是[10,20]，位置1是[11,21]。直接view成最终形状却得到[10,11]和[20,21]，同一个位置的字段就装错了。',
+    'view按原顺序重新分组，permute交换轴；元素数目相同只说明形状装得下，不代表字段仍然对应。下面的代码可独立运行并对照两种结果。'
+  ];
+  hs[3].advancedBlocks=[advanced('选读：为什么源码还调用contiguous','permute交换轴后，新张量可能是非连续内存布局。contiguous按需要生成连续布局，可能复制数据；它不改变每个坐标对应的数值。')];
+  hs[4].paragraphs=[
+    '训练时，Detect把三尺度原始预测交出去：两类、B=1时分别为[1,3,80,80,7]、[1,3,40,40,7]、[1,3,20,20,7]。真实标签另交给损失计算，它决定哪些预测要与哪些目标比较；损失再通过反向传播影响网络参数。',
+    '普通推理时，同一套输出继续经过Sigmoid和框解码。P3、P4、P5分别展平成19,200、4,800、1,200条候选，再拼成[1,25200,7]。普通推理返回解码结果和原始预测；导出模式的返回包装可能不同。',
+    '外部后处理再组合物体性与类别分数、按门槛筛选和去除重复框，并将坐标从输入画布还原到原图。每张图片最终保留的框数可以不同，也可以为0；25,200是筛选前的候选数，不是图片里有25,200个物体。样本怎样分配和误差怎样计算，分别见后面的样本分配与检测损失课。'
+  ];
+  for(const index of [6,7,8]){hs[index].depth='advanced';hs[index].depthLabel='自定义项目：改类别与检查加载 · 点击展开';}
+  for(const index of [9,10,11])hs[index].depthLabel='结构改造：P2与解耦头 · 点击展开';
+  courses.get('yolo-head').beginnerReading={title:'先读基础，再按需要改模型',description:'先读第1～5节：认识输入、输出卷积、字段、换轴与训练/推理。读完可继续Anchor课；要做自己的两类任务，再展开第7～9节。P2和解耦头留给结构改造时阅读。',steps:[['yolo-head#head-fields','第3节：数清每条候选的字段'],['yolo-head#head-permute','第4节：看字段如何换轴'],['anchors','接着学：参考宽高怎样使用'],['yolo-assignment','然后学：训练时谁负责目标']]};
+  courses.get('yolo-head').keypoints=['两类时每条候选7个字段、每位置3条，共21个输出通道。','训练返回三尺度原始预测；普通推理进一步解码，后处理才筛出最终结果。','改类别或结构需要核对输出、损失与解码的约定。'];
+  const neckFirst=courses.get('yolo-neck').sections[0];
+  if(neckFirst.paragraphs[2]?.startsWith('Neck是融合不同尺度特征的部分'))neckFirst.paragraphs.splice(2,1);
+  const backboneFirst=courses.get('yolo-backbone').sections[0];
+  backboneFirst.paragraphs[2]='先看一张高640、宽640的图片，张量为[1,3,640,640]：B=1是一次处理一张图片，C=3是RGB通道，H和W是高与宽。第0层用64组滤波器，每组跨越全部3个输入通道，因此得到64张特征图。64是特征通道数，与检测类别数无关。';
+  backboneFirst.paragraphs[3]='第0层用6×6核、步长2、两侧各补2个位置。高度补边后为644；窗口占6个位置，起点可移动的跨度为638。每次跨2个位置，共floor(638/2)+1=320个起点。宽度同样为320，输出为[1,64,320,320]。floor是向下取整，+1计入第一个窗口。矩形输入时，高与宽必须分别代入。';
+  const c3First=courses.get('yolo-c3').sections[0];
+  c3First.paragraphs[0]='C3是YOLOv5中处理特征的模块。假设已经有8张4×4的特征表，还想组合其中的线索：C3把同一输入交给两条路线，一路经过重复的Bottleneck计算，另一路较短；最后把两路的结果按通道拼接，再用卷积混合。它采用CSP（Cross Stage Partial，跨阶段部分连接）思路；名称中的3指三块外层Conv，而不是三条分支。';
+  const sppfFirst=courses.get('yolo-sppf').sections[0];
+  sppfFirst.paragraphs[0]='SPPF是Spatial Pyramid Pooling Fast（快速空间金字塔池化）模块，用来汇集同一张特征图中不同范围的线索。例如判断灰色区域是否为烟雾时，仅看当前位置可能不够，还需要周围信息。SPPF连续池化、保留各次结果，再将它们拼接混合。';
+  sppfFirst.paragraphs[2]='先看单通道：一次5×5池化读取周围5×5位置；再做一次会把重叠窗口的范围扩到9×9，第三次扩到13×13。每次步幅1、填充2，因此高宽保持。这里的范围相对于模块内特征表，并非直接量出的原图范围。';
+  courses.get('yolo-data').sections[0].paragraphs.push('下面的互动先展示容易手算的入门框；切换到“贯穿算例：火焰框”，可看到原图中心(530,220)、宽50、高25的另一处人工框。它经过640方形画布后，归一化中心与宽高为[0.53,0.47,0.05,0.025]，后面的样本分配课会接着使用这一行。');
+
   const addSource=(id,path,label)=>{
     const l=courses.get(id),url='https://github.com/ultralytics/yolov5/blob/v7.0/'+path;
     if(!l.sources.some(s=>s.url===url))l.sources.push({url,label});
@@ -541,7 +590,7 @@
     'beginner-record':()=>table('读一条已经解码的两类候选',['位置','本例值','逐项读'],[['中心x、y','100、80','框中心在输入画布的位置'],['宽、高','40、20','框向左右各20、上下各10'],['物体性','0.9','该候选的目标相关分数'],['烟雾字段','0.1','烟雾组合分数0.9×0.1=0.09'],['火焰字段','0.8','火焰组合分数0.9×0.8=0.72']],'共有2+2+1+2=7个数。框的角点是(80,70)到(120,90)；原始卷积输出还需要解码，不可直接当这行数读取。'),
     stages:()=>table('计算重复发生在哪里',['方法','整图共享特征','候选来自哪里','区域后续处理'],[['R-CNN','对每个裁剪候选分别提取','Selective Search等外部方法','分类、框修正'],['Fast R-CNN','先对整图提取一次','外部方法','RoI Pooling、区域检测头'],['Faster R-CNN','共享整图特征','RPN网络','RoI特征、区域检测头']],'对照职责，不据此推断固定倍数的速度差。'),
     version:()=>table('进入公式前核对这四项',['观察点','本站标准配置','看到差异时查哪里'],[['入口','6×6卷积，步幅2','模型YAML与Conv实现'],['主体模块','C3、SPPF','models/common.py'],['检测方式','Anchor-based，含objectness','Detect与ComputeLoss'],['固定源码参照','Ultralytics YOLOv5 v7.0','本地修改与固定版本的差异']],'P2、P6、分割和其他YOLO分支需要另列结构及输出约定。'),
-    whole:()=>flow('从同一批图片到三尺度候选',[['输入','[B,3,640,640]'],['Backbone','多个分辨率特征'],['Neck','256×80² / 512×40² / 1024×20²'],['Detect参照：80类','[B,25200,85]'],['筛选与还原','每图Mi条检测']],'前三张特征按C×H×W写，均属于同一批B张图；Mi是每图最后保留数量。'),
+    whole:()=>flow('从同一批图片到三尺度候选',[['输入','[B,3,640,640]'],['Backbone','多个分辨率特征'],['Neck','256×80² / 512×40² / 1024×20²'],['Detect：烟雾与火焰两类','[B,25200,7]'],['筛选与还原','每图Mi条检测']],'前三张特征按C×H×W写，均属于同一批B张图；Mi是每图最后保留数量。80类对照时每条候选为85个字段。'),
     label:labelGeometryMarkup,
     'concat-numbers':()=>table('同样两张表，三种操作分别得到什么',['操作','左上位置怎样计算','输出通道与整张表'],[['输入A与B','A左上1，B左上10','A=[1,2;3,4]，B=[10,20;30,40]'],['Concat沿通道拼接','分别保留1和10','2通道：完整A和完整B'],['Add对应相加','1+10=11','1通道：[11,22;33,44]'],['Concat后1×1卷积','0.5×1+0.1×10=1.5','1通道：[1.5,3;4.5,6]']],'表中分号表示换行。卷积偏置为0，权重为人工设定；真实C3融合包含更多运算。'),
     'score-tradeoff':()=>table('同一组预测，只改分数门槛',['门槛（严格大于）','保留','TP / FP / FN','精确率','召回率'],[['0.85','A','1 / 0 / 1','1/1=100%','1/2=50%'],['0.60','A、B','1 / 1 / 1','1/2=50%','1/2=50%'],['0.30','A、B、C','2 / 1 / 0','2/3≈66.7%','2/2=100%']],'A=0.9正确，B=0.8误报，C=0.4正确；真实目标2个，位置匹配固定。这些固定门槛的精确率不是AP。'),
@@ -571,20 +620,21 @@
   const card=(name,value)=>'<div class="yd-value"><span>'+esc(name)+'</span><strong>'+esc(value)+'</strong></div>';
   const panel=(kind,title,description,controls)=>'<section class="yd-workshop yl-workshop" data-yl-kind="'+kind+'"><span class="yd-eyebrow">逐项算 · 再动手</span><h3>'+esc(title)+'</h3><p>'+esc(description)+'</p>'+controls+'<div data-yl-output aria-live="polite"></div><p class="yd-footnote">固定配置与人工算例，不运行模型、不代表训练或现场检测结果。</p></section>';
   function labelGeometryMarkup(){
-    return panel('label-geometry','同一个框，换了画布后哪些数会变？','框宽占原图20%、高占16%。先移动原图中的中心，再看原图像素、输入像素和比例各自怎样变化。只演示等比缩放与对称补边，auto=False、无裁剪和随机增强。',
-      '<div class="yd-controls"><label>原图宽×高<select data-yl-original aria-label="原图宽高"><option value="1000,500">1000×500 · 横图</option><option value="500,1000">500×1000 · 竖图</option></select></label><label>方形输入画布<select data-yl-canvas aria-label="输入画布边长"><option value="640">640×640</option><option value="960">960×960</option></select></label></div><div class="yd-controls"><label class="yd-slider">原图中心x比例<input type="range" min="0.1" max="0.9" step="0.05" value="0.5" data-yl-label-x aria-label="原图中心x比例"></label><label class="yd-slider">原图中心y比例<input type="range" min="0.1" max="0.9" step="0.05" value="0.4" data-yl-label-y aria-label="原图中心y比例"></label></div><label class="yd-check"><input type="checkbox" data-yl-old-label aria-label="显示照抄原比例的错误框">对照：照抄原图比例会画到哪里？（红虚线）</label>');
+    return panel('label-geometry','同一个框，换了画布后哪些数会变？','先选简单例子或贯穿后续课程的火焰框，再移动中心。只演示等比缩放与对称补边，auto=False、无裁剪和随机增强。',
+      '<div class="yd-controls"><label>算例<select data-yl-preset aria-label="选择算例"><option value="simple">入门例子：宽20%、高16%</option><option value="through">贯穿算例：火焰框</option></select></label><label>原图宽×高<select data-yl-original aria-label="原图宽高"><option value="1000,500">1000×500 · 横图</option><option value="500,1000">500×1000 · 竖图</option></select></label><label>方形输入画布<select data-yl-canvas aria-label="输入画布边长"><option value="640">640×640</option><option value="960">960×960</option></select></label></div><div class="yd-controls"><label class="yd-slider">原图中心x比例<input type="range" min="0.1" max="0.9" step="0.01" value="0.5" data-yl-label-x aria-label="原图中心x比例"></label><label class="yd-slider">原图中心y比例<input type="range" min="0.1" max="0.9" step="0.01" value="0.4" data-yl-label-y aria-label="原图中心y比例"></label></div><label class="yd-check"><input type="checkbox" data-yl-old-label aria-label="显示照抄原比例的错误框">对照：照抄原图比例会画到哪里？（红虚线）</label>');
   }
   function updateLabelGeometry(root){
     const [w,h]=root.querySelector('[data-yl-original]').value.split(',').map(Number),size=Number(root.querySelector('[data-yl-canvas]').value),nx=Number(root.querySelector('[data-yl-label-x]').value),ny=Number(root.querySelector('[data-yl-label-y]').value),wrong=root.querySelector('[data-yl-old-label]').checked;
     const r=Math.min(size/w,size/h),contentW=w*r,contentH=h*r,padX=(size-contentW)/2,padY=(size-contentH)/2;
-    const original=[nx*w,ny*h,.2*w,.16*h],scaled=[original[0]*r,original[1]*r,original[2]*r,original[3]*r],input=[scaled[0]+padX,scaled[1]+padY,scaled[2],scaled[3]],normalized=input.map(v=>v/size),oldInput=[nx*size,ny*size,.2*size,.16*size];
+    const through=root.querySelector('[data-yl-preset]').value==='through',bw=through?teachingCase.targetXYWH[2]/teachingCase.originalWH[0]:.2,bh=through?teachingCase.targetXYWH[3]/teachingCase.originalWH[1]:.16;
+    const original=[nx*w,ny*h,bw*w,bh*h],scaled=[original[0]*r,original[1]*r,original[2]*r,original[3]*r],input=[scaled[0]+padX,scaled[1]+padY,scaled[2],scaled[3]],normalized=input.map(v=>v/size),oldInput=[nx*size,ny*size,bw*size,bh*size];
     const f=v=>Number(v.toFixed(4)).toString(),vector=a=>'['+a.map(f).join(', ')+']';
     const fromScale=Math.min(300/w,240/h),fromLeft=20+(300-w*fromScale)/2,fromTop=55+(240-h*fromScale)/2,toScale=240/size,toLeft=450,toTop=55;
     const rect=(v,left,top,scale,color,dash='')=>'<rect x="'+(left+(v[0]-v[2]/2)*scale)+'" y="'+(top+(v[1]-v[3]/2)*scale)+'" width="'+v[2]*scale+'" height="'+v[3]*scale+'" fill="none" stroke="'+color+'" stroke-width="2.5"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
     const drawing='<svg class="yl-geometry-svg" viewBox="0 0 740 345" role="img" aria-label="原图和方形输入中的同一人工框，紫实线是同步变换结果，红虚线是照抄比例的错误位置"><text x="20" y="28">原图：宽'+w+'、高'+h+'</text><rect x="'+fromLeft+'" y="'+fromTop+'" width="'+w*fromScale+'" height="'+h*fromScale+'" fill="#e4ede5" stroke="#aaa"/>'+rect(original,fromLeft,fromTop,fromScale,'#7860a9')+'<text x="355" y="170" font-size="23">→</text><text x="450" y="28">输入画布：'+size+'×'+size+'</text><rect x="450" y="55" width="240" height="240" fill="#dfdfdf" stroke="#aaa"/><rect x="'+(toLeft+padX*toScale)+'" y="'+(toTop+padY*toScale)+'" width="'+contentW*toScale+'" height="'+contentH*toScale+'" fill="#e4ede5"/>'+rect(input,toLeft,toTop,toScale,'#7860a9')+(wrong?rect(oldInput,toLeft,toTop,toScale,'#b54c47','6 4'):'')+'<text x="20" y="330">浅绿：图像内容；灰：补边；框为人工设定</text></svg>';
     const rows=[['原图中心/宽高',vector(original),'原图像素'],['只缩放，不补边',vector(scaled),'宽'+f(contentW)+'、高'+f(contentH)+'的内容区域'],['再加左/上补边',vector(input),'输入画布像素'],['除输入画布边长',vector(normalized),'相对于'+size+'×'+size+'输入的比例'],['去补边、除r还原',vector([(input[0]-padX)/r,(input[1]-padY)/r,input[2]/r,input[3]/r]),'回到原图像素']];
-    const explanation=wrong?'红虚线把旧比例['+[nx,ny,.2,.16].map(f).join(', ')+']直接乘新画布边长，得到'+vector(oldInput)+'。紫实线才是当前正确结果'+vector(input)+'。比例数看起来合法，也可能把框画偏或画大。':'改变640为960时，本例画布的纵横比例未变，所以最终比例不变，但输入像素坐标会随尺寸变化。横图/竖图切换则改变补边方向；用滑杆移动中心，看新旧比例的区别。';
-    root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('缩放比r',f(r))+card('左右各补',f(padX)+'像素')+card('上下各补',f(padY)+'像素')+card('原图标签：类别+比例','1 '+[nx,ny,.2,.16].map(f).join(' '))+'</div><div class="yd-svg-scroll" tabindex="0" role="region" aria-label="可横向滚动的原图与画布对照">'+drawing+'</div>'+table('同一框的五个阶段；均按中心x、中心y、宽、高排列',['阶段','四个框数','参考范围'],rows,'本组缩放后的内容高宽恰为整数，不涉及尺寸取整差异。真实数据流程请读取实际ratio、pad及输入高宽。')+'<p class="yd-explanation">'+esc(explanation)+'</p><p class="yd-footnote">这里演示内存中的坐标变化。原图文件未变，磁盘txt仍使用原图比例；界面不写入数据集。</p>';
+    const explanation=wrong?'红虚线把旧比例['+[nx,ny,bw,bh].map(f).join(', ')+']直接乘新画布边长，得到'+vector(oldInput)+'。紫实线才是当前正确结果'+vector(input)+'。比例数看起来合法，也可能把框画偏或画大。':'改变640为960时，本例画布的纵横比例未变，所以最终比例不变，但输入像素坐标会随尺寸变化。横图/竖图切换则改变补边方向；用滑杆移动中心，看新旧比例的区别。';
+    root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('缩放比r',f(r))+card('左右各补',f(padX)+'像素')+card('上下各补',f(padY)+'像素')+card('原图标签：类别+比例','1 '+[nx,ny,bw,bh].map(f).join(' '))+'</div><div class="yd-svg-scroll" tabindex="0" role="region" aria-label="可横向滚动的原图与画布对照">'+drawing+'</div>'+table('同一框的五个阶段；均按中心x、中心y、宽、高排列',['阶段','四个框数','参考范围'],rows,'本组缩放后的内容高宽恰为整数，不涉及尺寸取整差异。真实数据流程请读取实际ratio、pad及输入高宽。')+'<p class="yd-explanation">'+esc(explanation)+'</p><p class="yd-footnote">这里演示内存中的坐标变化。原图文件未变，磁盘txt仍使用原图比例；界面不写入数据集。</p>';
   }
   function assignmentMarkup(){return panel('assignment','移动同一个目标，哪些网格要负责？','固定P3的80×80网格、图片0、类别1、Anchor1=(2,3.75)网格单位、目标宽高(4,2)，已通过宽高匹配。只移动中心，小图显示网格40～44列、35～39行。','<div class="yd-controls"><label class="yd-slider">目标中心x<input type="range" min="42.1" max="42.9" step="0.1" value="42.4" data-yl-x aria-label="目标中心网格x"></label><label class="yd-slider">目标中心y<input type="range" min="37.1" max="37.9" step="0.1" value="37.6" data-yl-y aria-label="目标中心网格y"></label></div>');}
   function updateAssignment(root){
@@ -636,9 +686,9 @@
   const previous=window.lessonPlaygrounds||{};
   window.lessonPlaygrounds={...previous,initialize(){previous.initialize?.();document.querySelectorAll('[data-yl-kind]').forEach(update);}};
   document.addEventListener('input',event=>{const root=event.target.closest?.('[data-yl-kind]');if(root&&event.target.matches('input[type="range"]'))update(root);});
-  document.addEventListener('change',event=>{const root=event.target.closest?.('[data-yl-kind]');if(root&&event.target.matches('select,input[type="checkbox"]'))update(root);});
+  document.addEventListener('change',event=>{const root=event.target.closest?.('[data-yl-kind]');if(root&&event.target.matches('select,input[type="checkbox"]')){if(event.target.matches('[data-yl-preset]')){const through=event.target.value==='through';root.querySelector('[data-yl-original]').value='1000,500';root.querySelector('[data-yl-canvas]').value='640';root.querySelector('[data-yl-label-x]').value=through?teachingCase.targetXYWH[0]/teachingCase.originalWH[0]:.5;root.querySelector('[data-yl-label-y]').value=through?teachingCase.targetXYWH[1]/teachingCase.originalWH[1]:.4;}update(root);}});
   window.visionlabYoloLearning={
-    ids:[...courses.keys()],figureKeys:Object.keys(figures),
+    ids:[...courses.keys()],figureKeys:Object.keys(figures),teachingCase,
     renderParagraph(s,index){return (s.beginnerFigure&&index===s.beginnerAfter?figures[s.beginnerFigure]?.()||'':'')+(s.learningFigure&&index===s.learningAfter?figures[s.learningFigure]?.()||'':'');}
   };
 })();

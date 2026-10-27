@@ -46,6 +46,32 @@ const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
+test('narrative order follows the calculation before tuning, diagnosis and reference material', () => {
+  const expected={
+    'tensor-operations':['tensor-s-hkdzb3y','tensor-s-heqw76k'],
+    'optimizer-momentum':['optimizer-s-h1fiuhc','optimizer-s-h18osnmd','optimizer-s-h1u12m8n','optimizer-s-h9acvek'],
+    'anchors':['anchors-s-h1qk8bam','anchors-s-h39ptah','anchors-s-hhcndxb','anchor-range','anchors-s-htomdot','repo-autoanchor'],
+    'train-yolo':['train-yolo-s-h1pof1wi','repo-training-loop','train-yolo-s-hkh4g0o','train-yolo-s-hc5ufri'],
+    'inference':['inference-s-h1xm23xg','repo-inference-coordinates','architecture-s-h1a1b2kj','inference-s-hlnnlcv','inference-s-h1993c6k']
+  };
+  for(const [id,order] of Object.entries(expected)){
+    const c=courses.find(item=>item.id===id);
+    assert.deepEqual(Array.from(c.sections,s=>s.id),order,id);
+    assert.equal(new Set(c.sections.map(s=>s.legacyIndex)).size,c.sections.length,id+' legacy anchors');
+    assert.ok(c.sections.every((s,i)=>s.title.startsWith((i+1)+'. ')),id+' numbered titles');
+    const rendered=context.lesson(id);
+    let previous=-1;
+    for(const section of c.sections){
+      const position=rendered.indexOf('id="section-'+section.id+'"');
+      assert.ok(position>previous,id+' rendered order: '+section.id);
+      previous=position;
+    }
+  }
+  const tensor=courses.find(c=>c.id==='tensor-operations');
+  assert.equal(tensor.sections[1].narrativePlaygroundIndex,0);
+  assert.equal(tensor.sections[0].playgroundId,'tensor-operations');
+});
+
 test('ResNet begins with its identity and motivation before introducing residual notation', () => {
   const c=courses.find(l=>l.id==='cnn-residual');
   const intro=c.sections[0].paragraphs.join(' ');

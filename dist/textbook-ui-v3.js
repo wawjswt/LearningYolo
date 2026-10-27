@@ -1,5 +1,59 @@
 /* 教材式阅读界面：保留原有笔记、自测、搜索与 IoU 实验交互。 */
 (()=>{
+  // 章节保留原有稳定 ID 和旧锚点，阅读顺序独立于历史编号。
+  const narrativeOrder={
+    'tensor-operations':[1,0],
+    'optimizer-momentum':[0,2,3,1],
+    'anchors':[0,3,1,5,2,4],
+    'train-yolo':[0,3,1,2],
+    'inference':[0,3,4,1,2]
+  };
+  for(const [id,order] of Object.entries(narrativeOrder)){
+    const lesson=lessons.find(item=>item.id===id);
+    if(!lesson||lesson.sections.length!==order.length)continue;
+    const previous=lesson.sections.slice();
+    previous.forEach((section,index)=>{section.narrativePlaygroundIndex=index;});
+    lesson.sections=order.map(index=>previous[index]);
+    lesson.sections.forEach((section,index)=>{section.title=(index+1)+'. '+String(section.title).replace(/^\s*\d+\s*[.、．]\s*/,'');});
+  }
+  const narrativeBridges={
+    'tensor-operations':[
+      '先算两种乘法和形状匹配，再看如何改变张量的排列与轴。',
+      '前面比较了数值运算；下面整理怎样改变形状，为这些运算准备输入。'
+    ],
+    'optimizer-momentum':[
+      '',
+      '知道一批数据怎样产生梯度后，先看优化器怎样把当前梯度和历史方向合起来。',
+      '动量只保留方向历史；接下来看看 Adam 怎样再利用梯度平方的历史调整步幅。',
+      '了解这些更新方法后，再用控制变量的小实验比较它们。'
+    ],
+    'anchors':[
+      '',
+      '先区分参考尺寸与最终预测框，才能理解后面的匹配规则。',
+      '训练时哪些参考有资格负责真实目标？下面用宽高比例算一次。',
+      '匹配条件讲清后，再对照推理时宽高如何由参考和网络输出计算。',
+      '知道匹配和解码的作用后，再决定是否有必要调整参考尺寸。',
+      '最后用 AutoAnchor 的统计量检查数据里的目标尺寸与参考是否匹配。'
+    ],
+    'train-yolo':[
+      '',
+      '命令启动后，程序如何把一批图片变成一次参数更新？先沿训练过程走一遍。',
+      '理解每轮发生的步骤后，再看日志和保存的文件分别记录什么。',
+      '最后用一轮小样本检查数据、更新和验证，确认流程后再扩大预算。'
+    ],
+    'inference':[
+      '',
+      '模型输出还不是原图上的框；先从一组原始数字算出位置并还原到原图。',
+      '刚才只选了一组参考宽高；这里补充其他参考及分数的含义。',
+      '有了已解码的候选框，接下来按分数筛选并去除重复框。',
+      '走完整条推理链后，再根据每一步留下的结果定位错误。'
+    ]
+  };
+  for(const [id,bridges] of Object.entries(narrativeBridges)){
+    const lesson=lessons.find(item=>item.id===id);
+    if(!lesson||lesson.sections.length!==bridges.length)continue;
+    bridges.forEach((bridge,index)=>{if(bridge)lesson.sections[index].paragraphs[0]=bridge+' '+lesson.sections[index].paragraphs[0];});
+  }
   let readingEffectsHandler=null;
   function clearReadingEffects(){
     if(!readingEffectsHandler)return;
@@ -78,7 +132,7 @@
       const tensorExplorer=sourcePlaygroundId==='tensor-explorer'?tensorExplorerMarkup():'';
       const transposeExplorer=sourcePlaygroundId==='tensor-transpose'?tensorTransposeMarkup():'';
       const cvPlayers=l.cvEdited?window.visionlabCvEditorial?.renderPlayers(s):null;
-      const lessonPlayground=s.suppressLegacyPlayer?'':(cvPlayers?.main??window.lessonPlaygrounds?.render(l.id,s.playgroundId||i,legacyIndex)??'')+(cvPlayers?.extra||'');
+      const lessonPlayground=s.suppressLegacyPlayer?'':(cvPlayers?.main??window.lessonPlaygrounds?.render(l.id,s.playgroundId||(s.narrativePlaygroundIndex??i),legacyIndex)??'')+(cvPlayers?.extra||'');
       const biasPlayground=window.lessonBiasPlaygrounds?.render(l.id,legacyIndex)||'';
       const cvWorkshop=s.cvWorkshop||s.foundationWorkshop?(window.renderFoundationWorkshop?.(l)||''):'';
       const content=paragraphs+cvWorkshop+advancedBlocks+sectionCode+fallback+tensorOperations+transposeExplorer+tensorExplorer+lessonPlayground+biasPlayground+(s.exercise?exerciseCard(l,s.exercise,'section',legacyIndex,s.id):'');

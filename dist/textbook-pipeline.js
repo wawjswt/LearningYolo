@@ -269,7 +269,7 @@
       return '<h3>先决定怎样划分数据</h3><p>样例包含同一段视频的相邻帧。验证集要模拟将来遇到的新来源。</p><div class="pipeline-choice-row"><button type="button" data-case-split="group">按视频 / 场景分组</button><button type="button" data-case-split="random">随机拆图片</button></div><div class="pipeline-live-card" data-case-live></div>' + renderTruthList();
     }
     if (state.step === 1) {
-      return '<h3>调整模型输入尺寸</h3><label class="pipeline-range-label" for="pipeline-input-size">输入边长 <output data-case-output="inputSize">' + state.inputSize + '</output></label><input id="pipeline-input-size" data-case-input-size type="range" min="320" max="960" step="160" value="' + state.inputSize + '"><div class="pipeline-detail-live"></div>' + renderResolution();
+      return '<h3>调整模型输入尺寸</h3><label class="pipeline-range-label" for="pipeline-input-size">输入边长 <output data-case-output="inputSize">' + state.inputSize + '</output></label><input id="pipeline-input-size" data-case-input-size type="range" min="320" max="960" step="160" value="' + state.inputSize + '"><div data-case-resolution>' + renderResolution() + '</div>';
     }
     if (state.step === 2) {
       return '<h3>同步翻转图像与边界框</h3><button type="button" class="pipeline-toggle" data-case-flip aria-pressed="false">试一下水平翻转</button><div class="pipeline-live-card" data-case-live></div><div class="pipeline-formula"><span>远处行人 YOLO 标签：</span><code data-case-flip-label></code></div><p class="pipeline-note">水平翻转：x_center′ = 1 − x_center；y、宽、高不变。标签 id 也跟着目标移动，不会换类别。</p>';
@@ -325,6 +325,8 @@
     }
     const inputOutput = root.querySelector('[data-case-output="inputSize"]');
     if (inputOutput) inputOutput.textContent = String(state.inputSize);
+    const resolution = root.querySelector('[data-case-resolution]');
+    if (resolution) resolution.innerHTML = renderResolution();
     const confidenceOutput = root.querySelector('[data-case-output="confidence"]');
     if (confidenceOutput) confidenceOutput.textContent = round(state.confidence);
     const nmsOutput = root.querySelector('[data-case-output="nmsIou"]');
@@ -343,7 +345,7 @@
 
   function update(root, rebuildControls = false) {
     if (!root) return;
-    root.dataset.caseStep = String(state.step);
+    root.dataset.caseCurrentStep = String(state.step);
     root.querySelector('[data-case-kicker]').textContent = steps[state.step].kicker;
     root.querySelector('[data-case-title]').textContent = steps[state.step].title;
     root.querySelector('[data-case-description]').textContent = stageDescription(state.step);

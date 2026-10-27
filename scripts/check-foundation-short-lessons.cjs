@@ -268,6 +268,120 @@ test('AlexNet adaptive pooling and batch size follow the chosen input rather tha
   assert.doesNotMatch(rendered,/96 个 11×11 卷积核|Conv3–5|结构示意省略了部分/);
 });
 
+test('YOLO model changes explain class remapping, P2, and decoupled packing as complete procedures', () => {
+  const head = courses.find(l => l.id === 'yolo-head');
+  const sectionText = index => head.sections[index].paragraphs.join(' ');
+  const classes = sectionText(6) + ' ' + sectionText(7) + ' ' + sectionText(8);
+  assert.match(classes, /names.*smoke.*fire/);
+  assert.match(classes, /nc=2/);
+  assert.match(classes, /256→21.*512→21.*1024→21/);
+  assert.match(classes, /intersect_dicts/);
+  assert.match(classes, /strict=False.*形状/);
+  assert.match(classes, /前向.*训练.*验证/);
+  assert.match(sectionText(9), /P2\/4.*160×160/);
+  assert.match(sectionText(9), /层21.*层24.*层27.*层30/);
+  assert.match(sectionText(10), /25,200.*102,000.*76,800/);
+  assert.match(sectionText(10), /不等于.*耗时|不能.*延迟/);
+  assert.match(sectionText(11), /分类.*框.*不同|边界.*类别/);
+  assert.match(sectionText(11), /\[B,A,4,H,W\].*\[B,A,1,H,W\].*\[B,A,2,H,W\]/);
+  assert.match(sectionText(11), /dim=2.*\[B,A,7,H,W\]/);
+  assert.match(sectionText(11), /训练.*损失.*解码.*导出/);
+});
+
+test('YOLO output shape checker is supplied with the promised CLI and honest scope', () => {
+  const checker = join(root, 'assets/yolov5l/verify_detect_shapes.py');
+  assert.ok(require('node:fs').existsSync(checker), 'provide the downloadable shape checker');
+  const source = readFileSync(checker, 'utf8');
+  for (const flag of ['--repo', '--cfg', '--nc', '--height', '--width']) assert.ok(source.includes(flag), flag);
+  assert.match(source, /DetectionModel/);
+  assert.match(source, /torch\.inference_mode|torch\.no_grad/);
+  assert.match(source, /train.*raw|raw.*train/i);
+  assert.match(source, /eval.*decoded|decoded.*eval/i);
+  assert.match(source, /optimizer|不执行优化|shape-only|shape check/i);
+  assert.doesNotMatch(source, /pip install|torch\.hub\.load|load_state_dict_from_url/);
+});
+
+test('YOLO bus case announces its different data contract and gives a transfer task', () => {
+  const bus = courses.find(l => l.id === 'yolo-trace');
+  const opening = bus.sections[0].paragraphs.join(' ');
+  assert.match(opening, /烟雾.*火焰|smoke.*fire/);
+  assert.match(opening, /810.*1080.*80类/);
+  assert.match(bus.worked.prompt + bus.worked.solution, /迁移|公交|810|80类/);
+});
+
+test('YOLO opening explanations define each route once and then move the story forward', () => {
+  const lesson = id => courses.find(item => item.id === id);
+  const twoStage = lesson('detection-two-stage').sections[0].paragraphs.join(' ');
+  assert.equal((twoStage.match(/两阶段检测把/g) || []).length, 1);
+  assert.match(twoStage, /候选区域.*分类.*框回归/);
+  assert.match(twoStage, /候选.*数量|候选.*区域/);
+
+  const oneStage = lesson('detection-one-stage').sections[0].paragraphs.join(' ');
+  assert.doesNotMatch(oneStage, /一阶段检测器通常在特征图的许多位置直接预测框与类别相关分数/);
+  assert.match(oneStage, /网格.*密集预测/);
+  assert.match(oneStage, /筛选|去重/);
+
+  const bottleneck = lesson('yolo-c3').sections[1].paragraphs.join(' ');
+  assert.equal((bottleneck.match(/Bottleneck可以先理解成/g) || []).length, 0);
+  assert.match(bottleneck, /本版YOLOv5.*两层卷积.*Conv/);
+  assert.match(bottleneck, /shortcut.*形状/);
+  assert.match(bottleneck, /输入值3.*结果0\.2.*3\.2/);
+
+  const training = lesson('train-yolo').sections[0].paragraphs;
+  assert.doesNotMatch(training[0], /第一次运行/);
+  assert.match(training[0], /训练是.*调整模型参数/);
+  assert.match(training[2], /图片和标签.*仓库根目录/);
+  assert.match(training[3], /读命令可以从左到右/);
+
+  const checkpoints = lesson('yolo-checkpoints').sections[1].paragraphs[0];
+  assert.match(checkpoints, /^新任务/);
+  assert.doesNotMatch(checkpoints, /^预训练权重提供一个已学过的参数起点/);
+});
+
+test('YOLO NMS prose uses the same candidate labels and overlap values as its interactive example', () => {
+  const lesson = courses.find(item => item.id === 'inference');
+  const nms = lesson.sections.find(section => section.id === 'inference-s-hlnnlcv').paragraphs.join(' ');
+  assert.match(nms, /A是火焰.*B也是火焰.*C是另一处火焰.*D是烟雾/);
+  assert.match(nms, /IoU.*0\.784/);
+  assert.doesNotMatch(nms, /A烟雾|D火焰|0\.747/);
+});
+
+test('YOLO glossary tooltips preserve complete technical terms', () => {
+  for (const [term, id] of [
+    ['协变量','covariate'],['BatchNorm','batch-normalization'],['FPN','fpn'],['PAN','pan'],
+    ['C3','c3'],['Bottleneck','bottleneck'],['SPPF','sppf'],['Anchor','anchor'],
+    ['objectness','objectness'],['IoU','iou'],['CIoU','ciou'],['NMS','nms'],['letterbox','letterbox']
+  ]) assert.equal(context.visionlabGlossary.firstTerm(term)?.id,id,term);
+});
+
+test('YOLO augmentation and evaluation sections expose their step order at a glance', () => {
+  const augmentation = courses.find(item => item.id === 'yolo-augment').sections[0];
+  assert.match(augmentation.paragraphs[0], /data YAML.*model YAML.*hyp YAML.*命令行/);
+  assert.doesNotMatch(augmentation.paragraphs[0], /假设只有一张/);
+  const validation = courses.find(item => item.id === 'yolo-evaluation').sections[0];
+  assert.equal(validation.subheadings?.[0], '先数出找对、误报和漏检');
+  assert.equal(validation.subheadings?.[4], '改变分数门槛，观察P和R');
+  assert.equal(validation.subheadings?.[7], 'AP统计与三种门槛');
+});
+
+test('all 24 assembled YOLO lessons stand on their own without requiring a source video', () => {
+  const expected = [
+    'detection-intro','detection-two-stage','detection-one-stage','yolo-evolution','architecture',
+    'yolo-repository','yolo-data','yolo-config','yolo-backbone','yolo-c3','yolo-sppf','yolo-neck',
+    'yolo-head','anchors','yolo-assignment','yolo-loss','train-yolo','yolo-checkpoints',
+    'yolo-augment','yolo-evaluation','inference','yolo-export','yolo-trace','debugging'
+  ];
+  const byId = new Map(courses.map(lesson => [lesson.id, lesson]));
+  const assembled = expected.map(id => byId.get(id));
+  assert.ok(assembled.every(Boolean), 'all planned YOLO lesson IDs are present');
+  assert.equal(assembled.reduce((count, lesson) => count + lesson.sections.length, 0), 85);
+  for (const lesson of assembled) {
+    assert.ok(lesson.sections.length > 0, `${lesson.id} has visible lesson sections`);
+    const visibleText = JSON.stringify(lesson);
+    assert.doesNotMatch(visibleText, /视频中(?:提到|讲到|说到)|视频里(?:提到|讲到|说到)|看完视频|来源视频/, lesson.id);
+  }
+});
+
 test('AlexNet displayed Python prints the same layer shapes and parameter counts as real Torchvision',
   {skip:!process.env.VISIONLAB_TORCH_PYTHON}, () => {
     const api=context.visionlabAlexnetFlow;

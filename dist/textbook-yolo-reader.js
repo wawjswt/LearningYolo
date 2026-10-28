@@ -64,6 +64,24 @@
   );
   yolo.subheadings={...(yolo.subheadings||{}),[yoloStart]:'第一代 YOLO 的输出怎样组成'};yolo.oneStageDiagram=yoloStart;
   one.sources=one.sources||[];one.sources.push({label:'YOLO 原论文',url:'https://arxiv.org/abs/1506.02640'},{label:'SSD 原论文',url:'https://arxiv.org/abs/1512.02325'});
+  const evolution=catalog.find(item=>item.id==='yolo-evolution'), evo=evolution.sections[1], evoStart=evo.paragraphs.length;
+  evo.paragraphs.push(
+    '要看清不同版本解决了什么问题，先回到第一代 YOLO：它用固定网格直接预测框和类别，整图计算简洁，但每格共享一组类别信息，对紧邻的小目标有局限。后续设计逐步引入参考框与更多尺度，让预测位置能表达不同宽高和大小的目标；每个版本的具体分配和损失仍需分别阅读。',
+    '本课使用 Ultralytics YOLOv5 v7.0 的 yolov5l 配置：输入先经过 6×6、步幅2的卷积，再通过卷积和 C3 模块提取特征；SPPF 汇集不同范围的信息，Neck 融合不同尺度，Detect 在三个尺度输出预测。这个清单描述各部分的职责，后面将逐层查看具体输入和输出。',
+    '早期 YOLOv5 的 Focus 通过隔点切片并沿通道拼接，将偶数尺寸的输入高宽各减半、通道扩展4倍，再交给卷积。v6.0 起的标准配置改用 6×6、步幅2的入口卷积。两者都可降低空间尺寸，但计算方式和参数不同；查旧教程时要先核对配置和源码版本。',
+    '模型规模还会改变通道和重复数：n、s、m、l、x 的宽度和深度系数不同。以本课 l 配置的 P3 输入为例，Detect 接收256通道；另一个规模不能只把这一数照搬。先记录 YAML 的深宽系数，再通过解析器确定实际模块与形状。'
+  );
+  evo.subheadings={...(evo.subheadings||{}),[evoStart]:'从第一代预测方式走到本课配置'};evo.evoDiagram=evoStart;
+  evolution.sources=evolution.sources||[];evolution.sources.push({label:'YOLOv5 v7.0 模型配置',url:'https://github.com/ultralytics/yolov5/blob/v7.0/models/yolov5l.yaml'},{label:'YOLOv5 v6.0 更新说明',url:'https://github.com/ultralytics/yolov5/releases/tag/v6.0'});
+  const arch=catalog.find(item=>item.id==='architecture'), a=arch.sections[0], archStart=a.paragraphs.length;
+  a.paragraphs.push(
+    '沿一张 640×640 图片追踪本课 l 模型。第0层输入 [1,3,640,640]，6×6 卷积步幅2、填充2，输出 [1,64,320,320]。第1层继续降采样到 [1,128,160,160]，第2层 C3 保持空间尺寸；第3层得到 [1,256,80,80]，第4层 C3 处理这张80×80特征。',
+    '继续向下，第5层得到 [1,512,40,40]，第6层 C3 保持40×40；第7层得到 [1,1024,20,20]，第8层 C3 和第9层 SPPF 仍保持20×20。这里通道是每个位置的特征数，空间大小表示有多少位置；C3与SPPF内部仍有多步计算。',
+    'Neck 从较粗的20×20特征开始，上采样到40×40，与保存的第6层特征按通道拼接并融合；再上采样到80×80，与第4层特征融合。之后再向40×40和20×20传递，分别与先前保留的同尺度特征拼接。上采样和下采样改变高宽，Concat 将通道并排组合。',
+    '第17、20、23层分别交给 Detect：对于 l 模型和640方形输入，形状依次为 [1,256,80,80]、[1,512,40,40]、[1,1024,20,20]。若任务有烟雾、火焰两类，每个位置3组参考、每组7个字段，三路输出卷积均写出21个通道；换轴后各自得到 [1,3,H,W,7]。',
+    '这些尺寸对应特定配置与输入。阅读时按顺序问四件事：这一层从哪里取数，模块做什么，高宽与通道怎样变化，输出又被哪些后续层使用。尤其在拼接时，先检查来源的批次与高宽是否一致，再把通道相加。'
+  );
+  a.subheadings={...(a.subheadings||{}),[archStart]:'从640输入逐层走到三个检测尺度'};a.archDiagram=archStart;
   rcnn.sources=rcnn.sources||[];rcnn.sources.push({label:'R-CNN 原论文：候选区域与 CNN 特征',url:'https://arxiv.org/abs/1311.2524'});
   for(const [id,paragraphs] of Object.entries(examples)){
     const lesson=catalog.find(item=>item.id===id);if(!lesson)throw Error('YOLO lesson missing: '+id);
@@ -78,6 +96,8 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.archDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l：640方形输入的数据流</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>[1,3,640,640] → [1,64,320,320]</b></li><li><span>Backbone</span><b>80×80 → 40×40 → 20×20；C3与SPPF提取特征</b></li><li><span>Neck</span><b>20 → 40 → 80，再向 40 → 20 融合</b></li><li><span>Detect 输入</span><b>[1,256,80,80] · [1,512,40,40] · [1,1024,20,20]</b></li><li><span>两类输出</span><b>每尺度 3 组参考 × 7 个字段；筛选前共 25,200 条候选</b></li></ol></figure>';
+    if(section.evoDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>认识本课的模型配置</strong></figcaption><ol class="yl-flow"><li><span>检测任务</span><b>第一代 YOLO：网格直接预测</b></li><li><span>模型版本</span><b>YOLOv5 v7.0：6×6入口、C3、SPPF</b></li><li><span>尺度融合</span><b>Neck 融合三种空间尺寸</b></li><li><span>预测</span><b>Detect 使用参考宽高与各尺度特征</b></li></ol></figure>';
     if(section.oneStageDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>第一代 YOLO：从图片到 7 × 7 × 30</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 神经网络</b></li><li><span>7 × 7 网格</span><b>每格 2 个框 × 5 个数 + 20 个类别数</b></li><li><span>分类与定位</span><b>框坐标、置信度与类别分数</b></li><li><span>后处理</span><b>类别分数 × 框置信度 → 筛选与 NMS</b></li></ol></figure>';
     if(section.fastDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>从共享特征到区域检测</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 卷积网络 → 共享特征图</b></li><li><span>候选</span><b>Fast：外部候选；Faster：RPN 与 Anchor 产生建议</b></li><li><span>区域特征</span><b>候选映射到特征图 → RoI Pooling → 固定尺寸</b></li><li><span>两支输出</span><b>类别与背景分数 + 边界框修正</b></li></ol></figure>';
     if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>特征提取</span><b>AlexNet 型 CNN → fc7 的 4096 维特征</b></li><li><span>分类与定位</span><b>类别 SVM 打分 + 边界框回归</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';

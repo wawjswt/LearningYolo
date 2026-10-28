@@ -313,7 +313,7 @@
   }
   const anchorMatchSection=courses.get('anchors').sections[1];
   anchorMatchSection.beginnerFigure='anchor-matches';
-  anchorMatchSection.paragraphs.push('匹配计算式为 \\(r=\\max(\\frac{w_t}{w_a},\\frac{w_a}{w_t},\\frac{h_t}{h_a},\\frac{h_a}{h_t})\\)。其中 \\(w_t,h_t\\) 是输入画布上的真实目标宽高，\\(w_a,h_a\\) 是换成同一网格单位后的Anchor宽高；只有 \\(r<4\\) 才通过。取最大值是为了让“目标远大于参考”和“目标远小于参考”都受同一阈值约束。');
+  anchorMatchSection.paragraphs.push('匹配计算式为 \\(r=\\max(\\frac{w_t}{w_a},\\frac{w_a}{w_t},\\frac{h_t}{h_a},\\frac{h_a}{h_t})\\)。其中 \\(w_t,h_t\\) 是真实目标宽高，\\(w_a,h_a\\) 是Anchor宽高；两者须使用相同单位，例如都除以该尺度步长换成网格单位。只有 \\(r<4\\) 才通过。取最大值是为了让“目标远大于参考”和“目标远小于参考”都受同一阈值约束。');
   append('yolo-assignment',0,
     '磁盘原图中的同一火焰框先写作“1 0.53 0.44 0.05 0.05”：中心和宽高比例都相对1000×500原图。等比例缩小并在方形输入上下补边后，内存目标变成[0,1,0.53,0.47,0.05,0.025]；最前面的0是批次里的图片编号，不是类别。这个变换结果直接接自前一课的同一框。',
     '分配时，P3把中心和宽高乘80，得到中心(42.4,37.6)、宽高(4,2)格；P4乘40，得到(21.2,18.8)、宽高(2,1)格；P5乘20，得到(10.6,9.4)、宽高(1,0.5)格。每一级中心的行列与宽高都使用该级自己的网格单位。',

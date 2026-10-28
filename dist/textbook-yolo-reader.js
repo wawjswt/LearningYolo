@@ -120,7 +120,7 @@
     '框项与物体性目标是两次不同的使用：框损失可用1−CIoU；上述 CIoU=0.6 时框项为0.4。物体性目标经截断并停止目标支路的梯度，而框损失仍通过预测框反向传播。若 CIoU 是负数，物体性目标可以被截到0，框项仍按其定义计算。',
     '真实代码将一组位置和多个尺度的损失先按实现归约，再乘相应权重；示例只算一个候选、未加入类别权重或其他样本。因此0.4、0.693、1.609帮助检查单项含义，不能直接当成某次完整训练的日志。PyTorch 的 BCEWithLogitsLoss 接收原始分数，内部稳定处理 Sigmoid 与对数。'
   );ls.subheadings={...(ls.subheadings||{}),[lsStart]:'一处火焰如何产生三项学习信号',[lsStart+1]:'类别：两个独立的 BCE',[lsStart+2]:'物体性与框质量',[lsStart+4]:'从单个位置到训练日志'};ls.lossDetail=lsStart;
-  const train=catalog.find(item=>item.id==='train-yolo'), tr=train.sections[1], trStart=tr.paragraphs.length;
+  const train=catalog.find(item=>item.id==='train-yolo'), tr=train.sections.find(section=>section.id==='repo-training-loop'), trStart=tr.paragraphs.length;
   tr.paragraphs.push(
     '把一个训练批次拆开看：数据加载器交出图片张量和该批次所有标注。假设每次送入4张640×640 RGB图片，图片张量是 [4,3,640,640]；每张图目标数量可不同，因此标签另按目标逐行记录，并标出每行属于批次中的哪张图。',
     '图片进入模型后得到三个尺度的原始输出。若有烟雾和火焰两类，每尺度每组参考含7个字段，输出分别为 [4,3,80,80,7]、[4,3,40,40,7] 和 [4,3,20,20,7]。标签不拼进图片通道，而是交给目标分配和损失计算，选出需要监督的候选。',
@@ -129,7 +129,7 @@
     '假设有100张训练图、batch为4且每张都用一次，若不丢弃最后一批，一轮有25个批次。每批都更新时有25次更新；如果每5批累积一次且这些批次都参与，则有5次更新。数据加载、尾批、分布式训练及实现的更新条件都会影响真实次数，日志中的 epoch 数不能直接当成更新次数。',
     '一轮结束后，模型在验证集上做预测，并把结果与验证标签比较，得到 P、R 与 AP 等指标。验证用于比较设置和选择检查点，不按验证数据反向更新；训练损失下降说明训练目标更容易满足，仍需结合验证曲线和错误图片判断新场景表现。'
   );tr.subheadings={...(tr.subheadings||{}),[trStart]:'完整追踪一个训练批次',[trStart+2]:'损失、梯度与参数更新',[trStart+4]:'算清批次、更新与轮次',[trStart+5]:'一轮结束后的验证'};tr.trainDetail=trStart;
-  const inference=catalog.find(item=>item.id==='inference'), inf=inference.sections[3], infStart=inf.paragraphs.length;
+  const inference=catalog.find(item=>item.id==='inference'), inf=inference.sections.find(section=>section.id==='inference-s-hlnnlcv'), infStart=inf.paragraphs.length;
   inf.paragraphs.push(
     '下面单独算两个同类火焰候选的重叠。A 的角点是(10,10,110,60)，分数0.90；B 的角点是(20,10,120,60)，分数0.80。A 和 B 的宽高都是100×50，面积各为5000。坐标约定为连续边界，计算宽高时不额外加1。',
     '两框交集的左边取较大值20，右边取较小值110，因此交集宽90；上下边界相同，交集高50，面积90×50=4500。并集面积为5000+5000−4500=5500，因此 IoU=4500/5500≈0.818。IoU 描述两个预测框的重叠，NMS 使用它判断是否可能重复。',

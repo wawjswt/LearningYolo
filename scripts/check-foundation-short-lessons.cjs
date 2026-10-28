@@ -46,6 +46,17 @@ const run = source => vm.runInContext(source, context);
 const courses = run('lessons');
 const ids = courses.filter(l => l.curriculumKey === 'dl' && l.foundationDepth).map(l => l.id);
 
+test('YOLO examples keep units, model assumptions and explanations in their intended sections', () => {
+  const course = id => courses.find(c => c.id === id);
+  const anchor = course('anchors').sections.flatMap(s => s.paragraphs).find(p => p.includes('匹配计算式'));
+  assert.match(anchor, /两者须使用相同单位/);
+  assert.doesNotMatch(anchor, /是换成同一网格单位后的Anchor宽高/);
+  const head = course('yolo-head').sections.flatMap(s => s.paragraphs).find(p => p.includes('三个输出卷积的参数分别'));
+  assert.match(head, /80类/);
+  assert.equal(course('train-yolo').sections.find(s => s.trainDetail !== undefined).id, 'repo-training-loop');
+  assert.equal(course('inference').sections.find(s => s.nmsDetail !== undefined).id, 'inference-s-hlnnlcv');
+});
+
 test('YOLO layer ledger follows real sources and produces correct rectangular detection shapes', () => {
   const ledger = run('window.visionlabYoloLayerLedger');
   const square = ledger(640, 640, 2);

@@ -82,6 +82,21 @@
     '这些尺寸对应特定配置与输入。阅读时按顺序问四件事：这一层从哪里取数，模块做什么，高宽与通道怎样变化，输出又被哪些后续层使用。尤其在拼接时，先检查来源的批次与高宽是否一致，再把通道相加。'
   );
   a.subheadings={...(a.subheadings||{}),[archStart]:'从640输入逐层走到三个检测尺度'};a.archDiagram=archStart;
+  const data=catalog.find(item=>item.id==='yolo-data'), ds=data.sections[1], dsStart=ds.paragraphs.length;
+  ds.paragraphs.push(
+    '训练数据包含两类文件：图片记录像素，标签记录该图片中每个目标的类别和位置。假设 images/train/frame001.jpg 对应 labels/train/frame001.txt，标签文件里每个目标占一行；两个目标写两行，不能把两个目标的位置合并成一个框。',
+    '一行格式是 class x_center y_center width height。类别编号从0开始，后四项是相对于该图片宽或高的比例。例如宽1000、高500的图中，框从(400,160)到(600,240)，中心是(500,200)、宽高(200,80)；类别为1时写成 1 0.5 0.4 0.2 0.16。x和宽除以1000，y和高除以500。',
+    '数据 YAML 用 path 指明数据根目录，train 和 val 指明图片目录或列表，names 指明类别编号与名称。解析路径时应结合 YAML 所在位置及当前版本的读取规则；打开实际解析出的路径检查图片是否存在，避免只凭文件夹名称判断。',
+    '训练集用于参数更新，验证集用于比较设置和选择模型。若某段视频连续帧同时进入两者，画面几乎相同，验证可能高估对新视频的表现。先按视频或场景分组，再检查各集合的类别、天气和目标大小覆盖。',
+    '空标签表示该图片没有标注目标，但也可能是漏标。对几张有目标、无目标和多目标图片分别叠加标签框：检查类别编号、框是否包住目标、有没有漏框或重复框；再检查增强后的图片和框是否同步变化。'
+  );ds.subheadings={...(ds.subheadings||{}),[dsStart]:'把图片、标签和数据配置真正连起来'};ds.dataTrace=dsStart;
+  const config=catalog.find(item=>item.id==='yolo-config'), cs=config.sections[0], csStart=cs.paragraphs.length;
+  cs.paragraphs.push(
+    '模型 YAML 是结构说明，解析器根据配置创建模块并连接输入；它不是已经训练好的权重。每行 [from, number, module, args] 指明输入来源、基础重复次数、模块和参数。层号从0开始，from=-1 通常读取上一层，多来源列表则依次读取指定层。',
+    '看一个拼接：第18层输出 [1,256,40,40]，第14层保存的输出是 [1,256,40,40]。第19层 Concat 读取两者，沿通道拼接得到 [1,512,40,40]。拼接只把两组通道并排放置；接下来的模块才继续学习组合这些特征。这里使用本课 YOLOv5l 配置。',
+    '再看 C3 的重复：配置行中的 number 是基础次数，解析器根据 depth_multiple 调整它，并将结果交给 C3 内部。宽度系数影响部分模块的输出通道，解析器还会按实现规则调整通道数。查看其他规模时，应根据实际构建结果逐层核对，不把基础参数直接当成最终形状。',
+    '自己修改配置时按顺序检查：先找到每条 from 引用，再写出各输入的 [B,C,H,W]；对于 Concat，确认 B、H、W 相同，然后将通道相加；最后运行实际模型前向，核对每层形状。若加入新尺度，还要同步核对检测头、Anchor、损失和推理。'
+  );cs.subheadings={...(cs.subheadings||{}),[csStart]:'从一行配置追踪到实际张量'};cs.configTrace=csStart;
   rcnn.sources=rcnn.sources||[];rcnn.sources.push({label:'R-CNN 原论文：候选区域与 CNN 特征',url:'https://arxiv.org/abs/1311.2524'});
   for(const [id,paragraphs] of Object.entries(examples)){
     const lesson=catalog.find(item=>item.id===id);if(!lesson)throw Error('YOLO lesson missing: '+id);
@@ -96,6 +111,8 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.dataTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>图片和标签如何送到训练</strong></figcaption><ol class="yl-flow"><li><span>图片</span><b>frame001.jpg：宽1000、高500</b></li><li><span>标注框</span><b>左上(400,160)，右下(600,240)</b></li><li><span>标签</span><b>1 0.5 0.4 0.2 0.16</b></li><li><span>配置</span><b>数据根目录 + 图片路径 + 类别名称</b></li><li><span>检查</span><b>叠加框，核对编号、位置与漏标</b></li></ol></figure>';
+    if(section.configTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l 第19层：两路拼接</strong></figcaption><ol class="yl-flow"><li><span>第18层</span><b>[1,256,40,40]</b></li><li><span>第14层</span><b>[1,256,40,40]</b></li><li><span>Concat</span><b>高宽一致，沿通道拼接</b></li><li><span>输出</span><b>[1,512,40,40] → 后续 C3</b></li></ol></figure>';
     if(section.archDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l：640方形输入的数据流</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>[1,3,640,640] → [1,64,320,320]</b></li><li><span>Backbone</span><b>80×80 → 40×40 → 20×20；C3与SPPF提取特征</b></li><li><span>Neck</span><b>20 → 40 → 80，再向 40 → 20 融合</b></li><li><span>Detect 输入</span><b>[1,256,80,80] · [1,512,40,40] · [1,1024,20,20]</b></li><li><span>两类输出</span><b>每尺度 3 组参考 × 7 个字段；筛选前共 25,200 条候选</b></li></ol></figure>';
     if(section.evoDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>认识本课的模型配置</strong></figcaption><ol class="yl-flow"><li><span>检测任务</span><b>第一代 YOLO：网格直接预测</b></li><li><span>模型版本</span><b>YOLOv5 v7.0：6×6入口、C3、SPPF</b></li><li><span>尺度融合</span><b>Neck 融合三种空间尺寸</b></li><li><span>预测</span><b>Detect 使用参考宽高与各尺度特征</b></li></ol></figure>';
     if(section.oneStageDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>第一代 YOLO：从图片到 7 × 7 × 30</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 神经网络</b></li><li><span>7 × 7 网格</span><b>每格 2 个框 × 5 个数 + 20 个类别数</b></li><li><span>分类与定位</span><b>框坐标、置信度与类别分数</b></li><li><span>后处理</span><b>类别分数 × 框置信度 → 筛选与 NMS</b></li></ol></figure>';

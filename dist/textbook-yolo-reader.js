@@ -103,6 +103,23 @@
     '训练与验证的划分决定评价回答的问题。若要评估新摄像头，将同一摄像头的图片放在同一组，再按摄像头划分；若希望评估新视频，按视频分组。同一组的相邻帧非常相似，分到不同集合可能使验证结果偏乐观。分组后还要看每个集合是否有需要评估的类别和场景。'
   );
   practice.subheadings={...(practice.subheadings||{}),[practiceStart]:'从目录到训练：完整做一遍',[practiceStart+2]:'手算两处目标的标签',[practiceStart+4]:'把标签还原成框',[practiceStart+5]:'配置数据并同步变换',[practiceStart+7]:'开始训练前检查什么'};practice.dataPractice=practiceStart+2;
+  const assignment=catalog.find(item=>item.id==='yolo-assignment'), as=assignment.sections[0], asStart=as.paragraphs.length;
+  as.paragraphs.push(
+    '为什么需要目标分配？一张图可能只有一处火焰，而三个尺度会产生大量原始候选。训练不能把每个候选都当成这处火焰的预测，否则背景位置也会收到火焰框的监督。分配规则根据标签的尺寸和位置，选出参与这处目标框与类别学习的候选。',
+    '沿两类任务跟踪标签 [0,1,0.53,0.47,0.05,0.025]：第0项是批次中的图片索引0，第1项是类别1火焰，后四项是相对640×640画布的中心与宽高。乘以画布边长，中心为(339.2,300.8)像素，宽高为(32,16)像素。',
+    'P3总步长为8，特征图是80×80。将中心和宽高除以8，得到网格中心(42.4,37.6)、网格宽高(4,2)。其中列索引是向下取整的42、行索引是37；行列从0开始。像素单位和网格单位分别记清，后面计算才能对上。',
+    '先看P3中参考宽高(16,30)像素的那一组。除以8得到(2,3.75)网格单位；真实宽高与参考宽高的比值及倒数分别为2、0.5、约0.533、1.875。最大值是2，小于默认门槛4，该参考通过尺寸筛选。这个筛选比较标签与参考的宽高，尚未检查模型当前预测框的IoU。',
+    '接下来生成位置索引。中心格的索引是 (b=0,a=1,gj=37,gi=42)，分别表示图片、参考组、行、列；对应局部中心是(42.4−42,37.6−37)=(0.4,0.6)，目标宽高仍为(4,2)。训练会用索引取出该候选的原始数，再与这个目标比较。',
+    '中心离左边界0.4格、离下边界0.4格，在示例满足半格扩展条件且远离图边时，还分配左邻(41,37)和下邻(42,38)。同一中心相对于左邻是(1.4,0.6)，相对于下邻是(0.4,−0.4)。这三个位置对应同一标签；其他参考和尺度还要分别筛选，不能把三条当作全模型的结果。'
+  );as.subheadings={...(as.subheadings||{}),[asStart]:'从一条标签追踪到负责位置',[asStart+1]:'画布坐标与网格坐标',[asStart+3]:'先比较目标与参考尺寸',[asStart+4]:'索引和邻格'};as.assignmentDetail=asStart+2;
+  const loss=catalog.find(item=>item.id==='yolo-loss'), ls=loss.sections[1], lsStart=ls.paragraphs.length;
+  ls.paragraphs.push(
+    '接着上一课：一旦一个位置与火焰标签匹配，模型在该位置输出框参数、物体性原始分数和类别原始分数。框参数经训练使用的解码方式变成预测框，与目标框计算定位损失；类别与物体性原始分数交给对应的 BCE 损失。',
+    '先算类别。类别顺序为[烟雾,火焰]，目标为[0,1]。假设两项 Sigmoid 后分别为[0.8,0.2]，模型对烟雾过于确信、对火焰给分过低。标签为0时该项损失是−ln(1−0.8)=1.609；标签为1时该项损失是−ln(0.2)=1.609，两项平均约1.609。两项分别监督，类别分数不要求加起来等于1。',
+    '再算物体性。假设当前候选的 CIoU 为0.6，按本课实现截断为非负并停止目标分支的梯度，物体性目标取0.6；若物体性原始分数为0，其 Sigmoid 为0.5。BCE 为−[0.6 ln(0.5)+0.4 ln(0.5)]≈0.693。目标0.6表示该实现用框质量构造目标，不应理解成所有正样本目标都固定为1。',
+    '框项与物体性目标是两次不同的使用：框损失可用1−CIoU；上述 CIoU=0.6 时框项为0.4。物体性目标经截断并停止目标支路的梯度，而框损失仍通过预测框反向传播。若 CIoU 是负数，物体性目标可以被截到0，框项仍按其定义计算。',
+    '真实代码将一组位置和多个尺度的损失先按实现归约，再乘相应权重；示例只算一个候选、未加入类别权重或其他样本。因此0.4、0.693、1.609帮助检查单项含义，不能直接当成某次完整训练的日志。PyTorch 的 BCEWithLogitsLoss 接收原始分数，内部稳定处理 Sigmoid 与对数。'
+  );ls.subheadings={...(ls.subheadings||{}),[lsStart]:'一处火焰如何产生三项学习信号',[lsStart+1]:'类别：两个独立的 BCE',[lsStart+2]:'物体性与框质量',[lsStart+4]:'从单个位置到训练日志'};ls.lossDetail=lsStart;
   const config=catalog.find(item=>item.id==='yolo-config'), cs=config.sections[0], csStart=cs.paragraphs.length;
   cs.paragraphs.push(
     '模型 YAML 是结构说明，解析器根据配置创建模块并连接输入；它不是已经训练好的权重。每行 [from, number, module, args] 指明输入来源、基础重复次数、模块和参数。层号从0开始，from=-1 通常读取上一层，多来源列表则依次读取指定层。',
@@ -124,6 +141,8 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.assignmentDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>一条火焰标签：从像素到负责格</strong></figcaption><ol class="yl-flow"><li><span>输入画布</span><b>中心(339.2,300.8)，宽高(32,16)像素</b></li><li><span>P3 步长8</span><b>中心(42.4,37.6)，宽高(4,2)格</b></li><li><span>筛参考</span><b>参考(2,3.75)格，最大宽高比例2 &lt; 4</b></li><li><span>中心格</span><b>(行37,列42)，局部中心(0.4,0.6)</b></li><li><span>邻格</span><b>左邻(41,37)和下邻(42,38)</b></li></ol></figure>';
+    if(section.lossDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>一个正样本的三条监督路径</strong></figcaption><ol class="yl-flow"><li><span>预测框</span><b>与目标框比较：CIoU 0.6 → 框项 0.4</b></li><li><span>物体性</span><b>目标0.6，分数0.5 → BCE约0.693</b></li><li><span>类别</span><b>目标[0,1]，分数[0.8,0.2] → 平均BCE约1.609</b></li><li><span>整体训练</span><b>结合其他位置、尺度及权重，再反向传播</b></li></ol></figure>';
     if(section.dataPractice===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>1000 × 500 原图：从角点到标签</strong></figcaption><svg viewBox="0 0 600 330" role="img" aria-label="原图示意：火焰框角点400、160到600、240，中心500、200；烟雾框角点100、50到300、150"><rect x="40" y="35" width="500" height="250" fill="#eef3f6" stroke="#607287"/><rect x="240" y="115" width="100" height="40" fill="#eab58b" fill-opacity=".5" stroke="#b54e57" stroke-width="3"/><circle cx="290" cy="135" r="4" fill="#b54e57"/><text x="244" y="108" font-size="16">火焰 1</text><rect x="90" y="60" width="100" height="50" fill="#c9d5df" stroke="#52789d" stroke-width="3"/><text x="94" y="55" font-size="16">烟雾 0</text><text x="40" y="315" font-size="15">原图按比例缩小绘制；框坐标以原图像素计算</text></svg><ol class="yl-flow"><li><span>火焰</span><b>中心(500,200)，宽高(200,80)</b></li><li><span>标签第1行</span><b>1 0.5 0.4 0.2 0.16</b></li><li><span>烟雾</span><b>中心(200,100)，宽高(200,100)</b></li><li><span>标签第2行</span><b>0 0.2 0.2 0.2 0.2</b></li></ol></figure>';
     if(section.dataTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>图片和标签如何送到训练</strong></figcaption><ol class="yl-flow"><li><span>图片</span><b>frame001.jpg：宽1000、高500</b></li><li><span>标注框</span><b>左上(400,160)，右下(600,240)</b></li><li><span>标签</span><b>1 0.5 0.4 0.2 0.16</b></li><li><span>配置</span><b>数据根目录 + 图片路径 + 类别名称</b></li><li><span>检查</span><b>叠加框，核对编号、位置与漏标</b></li></ol></figure>';
     if(section.configTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l 第19层：两路拼接</strong></figcaption><ol class="yl-flow"><li><span>第18层</span><b>[1,256,40,40]</b></li><li><span>第14层</span><b>[1,256,40,40]</b></li><li><span>Concat</span><b>高宽一致，沿通道拼接</b></li><li><span>输出</span><b>[1,512,40,40] → 后续 C3</b></li></ol></figure>';

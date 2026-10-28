@@ -83,6 +83,9 @@ test('YOLO command identifiers and environment activation keep their intended me
   assert.equal(matches('创建 Python 虚拟环境，按系统激活它。').includes('激活'), false);
   assert.equal(matches('环境激活写法因终端而异。').includes('激活'), false);
   assert.equal(matches('SiLU 是激活函数。').includes('激活函数'), true);
+  assert.deepEqual(Array.from(matches('支持向量机'), String), ['支持向量机']);
+  assert.equal(matches('线性 SVM 给候选打分。').includes('SVM'), true);
+  assert.deepEqual(Array.from(matches('两阶段检测与一阶段检测'), String), ['两阶段检测', '一阶段检测']);
 });
 
 test('YOLO layer ledger follows real sources and produces correct rectangular detection shapes', () => {

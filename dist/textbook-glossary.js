@@ -339,9 +339,10 @@
   add('albumentations','Albumentations图像增强库','提供图像及其标注同步变换的Python工具库，可作为可选增强流程接入。','像一套会同时修改照片和框位置的图片编辑工具箱。',['Albumentations'],'augmentation');
 
   add('sliding-window','滑动窗口（sliding window）','让固定大小的观察区域逐步移动，在多个位置检查图像内容的方法。','像拿一张开着小窗的纸在大照片上移动，逐块看有没有目标。',['滑动窗口','sliding window'],'detection-intro');
-  add('two-stage-detection','两阶段检测（two-stage detection）','先生成候选区域，再对候选区域分类和精修框的一类检测流程。','像先圈出值得细看的区域，再逐个仔细检查。',['两阶段','two-stage detection'],'detection-two-stage');
-  add('one-stage-detection','一阶段检测（one-stage detection）','直接从图像特征在多个位置生成检测预测，不另设候选区域分类精修阶段的一类流程。','像在整张地图的许多位置直接写出候选答案。',['一阶段','one-stage detection'],'detection-one-stage');
+  add('two-stage-detection','两阶段检测（two-stage detection）','先生成候选区域，再对候选区域分类和精修框的一类检测流程。','像先圈出值得细看的区域，再逐个仔细检查。',['两阶段检测','两阶段','two-stage detection'],'detection-two-stage');
+  add('one-stage-detection','一阶段检测（one-stage detection）','直接从图像特征在多个位置生成检测预测，不另设候选区域分类精修阶段的一类流程。','像在整张地图的许多位置直接写出候选答案。',['一阶段检测','一阶段','one-stage detection'],'detection-one-stage');
   add('region-proposal','候选区域（region proposal）','检测流程先提出的、可能包含目标的区域，尚未确定最终类别和准确边界。','像巡查前圈出的重点地点，还要继续核实。',['候选区域','region proposal'],'detection-two-stage');
+  add('support-vector-machine','支持向量机（Support Vector Machine，SVM）','一种监督学习方法，常用于学习区分类别的决策边界。原始 R-CNN 对每个目标类别训练一个线性 SVM，用区域特征计算该类别的分数；分数本身不自动等于校准后的概率。','例如汽车分类器给候选区域打分，再与其他候选一起筛选。',['支持向量机','Support Vector Machine','SVM'],'detection-two-stage');
   add('selective-search','选择性搜索（Selective Search）','根据颜色、纹理等图像线索合并区域并产生候选框的方法，曾用于早期区域检测器。','像先把相似的小拼图片合成可能属于同一物体的大块。',['Selective Search','选择性搜索'],'detection-two-stage');
   add('rpn','区域建议网络（Region Proposal Network，RPN）','在共享特征上学习提出候选区域的网络组件，典型用于Faster R-CNN。','像一位先指出哪里值得仔细检查的助手。',['RPN','Region Proposal Network','区域建议网络'],'detection-two-stage');
   add('roi','感兴趣区域（Region of Interest，RoI）','图像或特征图中需要进一步处理的一块区域。','像阅读地图时圈出准备放大查看的一片位置。',['RoI','Region of Interest','感兴趣区域'],'detection-two-stage');

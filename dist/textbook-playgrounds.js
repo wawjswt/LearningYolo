@@ -790,7 +790,7 @@
   }
   function quaternionMarkup(){
     return '<section class="lesson-playground quaternion-playground" data-quaternion-playground aria-labelledby="quaternion-playground-title">'
-      +'<div class="playground-heading"><div><span class="playground-kicker">INTERACTIVE · 3D ROTATION</span><h3 id="quaternion-playground-title">转动这根空间箭头</h3><p>改变旋转轴和角度，观察向量、四元数分量与结果之间的对应关系。</p></div><button type="button" class="playground-reset" data-quaternion-reset>恢复示例</button></div>'
+      +'<div class="playground-heading"><div><span class="playground-kicker">四元数交互实验 · 轴与角度</span><h3 id="quaternion-playground-title">用四元数转动空间箭头</h3><p>改变旋转轴和角度，观察向量、四元数分量与结果之间的对应关系。</p></div><button type="button" class="playground-reset" data-quaternion-reset>恢复示例</button></div>'
       +'<div class="quaternion-stage"><div class="quaternion-visual" data-quaternion-visual></div><div class="quaternion-controls">'
       +'<div class="quaternion-control"><label for="quaternion-axis-x">旋转轴 x <output data-quaternion-axis-value="x">0.0</output></label><input id="quaternion-axis-x" type="range" min="-1" max="1" step="0.1" value="0" data-quaternion-axis="x"></div>'
       +'<div class="quaternion-control"><label for="quaternion-axis-y">旋转轴 y <output data-quaternion-axis-value="y">0.0</output></label><input id="quaternion-axis-y" type="range" min="-1" max="1" step="0.1" value="0" data-quaternion-axis="y"></div>'
@@ -907,7 +907,7 @@
     return '<figure class="lesson-playground"><figcaption><strong>从旋转轴和角度到四个数</strong></figcaption><p>例：轴 (0,0,2) 长度为 2，先除以 2 得到单位轴 (0,0,1)。实际旋转 90°，编码时使用半角 45°。</p><svg style="display:block;width:100%;height:auto" viewBox="0 0 600 150" role="img" aria-label="单位轴与角度输入，经过半角正弦和余弦计算，得到旋转四元数"><rect x="10" y="25" width="160" height="90" rx="8" fill="#eeeafa"/><text x="22" y="56" font-size="16">单位轴 (0,0,1)</text><text x="22" y="88" font-size="16">旋转角 90°</text><path d="M180 70h65m-10-8 10 8-10 8" fill="none" stroke="#6656a5" stroke-width="3"/><rect x="250" y="25" width="145" height="90" rx="8" fill="#eaf3f1"/><text x="263" y="56" font-size="16">半角 45°</text><text x="263" y="88" font-size="15">cos / sin ≈ 0.707</text><path d="M405 70h45m-10-8 10 8-10 8" fill="none" stroke="#6656a5" stroke-width="3"/><rect x="455" y="25" width="135" height="90" rx="8" fill="#fff1de"/><text x="468" y="56" font-size="15">q = (w,x,y,z)</text><text x="468" y="88" font-size="14">(0.707,0,0,0.707)</text></svg><p>四个分量共同记录一个旋转；它们不是四个独立的旋转角。零向量不能作为旋转轴。</p></figure>';
   }
   function rotationLabMarkup(){
-    return '<div class="lab-rotation-intro"><h2>三维旋转：用箭头看懂姿态</h2><p>按顺序试试：改变三个角并交换顺序；把俯仰拖到 ±90°；再调整旋转轴和角度，比较四元数组合。</p><p>每幅图都是三维方向在二维屏幕上的投影。数值与图一起帮助你判断结果。</p><a href="#lesson/euler-angles">先学欧拉角 →</a> · <a href="#lesson/quaternion">认识四元数 →</a> · <a href="#lesson/quaternion-compose">学习旋转组合 →</a></div>'+eulerCompareMarkup()+eulerGimbalMarkup()+quaternionMarkup()+compositionMarkup()+eulerComparisonMarkup();
+    return '<div class="lab-rotation-intro"><h2>三维旋转：用箭头看懂姿态</h2><p>改变三个角并交换顺序；把俯仰拖到 ±90°，观察万向节锁。</p><p>每幅图都是三维方向在二维屏幕上的投影。数值与图一起帮助你判断结果。</p><a href="#lab/quaternion">进入四元数交互实验 →</a> · <a href="#lesson/euler-angles">先学欧拉角 →</a></div>'+eulerCompareMarkup()+eulerGimbalMarkup()+eulerComparisonMarkup();
   }
   function render(lessonId,sectionIndex){
     if(lessonId==='dataset'&&sectionIndex===0)return boxLabelMarkup();
@@ -958,7 +958,7 @@
     document.querySelectorAll('[data-rotation-composition]').forEach(updateComposition);
   }
   window.lessonPlaygrounds={render,initialize,rotationLabMarkup};
-  window.visionlabRotationLab={render:rotationLabMarkup,renderLesson:render};
+  window.visionlabRotationLab={render:rotationLabMarkup,renderQuaternion:()=>'<div class="lab-rotation-intro"><h2>四元数交互实验</h2><p>先调节旋转轴和角度，看四个分量及箭头怎样变化；再交换两次旋转的顺序，比较结果。</p><a href="#lesson/quaternion">学习四元数 →</a> · <a href="#lesson/quaternion-compose">学习旋转组合 →</a></div>'+quaternionMarkup()+compositionMarkup(),renderLesson:render};
 
   document.addEventListener('input',event=>{
     const target=event.target;

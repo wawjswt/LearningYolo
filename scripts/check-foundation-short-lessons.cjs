@@ -55,6 +55,17 @@ test('YOLO examples keep units, model assumptions and explanations in their inte
   assert.match(head, /80类/);
   assert.equal(course('train-yolo').sections.find(s => s.trainDetail !== undefined).id, 'repo-training-loop');
   assert.equal(course('inference').sections.find(s => s.nmsDetail !== undefined).id, 'inference-s-hlnnlcv');
+  const checkpoint = course('train-yolo').sections.flatMap(s => s.exercise ? [s.exercise] : []).find(e => e.q.includes('best.pt 与 last.pt'));
+  assert.match(checkpoint.options[checkpoint.answer], /模型权重/);
+  assert.match(checkpoint.why, /续训还需检查/);
+});
+
+test('YOLO command identifiers and environment activation keep their intended meaning', () => {
+  const matches = text => context.visionlabGlossary.matchesIn(text).map(item => item.alias);
+  assert.equal(matches('运行 train.py --batch-size 4，查看 data.yaml。').length, 0);
+  assert.equal(matches('创建 Python 虚拟环境，按系统激活它。').includes('激活'), false);
+  assert.equal(matches('环境激活写法因终端而异。').includes('激活'), false);
+  assert.equal(matches('SiLU 是激活函数。').includes('激活函数'), true);
 });
 
 test('YOLO layer ledger follows real sources and produces correct rectangular detection shapes', () => {

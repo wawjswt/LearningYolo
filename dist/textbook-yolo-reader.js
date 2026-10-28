@@ -144,6 +144,32 @@
     '自己修改配置时按顺序检查：先找到每条 from 引用，再写出各输入的 [B,C,H,W]；对于 Concat，确认 B、H、W 相同，然后将通道相加；最后运行实际模型前向，核对每层形状。若加入新尺度，还要同步核对检测头、Anchor、损失和推理。'
   );cs.subheadings={...(cs.subheadings||{}),[csStart]:'从一行配置追踪到实际张量'};cs.configTrace=csStart;
   rcnn.sources=rcnn.sources||[];rcnn.sources.push({label:'R-CNN 原论文：候选区域与 CNN 特征',url:'https://arxiv.org/abs/1311.2524'});
+  const flowSteps={
+    'detection-intro':['一张图片','每个目标单独记录','类别、位置和分数'],
+    'detection-two-stage':['整图共享特征','RPN建议区域','区域分类与框精修'],
+    'detection-one-stage':['整图特征','多位置直接预测','分数筛选与去重'],
+    'yolo-evolution':['确认仓库与版本','读取模型配置','核对输出与训练规则'],
+    'architecture':['640×640图像','Backbone → Neck','Detect三个尺度'],
+    'yolo-repository':['确定需要回答的问题','查配置和入口','跟踪输入与输出'],
+    'yolo-data':['原图及角点框','算中心、宽高并归一化','逐行保存标签并检查'],
+    'yolo-config':['读取from与模块','计算输入输出形状','按连接生成网络'],
+    'yolo-backbone':['RGB输入','步长卷积与C3提特征','保留不同尺度输出'],
+    'yolo-c3':['完整输入送入两路','主路计算、短路投影','通道拼接后卷积融合'],
+    'yolo-sppf':['压缩通道得到x0','连续三次最大池化','四路拼接并融合'],
+    'yolo-neck':['20→40→80融合','80→40→20聚合','输出三个尺度'],
+    'yolo-head':['特征经输出卷积','每个Anchor整理7个字段','训练求损失或推理解码'],
+    'anchors':['标签与参考宽高','统一单位并筛选匹配','模型输出结合参考解码'],
+    'yolo-assignment':['标签换算网格坐标','筛选匹配Anchor','分配中心格及邻格'],
+    'yolo-loss':['匹配预测与目标','计算框、物体性、类别项','归约加权并反向传播'],
+    'train-yolo':['批次图片和标签','前向、分配、损失与反向','满足条件时更新，再验证'],
+    'yolo-checkpoints':['检查模型和类别','筛选兼容权重','新任务初始化或中断续训'],
+    'yolo-augment':['读取图片和标签','同步变换图片与框','抽样检查并对照验证'],
+    'yolo-evaluation':['验证预测与标签匹配','按分数统计精确率与召回率','按协议汇总AP和选模型'],
+    'inference':['图像预处理与模型预测','解码、分数筛选和NMS','按缩放与补边映回原图'],
+    'yolo-export':['固定预处理输入','对比两端输出','对齐后处理与原图坐标'],
+    'yolo-trace':['确定原图与画布','跟踪各层和预测尺度','按训练或推理路线继续'],
+    'debugging':['记录最早异常的位置','保留输入、输出与配置','控制变量并复测']
+  };
   for(const [id,paragraphs] of Object.entries(examples)){
     const lesson=catalog.find(item=>item.id===id);if(!lesson)throw Error('YOLO lesson missing: '+id);
     const [title,...text]=paragraphs;
@@ -151,7 +177,7 @@
     const start=section.paragraphs.length;
     section.paragraphs.push(...text);
     section.subheadings={...(section.subheadings||{}),[start]:title};
-    section.readerDiagram={start,paragraphs:text};
+    section.readerDiagram={start,steps:flowSteps[id]};
   }
   const old=window.visionlabYoloLearning.renderParagraph.bind(window.visionlabYoloLearning);
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -170,7 +196,7 @@
     if(section.fastDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>从共享特征到区域检测</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 卷积网络 → 共享特征图</b></li><li><span>候选</span><b>Fast：外部候选；Faster：RPN 与 Anchor 产生建议</b></li><li><span>区域特征</span><b>候选映射到特征图 → RoI Pooling → 固定尺寸</b></li><li><span>两支输出</span><b>类别与背景分数 + 边界框修正</b></li></ol></figure>';
     if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>特征提取</span><b>AlexNet 型 CNN → fc7 的 4096 维特征</b></li><li><span>分类与定位</span><b>类别 SVM 打分 + 边界框回归</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';
     if(!section.readerDiagram||index!==section.readerDiagram.start)return existing;
-    const steps=section.readerDiagram.paragraphs.map((p,i)=>`<li><span>第 ${i+1} 步</span><b>${escape(p.split("。")[0])}</b></li>`).join('');
+    const steps=section.readerDiagram.steps.map((p,i)=>`<li><span>第 ${i+1} 步</span><b>${escape(p)}</b></li>`).join('');
     return existing+`<figure class="yd-workshop yl-figure"><figcaption><strong>跟着例子走一遍</strong></figcaption><ol class="yl-flow">${steps}</ol></figure>`;
   };
 })();

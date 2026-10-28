@@ -43,7 +43,7 @@
   add('softmax','Softmax（多类归一化函数）','Softmax 对一组分数先取指数，再各自除以指数总和，输出互斥类别的概率分配。例如 [0,0] 变为 [0.5,0.5]；它保留分数排序，不会自动保证概率经过校准。','像先比较几位候选人的原始分，再把总票数按比例分给他们。',['Softmax','softmax'],'losses');
   add('loss','损失（loss）','损失是按明确规则把预测与目标转成的数值，损失函数规定怎样计算这个数。例如预测温度 22、真实 20，平方误差为 4。优化器尝试减小训练目标；损失不等于准确率。','像一次作业的扣分；越不符合目标，通常损失越大。',['损失','损失函数','loss','loss function'],'losses');
   add('cross-entropy','交叉熵（Cross Entropy，CE）','交叉熵用真实分布对模型给出的负对数概率取平均。在单个、独热标签的多分类样本中，它简化为 −ln(正确类别概率)；给正确类 0.8 时损失约 0.223，给 0.1 时约 2.303。','像猜盒中物品：把正确答案的可能性估得越低，扣分越多。',['交叉熵','Cross Entropy','cross entropy','CE','交叉熵损失'],'losses');
-  add('bce','二元交叉熵（Binary Cross Entropy，BCE）','二元交叉熵衡量是/否预测的代价，单项为 −[y ln p+(1−y)ln(1−p)]。y 是 0 或 1 标签，p 是正类概率；当 y=0 时应看 1−p，不能始终只算 −ln p。','像判断“下雨/不下雨”：猜错且很肯定时扣分更多。',['二元交叉熵','Binary Cross Entropy','BCE'],'losses');
+  add('bce','二元交叉熵（Binary Cross Entropy，BCE）','二元交叉熵衡量是/否预测的代价，单项为 −[y ln p+(1−y)ln(1−p)]。y 是 0 到 1 的目标值，p 是正类分数；常见硬标签为 0 或 1，也可使用连续软目标。当 y=0 时应看 1−p，不能始终只算 −ln p。','像判断“下雨/不下雨”：猜错且很肯定时扣分更多。',['二元交叉熵','Binary Cross Entropy','BCE'],'losses');
   add('bce-with-logits','带 logits 的二元交叉熵（BCEWithLogitsLoss）','PyTorch 的损失接口，直接接收原始分数，并以稳定方式组合 Sigmoid 与二元交叉熵。','像把原始打分直接交给评分器，由评分器内部完成换算和扣分。',['BCEWithLogitsLoss','BCEWithLogits','带 logits 的 BCE'],'losses');
   add('bce-loss','二元交叉熵概率接口（BCELoss）','PyTorch 的二元交叉熵接口，输入应是已经算好的 0 到 1 概率。','像已经把分数换成百分比后，再交给扣分表。',['BCELoss'],'losses');
   add('cross-entropy-loss','多类交叉熵接口（CrossEntropyLoss）','PyTorch 常用多分类损失，常见用法是输入原始 logits 与类别编号标签。','像把每位候选人的原始得分和正确人选交给评分器。',['CrossEntropyLoss','nn.CrossEntropyLoss'],'losses');
@@ -462,7 +462,14 @@
   }
   function allowedAlias(alias,text,start,end,item=lookup(alias)){
     if(item&&blockedByCompound(item.id,text,start,end))return false;
-    return !(alias==='激活'&&/^(?:环境|账号|账户|设备|用户)/.test(text.slice(end)));
+    // Paths, filenames and command-line options are indivisible technical identifiers.
+    const identifiers=/(?:--[A-Za-z][\w-]*|[A-Za-z0-9_./\\-]+\.(?:py|yaml|yml|pt|csv|txt|json))\b/gi;
+    for(const m of text.matchAll(identifiers))if(m.index<=start&&m.index+m[0].length>=end)return false;
+    if(alias==='激活'){
+      if(/^(?:环境|账号|账户|设备|用户)/.test(text.slice(end)))return false;
+      if(/(?:环境|venv)[^。；\n]{0,25}$/.test(text.slice(0,start))&&/^(?:它|写法|方式|步骤)/.test(text.slice(end)))return false;
+    }
+    return true;
   }
   function matchesIn(text){
     const source=String(text||''),matches=[];if(!matcher)return matches;

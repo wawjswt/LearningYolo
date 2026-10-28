@@ -64,7 +64,7 @@ test('street-scene recap connects the same boxes and computes both interactive e
   const lesson = courses.find(item => item.id === 'cv-synthesis');
   const section = name => lesson.sections.find(item => item.id === 'cv-synthesis-'+name);
   const visual = name => context.visionlabCvEditorial.renderParagraph(section(name), 0);
-  for (const name of ['story','data','window','features','scale','prediction','target-loss','learning','validation','inference','metrics','ap-walk','hands-on','bridge']) assert.ok(visual(name).length > 50, `visual in ${name}`);
+  for (const name of ['story','dataset-journey','data','window','features','scale','prediction','target-loss','learning','training-walk','validation','inference','metrics','ap-walk','hands-on','bridge']) assert.ok(visual(name).length > 50, `visual in ${name}`);
   assert.match(visual('data'), /600 × 300.*640 × 320.*640 × 640/s);
   assert.match(visual('data'), /64, 288, 213\.3, 352/);
   assert.match(visual('metrics'), /左车 0\.95.*背景 0\.75.*右车 0\.35/s);

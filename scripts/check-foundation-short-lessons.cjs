@@ -64,6 +64,10 @@ test('YOLO examples keep units, model assumptions and explanations in their inte
   assert.match(assignmentFigure, /下邻 \(42,38\)/);
   assert.equal((assignmentFigure.match(/>匹配<\/text>/g) || []).length, 9);
   assert.deepEqual([[10,13],[16,30],[33,23]].map(([w,h]) => Math.max(32/w,w/32,16/h,h/16) < 4), [true,true,true]);
+  const exportText = course('yolo-export').sections.find(s => s.id === 'export-check').paragraphs.join(' ');
+  assert.match(exportText, /python export\.py --weights/);
+  assert.match(exportText, /--nms 选项标为 TensorFlow 路线使用/);
+  assert.match(exportText, /经过NMS，候选数量或排列顺序可能/);
   const checkpoint = course('train-yolo').sections.flatMap(s => s.exercise ? [s.exercise] : []).find(e => e.q.includes('best.pt 与 last.pt'));
   assert.match(checkpoint.options[checkpoint.answer], /模型权重/);
   assert.match(checkpoint.why, /续训还需检查/);

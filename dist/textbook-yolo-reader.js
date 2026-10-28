@@ -52,6 +52,18 @@
     '三代方法的计算顺序因此很清楚：R-CNN 对每个候选独立提特征；Fast R-CNN 共享整图特征但仍使用外部候选；Faster R-CNN 让 RPN 与区域检测头共享特征。共享减少了重复卷积，实际耗时还受网络、候选数和硬件影响。'
   );
   fast.subheadings={...(fast.subheadings||{}),[fastStart]:'共享特征之后，候选框怎样继续走'};fast.fastDiagram=fastStart;
+  const one=catalog.find(item=>item.id==='detection-one-stage');
+  const yolo=one.sections[1], yoloStart=yolo.paragraphs.length;
+  yolo.paragraphs.push(
+    '第一代 YOLO 的设计目标是将整张图片上的检测作为一个统一的预测任务：一张图片进入网络，网络同时输出多个位置的框和类别信息。它把输入划分为 S×S 个网格；训练时，目标中心落在哪个网格，就由那个网格负责预测该目标。',
+    '以论文中的 PASCAL VOC 设置为例：S=7，每格预测 B=2 个框，并预测 C=20 个类别分数。每个框含 x、y、w、h 和置信度5个数；类别分数由同一格的两个框共享。因此输出形状是 7×7×(2×5+20)=7×7×30，共1470个数。每格共享类别分数是第一代 YOLO 的具体设计。',
+    '框中心 x、y 相对负责网格表示，宽高相对整图表示。框置信度在原论文中结合目标存在与预测框的 IoU；推理时把类别条件概率与框置信度相乘，得到针对每个类别的分数，再使用阈值和 NMS 整理结果。输出来自整图网络计算，每个网格预测可以利用网络提取的上下文。',
+    '训练时，目标中心确定负责网格；该网格内由与真实框 IoU 最高的预测框负责该目标的框预测。损失同时包括坐标、置信度和类别项，并为不同项目设置权重。一个网格只能预测一组类别概率，靠近的多个不同类别目标落入同格时会受到限制，小目标也较难处理。',
+    'SSD（Single Shot MultiBox Detector）同样直接从特征预测，但使用多个不同分辨率的特征图，并在位置上设置不同尺度和长宽比的默认框。每个默认框预测类别分数和位置偏移；高分辨率和低分辨率的预测共同构成候选集合。它通过匹配规则分配真实框，并使用难负样本挖掘控制大量背景候选。',
+    '因此，一阶段说的是从特征直接产生密集预测的组织方式；具体字段、匹配和损失随模型变化。第一代 YOLO 的 7×7×30 与后面 YOLOv5 的多尺度、Anchor 和每候选类别字段是不同设计，阅读代码时要先确定版本。'
+  );
+  yolo.subheadings={...(yolo.subheadings||{}),[yoloStart]:'第一代 YOLO 的输出怎样组成'};yolo.oneStageDiagram=yoloStart;
+  one.sources=one.sources||[];one.sources.push({label:'YOLO 原论文',url:'https://arxiv.org/abs/1506.02640'},{label:'SSD 原论文',url:'https://arxiv.org/abs/1512.02325'});
   rcnn.sources=rcnn.sources||[];rcnn.sources.push({label:'R-CNN 原论文：候选区域与 CNN 特征',url:'https://arxiv.org/abs/1311.2524'});
   for(const [id,paragraphs] of Object.entries(examples)){
     const lesson=catalog.find(item=>item.id===id);if(!lesson)throw Error('YOLO lesson missing: '+id);
@@ -66,6 +78,7 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.oneStageDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>第一代 YOLO：从图片到 7 × 7 × 30</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 神经网络</b></li><li><span>7 × 7 网格</span><b>每格 2 个框 × 5 个数 + 20 个类别数</b></li><li><span>分类与定位</span><b>框坐标、置信度与类别分数</b></li><li><span>后处理</span><b>类别分数 × 框置信度 → 筛选与 NMS</b></li></ol></figure>';
     if(section.fastDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>从共享特征到区域检测</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 卷积网络 → 共享特征图</b></li><li><span>候选</span><b>Fast：外部候选；Faster：RPN 与 Anchor 产生建议</b></li><li><span>区域特征</span><b>候选映射到特征图 → RoI Pooling → 固定尺寸</b></li><li><span>两支输出</span><b>类别与背景分数 + 边界框修正</b></li></ol></figure>';
     if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>特征提取</span><b>AlexNet 型 CNN → fc7 的 4096 维特征</b></li><li><span>分类与定位</span><b>类别 SVM 打分 + 边界框回归</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';
     if(!section.readerDiagram||index!==section.readerDiagram.start)return existing;

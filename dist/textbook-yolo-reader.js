@@ -129,6 +129,13 @@
     '假设有100张训练图、batch为4且每张都用一次，若不丢弃最后一批，一轮有25个批次。每批都更新时有25次更新；如果每5批累积一次且这些批次都参与，则有5次更新。数据加载、尾批、分布式训练及实现的更新条件都会影响真实次数，日志中的 epoch 数不能直接当成更新次数。',
     '一轮结束后，模型在验证集上做预测，并把结果与验证标签比较，得到 P、R 与 AP 等指标。验证用于比较设置和选择检查点，不按验证数据反向更新；训练损失下降说明训练目标更容易满足，仍需结合验证曲线和错误图片判断新场景表现。'
   );tr.subheadings={...(tr.subheadings||{}),[trStart]:'完整追踪一个训练批次',[trStart+2]:'损失、梯度与参数更新',[trStart+4]:'算清批次、更新与轮次',[trStart+5]:'一轮结束后的验证'};tr.trainDetail=trStart;
+  const inference=catalog.find(item=>item.id==='inference'), inf=inference.sections[3], infStart=inf.paragraphs.length;
+  inf.paragraphs.push(
+    '下面单独算两个同类火焰候选的重叠。A 的角点是(10,10,110,60)，分数0.90；B 的角点是(20,10,120,60)，分数0.80。A 和 B 的宽高都是100×50，面积各为5000。坐标约定为连续边界，计算宽高时不额外加1。',
+    '两框交集的左边取较大值20，右边取较小值110，因此交集宽90；上下边界相同，交集高50，面积90×50=4500。并集面积为5000+5000−4500=5500，因此 IoU=4500/5500≈0.818。IoU 描述两个预测框的重叠，NMS 使用它判断是否可能重复。',
+    '假设分数门槛为0.50，两框都先通过；NMS 的 IoU 门槛为0.70，先保留高分 A，再将 B 与 A 比较。0.818大于0.70，B 被抑制。若门槛改为0.90，这两个框之间不会因该次比较而抑制B。实际还有其他候选时，需要继续按顺序比较。',
+    'NMS 阈值用于比较候选与候选；评估时的 IoU 阈值用于比较保留下来的预测与真实标签。即使 B 被抑制，也不能只凭这一操作断定 A 是真阳性：还需看 A 的类别、与真实框的重叠，以及一对一匹配情况。对于相邻的真实目标，去重门槛过低可能合并两处检测，应结合实际图片检查。'
+  );inf.subheadings={...(inf.subheadings||{}),[infStart]:'手算两个候选的 NMS',[infStart+1]:'先算交并比',[infStart+2]:'再按分数和门槛筛选'};inf.nmsDetail=infStart;
   const config=catalog.find(item=>item.id==='yolo-config'), cs=config.sections[0], csStart=cs.paragraphs.length;
   cs.paragraphs.push(
     '模型 YAML 是结构说明，解析器根据配置创建模块并连接输入；它不是已经训练好的权重。每行 [from, number, module, args] 指明输入来源、基础重复次数、模块和参数。层号从0开始，from=-1 通常读取上一层，多来源列表则依次读取指定层。',
@@ -150,6 +157,7 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.nmsDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>两个火焰候选如何去重</strong></figcaption><svg viewBox="0 0 360 170" role="img" aria-label="两个大小100乘50的预测框，水平错开10，交集宽90"><rect x="35" y="35" width="200" height="100" fill="#8eb7d5" fill-opacity=".3" stroke="#426d97" stroke-width="3"/><rect x="55" y="35" width="200" height="100" fill="#b39ad6" fill-opacity=".3" stroke="#7656a7" stroke-width="3"/><text x="35" y="25" font-size="16">A：0.90</text><text x="180" y="155" font-size="16">B：0.80</text></svg><ol class="yl-flow"><li><span>交集</span><b>90 × 50 = 4500</b></li><li><span>并集</span><b>5000 + 5000 − 4500 = 5500</b></li><li><span>IoU</span><b>4500 / 5500 ≈ 0.818</b></li><li><span>门槛 0.70</span><b>保留高分 A，抑制 B</b></li></ol></figure>';
     if(section.trainDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>4张图片的一次训练批次</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>图片 [4,3,640,640] + 按目标逐行记录的标签</b></li><li><span>前向</span><b>三个尺度输出 [4,3,H,W,7]</b></li><li><span>监督</span><b>标签分配 → 框、物体性与类别损失</b></li><li><span>反向</span><b>backward 计算参数梯度</b></li><li><span>更新</span><b>满足更新条件时 optimizer.step()</b></li><li><span>验证</span><b>预测与独立标签比较，检查泛化表现</b></li></ol></figure>';
     if(section.assignmentDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>一条火焰标签：从像素到负责格</strong></figcaption><ol class="yl-flow"><li><span>输入画布</span><b>中心(339.2,300.8)，宽高(32,16)像素</b></li><li><span>P3 步长8</span><b>中心(42.4,37.6)，宽高(4,2)格</b></li><li><span>筛参考</span><b>参考(2,3.75)格，最大宽高比例2 &lt; 4</b></li><li><span>中心格</span><b>(行37,列42)，局部中心(0.4,0.6)</b></li><li><span>邻格</span><b>左邻(41,37)和下邻(42,38)</b></li></ol></figure>';
     if(section.lossDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>一个正样本的三条监督路径</strong></figcaption><ol class="yl-flow"><li><span>预测框</span><b>与目标框比较：CIoU 0.6 → 框项 0.4</b></li><li><span>物体性</span><b>目标0.6，分数0.5 → BCE约0.693</b></li><li><span>类别</span><b>目标[0,1]，分数[0.8,0.2] → 平均BCE约1.609</b></li><li><span>整体训练</span><b>结合其他位置、尺度及权重，再反向传播</b></li></ol></figure>';

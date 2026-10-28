@@ -68,7 +68,7 @@
     return predictions.sort((a, b) => b.score - a.score);
   }
   const metricPredictions = createTeachingPredictions();
-  const tabIds = ['pipeline', 'iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics'];
+  const tabIds = ['pipeline', 'iou', 'gradient', 'convolution', 'augmentation', 'diagnosis', 'nms', 'metrics', 'rotation'];
   let activeTab = 'pipeline';
   const labTaskState = Object.fromEntries(tabIds.map(id => [id, { scenario: 0, answer: null, observation: '' }]));
   let activeGradientStep = 0;
@@ -832,7 +832,7 @@
     const gridStart = oldMarkup.indexOf('<div class="lab-grid">');
     const iouMarkup = gridStart >= 0 ? oldMarkup.slice(gridStart) : '<p class="lab-callout">IoU 实验暂时无法加载，请刷新页面重试。</p>';
     const tabs = [
-      ['pipeline', '完整检测流程'], ['iou', 'IoU 框重叠'], ['gradient', '反向传播'], ['convolution', '卷积特征'], ['augmentation', '数据增强'], ['diagnosis', '错误诊断'], ['nms', 'YOLO 后处理'], ['metrics', 'PR · F1 · mAP'],
+      ['pipeline', '完整检测流程'], ['iou', 'IoU 框重叠'], ['gradient', '反向传播'], ['convolution', '卷积特征'], ['augmentation', '数据增强'], ['diagnosis', '错误诊断'], ['nms', 'YOLO 后处理'], ['metrics', 'PR · F1 · mAP'], ['rotation', '三维旋转'],
     ];
     const pipelineMarkup = window.detectionPipeline ? window.detectionPipeline.render() : '';
     const pipelineWithTask = pipelineMarkup.replace('data-detection-pipeline hidden>', 'data-detection-pipeline hidden>' + renderLabTaskCard('pipeline'));
@@ -840,7 +840,8 @@
       + '<div class="lab-tabs" role="tablist" aria-label="选择学习实验">' + tabs.map(([id, label], index) => '<button type="button" role="tab" id="lab-tab-' + id + '" aria-controls="lab-panel-' + id + '" aria-selected="' + String(activeTab === id) + '" tabindex="' + (activeTab === id ? '0' : '-1') + '" data-lab-tab="' + id + '">' + label + '<span>0' + (index + 1) + '</span></button>').join('') + '</div>'
       + pipelineWithTask
       + '<section class="experiment-panel" role="tabpanel" id="lab-panel-iou" aria-labelledby="lab-tab-iou" data-lab-panel="iou"' + (activeTab === 'iou' ? '' : ' hidden') + '>' + renderLabTaskCard('iou') + iouMarkup + '<a class="lab-lesson-link" href="#lesson/iou">接着学习：交并比与检测评价 →</a></section>'
-      + gradientPanel() + convolutionPanel() + augmentationPanel() + diagnosisPanel() + nmsPanel() + metricsPanel();
+      + gradientPanel() + convolutionPanel() + augmentationPanel() + diagnosisPanel() + nmsPanel() + metricsPanel()
+      + '<section class="experiment-panel" role="tabpanel" id="lab-panel-rotation" aria-labelledby="lab-tab-rotation" data-lab-panel="rotation" hidden>'+(window.visionlabRotationLab?.render()||'')+'</section>';
   }
 
   function updateGradient() {
@@ -1309,6 +1310,7 @@
   }
 
   function initializeInteractiveLab() {
+    if(location.hash.split('/')[1]==='rotation') activeTab='rotation';
     setActiveTab(activeTab);
     window.detectionPipeline?.initialize();
     updateGradient();

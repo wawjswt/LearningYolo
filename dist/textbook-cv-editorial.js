@@ -538,6 +538,9 @@
   const workshopSections={tasks:0,dataset:0,'data-quality':0,augmentation:0,transfer:0,quaternion:1};
   for(const [id,index] of Object.entries(workshopSections))byId.get(id).sections[index].cvWorkshop=true;
   const playerRef=(id,i)=>{const s=byId.get(id).sections[i];return {lesson:id,key:s.playgroundId||i,legacy:s.legacyIndex};};
+  for(const [id,index] of [['euler-angles',0],['euler-angles',1],['quaternion',0],['quaternion',1],['quaternion-compose',0],['quaternion-compare',0]]){
+    byId.get(id).sections[index].cvPlayers=[{component:'rotation',lesson:id,key:index}];
+  }
   const channels=playerRef('cnn',1),claims=playerRef('cnn-priors-limits',0),connections=playerRef('cnn-priors-limits',1);
   byId.get('image').sections.forEach(s=>s.cvPlayers=[]);
   byId.get('cnn').sections[0].cvPlayers=[];
@@ -754,7 +757,7 @@
       if(s.cvLab==='matching'||s.cvLab==='ap-matching')return {main:matchingMarkup(s.cvLab),extra:''};
       if(s.cvLab)return {main:windowLabMarkup(s.cvLab),extra:''};
       const render=refs=>refs.map(ref=>{
-        const html=ref.component==='single-convolution'?window.visionlabCnnComponents.renderConvolution():ref.component==='channel-math'?window.channelConvolution.renderMath():window.lessonPlaygrounds?.render(ref.lesson,ref.key,ref.legacy)||'';
+        const html=ref.component==='rotation'?window.visionlabRotationLab?.renderLesson(ref.lesson,ref.key)||'':ref.component==='single-convolution'?window.visionlabCnnComponents.renderConvolution():ref.component==='channel-math'?window.channelConvolution.renderMath():window.lessonPlaygrounds?.render(ref.lesson,ref.key,ref.legacy)||'';
         return html.replace('堆叠局部层会扩大有效感受野','图中局部层的理论感受野随堆叠扩大').replace('与上方的 3×3 基础卷积配置不同','这里与正文的2×2窗口使用同一乘加规则');
       }).join('');
       const extra=s.cvOptionalPlayers?'<details class="advanced-section"><summary>回顾自测：局部连接、共享与平移</summary><div class="advanced-section-body">'+render(s.cvOptionalPlayers)+'</div></details>':'';

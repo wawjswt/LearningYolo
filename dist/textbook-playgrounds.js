@@ -734,7 +734,7 @@
     if(axis==='Y')return [x*c+z*s,y,-x*s+z*c];
     return [x*c-y*s,x*s+y*c,z];
   }
-  function eulerVectorSvg(vector,order,color){
+  function eulerVectorSvg(vector,order,color,initial=[1,0,0]){
     const W=320,H=190,cx=158,cy=122,scale=67;
     const project=v=>[cx+scale*(v[0]-.38*v[1]),cy-scale*(v[2]+.32*v[1])];
     const arrow=(v,stroke,width,dash)=>{
@@ -744,7 +744,7 @@
     };
     let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+order+' 顺序的三维旋转向量二维投影"><rect width="100%" height="100%" rx="7" fill="#fffefa"/>';
     [['X',[.76,0,0]],['Y',[0,.76,0]],['Z',[0,0,.76]]].forEach(([label,axis])=>{const [x,y]=project(axis);svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#d7d7d1" stroke-width="1.3"/><text x="'+(x+(label==='Y'?-8:7)).toFixed(1)+'" y="'+(y-5).toFixed(1)+'" fill="#7a838b" font-size="10">'+label+'</text>';});
-    svg+=arrow([1,0,0],'#7890a0',2,'4 4')+arrow(vector,color,3.8,'')+'<circle cx="'+cx+'" cy="'+cy+'" r="3.5" fill="#46535d"/><text x="14" y="21" fill="#71808b" font-size="9">虚线：起始向量 X</text><text x="14" y="37" fill="'+color+'" font-size="9">实线：旋转后向量</text></svg>';
+    svg+=arrow(initial,'#7890a0',2,'4 4')+arrow(vector,color,3.8,'')+'<circle cx="'+cx+'" cy="'+cy+'" r="3.5" fill="#46535d"/><text x="14" y="21" fill="#71808b" font-size="9">虚线：起始向量 '+(initial[2]===1?'Z':'X')+'</text><text x="14" y="37" fill="'+color+'" font-size="9">实线：旋转后向量</text></svg>';
     return svg;
   }
   function updateEulerCompare(root){
@@ -883,6 +883,32 @@
     root.querySelector('[data-euler-angle="z"]').value='90';
     updateEulerCompare(root);
   });
+  function compositionMarkup(){
+    return '<section class="lesson-playground rotation-composition" data-rotation-composition><div class="playground-heading"><div><span class="playground-kicker">旋转组合 · 先预测，再操作</span><h3>交换两次旋转的顺序</h3><p>从向量 (0,0,1) 出发，分别绕固定世界轴 X、Y 旋转。拖动角度，观察中间步骤、最终箭头和组合四元数。</p></div></div>'
+      +'<div class="euler-control-row"><div class="euler-angle-control"><label>绕 X 的角度 <output data-compose-value="x">90°</output><input type="range" min="-180" max="180" step="5" value="90" data-compose-angle="x"></label></div><div class="euler-angle-control"><label>绕 Y 的角度 <output data-compose-value="y">90°</output><input type="range" min="-180" max="180" step="5" value="90" data-compose-angle="y"></label></div></div>'
+      +'<div class="euler-result-pair"><article class="euler-result-card" data-compose-panel="XY"><h4>先 X → 再 Y</h4><div class="euler-result-visual" data-compose-svg></div><p data-compose-steps></p><p>组合 q<sub>Y</sub>q<sub>X</sub>：<strong data-compose-q></strong></p></article><article class="euler-result-card" data-compose-panel="YX"><h4>先 Y → 再 X</h4><div class="euler-result-visual" data-compose-svg></div><p data-compose-steps></p><p>组合 q<sub>X</sub>q<sub>Y</sub>：<strong data-compose-q></strong></p></article></div>'
+      +'<p class="playground-footnote">约定：右手坐标系、主动旋转、固定轴，四元数顺序 (w,x,y,z)。先发生的旋转写在乘积右侧；图是三维方向的二维投影，数值为计算结果。q 与 −q 表示同一旋转。</p><a href="#lab/rotation">在交互实验室继续探索 →</a></section>';
+  }
+  function updateComposition(root){
+    const angles={};['x','y'].forEach(axis=>{angles[axis]=Number(root.querySelector('[data-compose-angle="'+axis+'"]').value);root.querySelector('[data-compose-value="'+axis+'"]').textContent=angles[axis]+'°';});
+    const halfX=angles.x*Math.PI/360,halfY=angles.y*Math.PI/360;
+    const qx=[Math.cos(halfX),Math.sin(halfX),0,0],qy=[Math.cos(halfY),0,Math.sin(halfY),0];
+    const fmtVector=v=>'('+v.map(n=>(Math.abs(n)<1e-9?0:n).toFixed(3)).join(', ')+')';
+    [['XY',qx,qy,'#7565a8'],['YX',qy,qx,'#bf8a3e']].forEach(([order,first,second,color])=>{
+      const panel=root.querySelector('[data-compose-panel="'+order+'"]'),p=[0,0,0,1],conjugate=q=>[q[0],-q[1],-q[2],-q[3]];
+      const rotate=(q,v)=>quaternionMultiply(quaternionMultiply(q,v),conjugate(q));
+      const middle=rotate(first,p),result=rotate(second,middle),combined=quaternionMultiply(second,first);
+      panel.querySelector('[data-compose-svg]').innerHTML=eulerVectorSvg(result.slice(1),order,color,[0,0,1]);
+      panel.querySelector('[data-compose-steps]').textContent='起点 (0, 0, 1) → 第一步 '+fmtVector(middle.slice(1))+' → 最终 '+fmtVector(result.slice(1));
+      panel.querySelector('[data-compose-q]').textContent=fmtVector(combined);
+    });
+  }
+  function rotationIntroMarkup(){
+    return '<figure class="lesson-playground"><figcaption><strong>从旋转轴和角度到四个数</strong></figcaption><p>例：轴 (0,0,2) 长度为 2，先除以 2 得到单位轴 (0,0,1)。实际旋转 90°，编码时使用半角 45°。</p><svg style="display:block;width:100%;height:auto" viewBox="0 0 600 150" role="img" aria-label="单位轴与角度输入，经过半角正弦和余弦计算，得到旋转四元数"><rect x="10" y="25" width="160" height="90" rx="8" fill="#eeeafa"/><text x="22" y="56" font-size="16">单位轴 (0,0,1)</text><text x="22" y="88" font-size="16">旋转角 90°</text><path d="M180 70h65m-10-8 10 8-10 8" fill="none" stroke="#6656a5" stroke-width="3"/><rect x="250" y="25" width="145" height="90" rx="8" fill="#eaf3f1"/><text x="263" y="56" font-size="16">半角 45°</text><text x="263" y="88" font-size="15">cos / sin ≈ 0.707</text><path d="M405 70h45m-10-8 10 8-10 8" fill="none" stroke="#6656a5" stroke-width="3"/><rect x="455" y="25" width="135" height="90" rx="8" fill="#fff1de"/><text x="468" y="56" font-size="15">q = (w,x,y,z)</text><text x="468" y="88" font-size="14">(0.707,0,0,0.707)</text></svg><p>四个分量共同记录一个旋转；它们不是四个独立的旋转角。零向量不能作为旋转轴。</p></figure>';
+  }
+  function rotationLabMarkup(){
+    return '<div class="lab-rotation-intro"><h2>三维旋转：用箭头看懂姿态</h2><p>按顺序试试：改变三个角并交换顺序；把俯仰拖到 ±90°；再调整旋转轴和角度，比较四元数组合。</p><p>每幅图都是三维方向在二维屏幕上的投影。数值与图一起帮助你判断结果。</p><a href="#lesson/euler-angles">先学欧拉角 →</a> · <a href="#lesson/quaternion">认识四元数 →</a> · <a href="#lesson/quaternion-compose">学习旋转组合 →</a></div>'+eulerCompareMarkup()+eulerGimbalMarkup()+quaternionMarkup()+compositionMarkup()+eulerComparisonMarkup();
+  }
   function render(lessonId,sectionIndex){
     if(lessonId==='dataset'&&sectionIndex===0)return boxLabelMarkup();
     if(lessonId==='dataset'&&sectionIndex===4)return yoloReadinessMarkup();
@@ -902,6 +928,8 @@
     if(lessonId==='anchors'&&sectionIndex===1)return anchorMarkup();
     if(lessonId==='yolo-loss'&&sectionIndex===3)return yoloLossMarkup();
     if(lessonId==='quaternion'&&sectionIndex===1)return quaternionMarkup();
+    if(lessonId==='quaternion'&&sectionIndex===0)return rotationIntroMarkup();
+    if(lessonId==='quaternion-compose'&&sectionIndex===0)return compositionMarkup();
     if(lessonId==='euler-angles'&&sectionIndex===0)return eulerCompareMarkup();
     if(lessonId==='euler-angles'&&sectionIndex===1)return eulerGimbalMarkup();
     if(lessonId==='quaternion-compare'&&sectionIndex===0)return eulerComparisonMarkup();
@@ -927,11 +955,14 @@
     document.querySelectorAll('[data-quaternion-playground]').forEach(updateQuaternion);
     document.querySelectorAll('[data-euler-compare]').forEach(updateEulerCompare);
     document.querySelectorAll('[data-euler-gimbal]').forEach(updateEulerGimbal);
+    document.querySelectorAll('[data-rotation-composition]').forEach(updateComposition);
   }
-  window.lessonPlaygrounds={render,initialize};
+  window.lessonPlaygrounds={render,initialize,rotationLabMarkup};
+  window.visionlabRotationLab={render:rotationLabMarkup,renderLesson:render};
 
   document.addEventListener('input',event=>{
     const target=event.target;
+    const composition=target.closest('[data-compose-angle]');if(composition){updateComposition(composition.closest('[data-rotation-composition]'));return}
     const boxLabelControl=target.closest('[data-box-label-coordinate]');if(boxLabelControl){updateBoxLabel(boxLabelControl.closest('[data-box-label-playground]'));return}
     const activation=target.closest('[data-activation-x]');if(activation){updateActivation(activation.closest('[data-activation-playground]'));return}
     const loss=target.closest('[data-loss-error],[data-loss-delta]');if(loss){updateLoss(loss.closest('[data-loss-playground]'));return}

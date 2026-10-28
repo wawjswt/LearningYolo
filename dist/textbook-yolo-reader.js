@@ -41,6 +41,17 @@
   );
   detail.subheadings={...(detail.subheadings||{}),[detailStart]:'R-CNN 原始流程：一张图如何得到检测结果'};
   detail.rcnnDiagram=detailStart;
+  const fast=rcnn.sections[2], fastStart=fast.paragraphs.length;
+  fast.paragraphs.push(
+    'Fast R-CNN 要解决的问题是：R-CNN 对相互重叠的候选区域重复运行 CNN，导致同一片图像被计算多次。Fast R-CNN 先把整张图送入卷积网络，得到一张共享特征图；外部方法提出的候选框仍在原图坐标中，再映射到特征图上。',
+    '以一个简单的映射为例：假设特征图相对于输入的总步幅为16，输入图上的候选框 (32,48,160,144) 大致对应特征图上的 (2,3,10,9)。实际实现还要处理边界、量化和取整；这里先用整除的例子看清坐标对应关系。',
+    '候选框大小不同，全连接层却需要固定长度的输入。RoI Pooling 将映射后的区域划分为固定行列，每个小格分别取最大值。例如某通道对应 4×4 数表，划分成 2×2 格，每格包含 2×2 个数，若四格最大值分别为 6、8、14、16，则输出为 [[6,8],[14,16]]。各通道分别操作，得到固定高宽的区域特征。',
+    '区域特征接入全连接层后分成两支：一支经 Softmax 输出类别与背景的分数，另一支输出边界框修正量。训练时分类损失与正样本框回归损失共同参与优化，整图卷积特征、区域特征和两支预测可以联合训练。Fast R-CNN 的候选区域通常仍由网络之外的方法产生。',
+    'Faster R-CNN 把候选生成也接入网络：区域建议网络 RPN 在共享特征图上滑动，对每个位置的多组 Anchor 同时预测目标性分数和框偏移。Anchor 是参考框；RPN 解码偏移、筛选分数并进行 NMS 后，得到一批建议区域，交给后续区域检测头。',
+    '例如一处位置设3组参考框，RPN 为每组输出一组目标性分类结果和4个框偏移。整张特征图上的候选汇合后先做筛选，后续检测头再判断具体类别并细调框。RPN 的目标性回答区域是否可能包含目标，最终分类头才区分汽车、行人等类别。',
+    '三代方法的计算顺序因此很清楚：R-CNN 对每个候选独立提特征；Fast R-CNN 共享整图特征但仍使用外部候选；Faster R-CNN 让 RPN 与区域检测头共享特征。共享减少了重复卷积，实际耗时还受网络、候选数和硬件影响。'
+  );
+  fast.subheadings={...(fast.subheadings||{}),[fastStart]:'共享特征之后，候选框怎样继续走'};fast.fastDiagram=fastStart;
   rcnn.sources=rcnn.sources||[];rcnn.sources.push({label:'R-CNN 原论文：候选区域与 CNN 特征',url:'https://arxiv.org/abs/1311.2524'});
   for(const [id,paragraphs] of Object.entries(examples)){
     const lesson=catalog.find(item=>item.id===id);if(!lesson)throw Error('YOLO lesson missing: '+id);
@@ -55,6 +66,7 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.fastDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>从共享特征到区域检测</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 卷积网络 → 共享特征图</b></li><li><span>候选</span><b>Fast：外部候选；Faster：RPN 与 Anchor 产生建议</b></li><li><span>区域特征</span><b>候选映射到特征图 → RoI Pooling → 固定尺寸</b></li><li><span>两支输出</span><b>类别与背景分数 + 边界框修正</b></li></ol></figure>';
     if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>特征提取</span><b>AlexNet 型 CNN → fc7 的 4096 维特征</b></li><li><span>分类与定位</span><b>类别 SVM 打分 + 边界框回归</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';
     if(!section.readerDiagram||index!==section.readerDiagram.start)return existing;
     const steps=section.readerDiagram.paragraphs.map((p,i)=>`<li><span>第 ${i+1} 步</span><b>${escape(p.split("。")[0])}</b></li>`).join('');

@@ -88,6 +88,8 @@ test('YOLO command identifiers and environment activation keep their intended me
   assert.equal(matches('运行 train.py --batch-size 4，查看 data.yaml。').length, 0);
   assert.equal(matches('创建 Python 虚拟环境，按系统激活它。').includes('激活'), false);
   assert.equal(matches('环境激活写法因终端而异。').includes('激活'), false);
+  assert.equal(matches('不读取真实模型激活。').includes('激活'), false);
+  assert.equal(matches('查看激活值与激活图。').includes('激活'), false);
   assert.equal(matches('SiLU 是激活函数。').includes('激活函数'), true);
   assert.deepEqual(Array.from(matches('支持向量机'), String), ['支持向量机']);
   assert.equal(matches('线性 SVM 给候选打分。').includes('SVM'), true);

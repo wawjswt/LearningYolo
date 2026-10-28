@@ -469,6 +469,8 @@
     if(alias==='激活'){
       if(/^(?:环境|账号|账户|设备|用户)/.test(text.slice(end)))return false;
       if(/(?:环境|venv)[^。；\n]{0,25}$/.test(text.slice(0,start))&&/^(?:它|写法|方式|步骤)/.test(text.slice(end)))return false;
+      // “模型激活” and “激活值/图” refer to computed responses, not the activation function.
+      if(/模型$/.test(text.slice(0,start))||/^(?:值|图|热图|响应)/.test(text.slice(end)))return false;
     }
     return true;
   }

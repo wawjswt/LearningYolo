@@ -27,6 +27,21 @@
     'debugging':['先找出问题出现在哪一步','如果最终没有框，依次记录原始输出是否有限、分数筛选前后保留多少、NMS后剩多少，以及绘制前坐标是否落在原图内。最早出现异常的步骤给出下一步检查方向。','例如原始候选25,200个、分数筛选后240个、NMS后2个，但画面没有框，先检查坐标还原、裁边、类别过滤和绘制；此时已有证据表明模型并非没有产生候选。','如果训练损失出现NaN，记录首次发生的批次，检查输入、标签、模型输出和各损失项；固定复现样本后一次只改一项，比较修改前后的结果。']
   };
   const catalog=typeof lessons!=='undefined'?lessons:window.lessons;
+  const rcnn=catalog.find(item=>item.id==='detection-two-stage');
+  const detail=rcnn.sections[1];
+  const detailStart=detail.paragraphs.length;
+  detail.paragraphs.push(
+    'R-CNN 的全称是 Regions with CNN features，即使用卷积神经网络特征处理候选区域。它把目标检测拆成候选区域生成、区域特征提取、类别打分和边界框修正。原论文使用 Selective Search（选择性搜索）提出约 2000 个候选区域，再逐个送入卷积网络。',
+    '第一步：输入一张图片，Selective Search 根据颜色、纹理等相似性合并区域，产生不同大小和长宽比的候选框。这些框只是可能包含物体的区域；它们此时没有由 CNN 给出的类别。候选框覆盖不准会影响后续检测，因为后面的分类器只检查已经提出的区域。',
+    '第二步：逐个从原图裁取候选区域，并将区域变换到 CNN 需要的固定尺寸。原论文的 AlexNet 型网络使用 227×227 输入；为保持上下文，论文在裁剪前还考虑候选区域周边的像素。不同宽高比的区域变换到固定尺寸时可能发生形变。',
+    '第三步：每个 227×227 区域独立经过五个卷积层和全连接层，提取 4096 维的 fc7 特征。这个 4096 维向量是一组由网络计算出的数字，用来描述候选区域；它不是 4096 个类别。约 2000 个区域要分别经过 CNN，重叠区域中的图像内容也会重复计算。',
+    '第四步：针对每个类别分别使用线性 SVM（支持向量机）给 fc7 特征打分。例如汽车 SVM 给某区域较高分，说明该区域的特征与训练出的汽车判别规则较吻合。不同类别分别打分，再结合阈值和非极大值抑制（NMS）整理重复检测。',
+    '第五步：边界框回归器根据区域特征预测位置修正量，调整候选框的中心和宽高，使它更贴近目标。举例来说，原候选偏向汽车左侧，回归器可以将中心向右移动并调整宽度；修正量是学习得到的，具体结果取决于特征和参数。',
+    '训练分为多个环节：先用图像分类数据预训练 CNN，再用带检测标注的候选区域微调；然后为类别训练线性 SVM，并训练边界框回归器。原始 R-CNN 并非一个同时端到端训练所有环节的单一检测网络。Fast R-CNN 的重要变化是整图共享卷积特征、再提取区域特征；Faster R-CNN 进一步使用区域建议网络产生候选。'
+  );
+  detail.subheadings={...(detail.subheadings||{}),[detailStart]:'R-CNN 原始流程：一张图如何得到检测结果'};
+  detail.rcnnDiagram=detailStart;
+  rcnn.sources=rcnn.sources||[];rcnn.sources.push({label:'R-CNN 原论文：候选区域与 CNN 特征',url:'https://arxiv.org/abs/1311.2524'});
   for(const [id,paragraphs] of Object.entries(examples)){
     const lesson=catalog.find(item=>item.id===id);if(!lesson)throw Error('YOLO lesson missing: '+id);
     const [title,...text]=paragraphs;
@@ -40,6 +55,7 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>特征提取</span><b>AlexNet 型 CNN → fc7 的 4096 维特征</b></li><li><span>分类与定位</span><b>类别 SVM 打分 + 边界框回归</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';
     if(!section.readerDiagram||index!==section.readerDiagram.start)return existing;
     const steps=section.readerDiagram.paragraphs.map((p,i)=>`<li><span>第 ${i+1} 步</span><b>${escape(p.split("。")[0])}</b></li>`).join('');
     return existing+`<figure class="yd-workshop yl-figure"><figcaption><strong>跟着例子走一遍</strong></figcaption><ol class="yl-flow">${steps}</ol></figure>`;

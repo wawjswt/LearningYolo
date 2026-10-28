@@ -68,6 +68,10 @@ test('YOLO examples keep units, model assumptions and explanations in their inte
   assert.match(exportText, /python export\.py --weights/);
   assert.match(exportText, /--nms 选项标为 TensorFlow 路线使用/);
   assert.match(exportText, /经过NMS，候选数量或排列顺序可能/);
+  const rcnnSection = course('detection-two-stage').sections.find(s => s.rcnnDiagram !== undefined);
+  const rcnnFigure = context.visionlabYoloLearning.renderParagraph(rcnnSection, rcnnSection.rcnnDiagram);
+  assert.match(rcnnFigure, /fc7 → 各类别线性 SVM/);
+  assert.match(rcnnFigure, /pool5 → 线性框回归/);
   const checkpoint = course('train-yolo').sections.flatMap(s => s.exercise ? [s.exercise] : []).find(e => e.q.includes('best.pt 与 last.pt'));
   assert.match(checkpoint.options[checkpoint.answer], /模型权重/);
   assert.match(checkpoint.why, /续训还需检查/);

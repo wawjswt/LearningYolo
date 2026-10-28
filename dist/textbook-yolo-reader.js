@@ -36,7 +36,8 @@
     '第二步：逐个从原图裁取候选区域，并将区域变换到 CNN 需要的固定尺寸。原论文的 AlexNet 型网络使用 227×227 输入；为保持上下文，论文在裁剪前还考虑候选区域周边的像素。不同宽高比的区域变换到固定尺寸时可能发生形变。',
     '第三步：每个 227×227 区域独立经过五个卷积层和全连接层，提取 4096 维的 fc7 特征。这个 4096 维向量是一组由网络计算出的数字，用来描述候选区域；它不是 4096 个类别。约 2000 个区域要分别经过 CNN，重叠区域中的图像内容也会重复计算。',
     '第四步：针对每个类别分别使用线性 SVM（支持向量机）给 fc7 特征打分。例如汽车 SVM 给某区域较高分，说明该区域的特征与训练出的汽车判别规则较吻合。不同类别分别打分，再结合阈值和非极大值抑制（NMS）整理重复检测。',
-    '第五步：边界框回归器根据区域特征预测位置修正量，调整候选框的中心和宽高，使它更贴近目标。举例来说，原候选偏向汽车左侧，回归器可以将中心向右移动并调整宽度；修正量是学习得到的，具体结果取决于特征和参数。',
+    '第五步：边界框回归器根据区域特征预测位置修正量，调整候选框的中心和宽高，使它更贴近目标。原论文的回归器读取同一次区域前向计算中的 pool5 特征，形状为6×6×256，展平后有9216个数；前面分类的线性SVM使用的是后续fc7的4096维特征。两条任务使用的是同一个区域经过网络得到的不同层特征。',
+    '例如候选框偏向汽车左侧，回归器可以将中心向右移动并调整宽度；四个线性回归预测量分别用于调整中心x、中心y、宽和高。它们是根据训练样本学到的，不能直接把SVM的类别分数当作位置修正量。',
     '训练分为多个环节：先用图像分类数据预训练 CNN，再用带检测标注的候选区域微调；然后为类别训练线性 SVM，并训练边界框回归器。原始 R-CNN 并非一个同时端到端训练所有环节的单一检测网络。Fast R-CNN 的重要变化是整图共享卷积特征、再提取区域特征；Faster R-CNN 进一步使用区域建议网络产生候选。'
   );
   detail.subheadings={...(detail.subheadings||{}),[detailStart]:'R-CNN 原始流程：一张图如何得到检测结果'};
@@ -210,7 +211,7 @@
     if(section.evoDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>认识本课的模型配置</strong></figcaption><ol class="yl-flow"><li><span>检测任务</span><b>第一代 YOLO：网格直接预测</b></li><li><span>模型版本</span><b>YOLOv5 v7.0：6×6入口、C3、SPPF</b></li><li><span>尺度融合</span><b>Neck 融合三种空间尺寸</b></li><li><span>预测</span><b>Detect 使用参考宽高与各尺度特征</b></li></ol></figure>';
     if(section.oneStageDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>第一代 YOLO：从图片到 7 × 7 × 30</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 神经网络</b></li><li><span>7 × 7 网格</span><b>每格 2 个框 × 5 个数 + 20 个类别数</b></li><li><span>分类与定位</span><b>框坐标、置信度与类别分数</b></li><li><span>后处理</span><b>类别分数 × 框置信度 → 筛选与 NMS</b></li></ol></figure>';
     if(section.fastDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>从共享特征到区域检测</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 卷积网络 → 共享特征图</b></li><li><span>候选</span><b>Fast：外部候选；Faster：RPN 与 Anchor 产生建议</b></li><li><span>区域特征</span><b>候选映射到特征图 → RoI Pooling → 固定尺寸</b></li><li><span>两支输出</span><b>类别与背景分数 + 边界框修正</b></li></ol></figure>';
-    if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>特征提取</span><b>AlexNet 型 CNN → fc7 的 4096 维特征</b></li><li><span>分类与定位</span><b>类别 SVM 打分 + 边界框回归</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';
+    if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>区域网络</span><b>卷积 → pool5（6 × 6 × 256）→ fc6 → fc7（4096维）</b></li><li><span>分类分支</span><b>fc7 → 各类别线性 SVM 打分</b></li><li><span>定位分支</span><b>pool5 → 线性框回归 → 修正中心与宽高</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';
     if(!section.readerDiagram||index!==section.readerDiagram.start)return existing;
     const steps=section.readerDiagram.steps.map((p,i)=>`<li><span>第 ${i+1} 步</span><b>${escape(p)}</b></li>`).join('');
     return existing+`<figure class="yd-workshop yl-figure"><figcaption><strong>跟着例子走一遍</strong></figcaption><ol class="yl-flow">${steps}</ol></figure>`;

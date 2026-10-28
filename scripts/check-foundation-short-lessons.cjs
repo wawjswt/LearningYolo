@@ -53,6 +53,9 @@ test('YOLO examples keep units, model assumptions and explanations in their inte
   assert.doesNotMatch(anchor, /是换成同一网格单位后的Anchor宽高/);
   const head = course('yolo-head').sections.flatMap(s => s.paragraphs).find(p => p.includes('三个输出卷积的参数分别'));
   assert.match(head, /80类/);
+  const checkerText = course('yolo-head').sections.flatMap(s => s.paragraphs).find(p => p.includes('脚本分别用训练模式读取原始多尺度列表'));
+  assert.match(checkerText, /每个检测尺度的形状/);
+  assert.match(checkerText, /冻结BN统计/);
   assert.equal(course('train-yolo').sections.find(s => s.trainDetail !== undefined).id, 'repo-training-loop');
   assert.equal(course('inference').sections.find(s => s.nmsDetail !== undefined).id, 'inference-s-hlnnlcv');
   assert.equal(course('yolo-data').sections.find(s => s.dataPractice !== undefined).id, 'yolo-data-paths');

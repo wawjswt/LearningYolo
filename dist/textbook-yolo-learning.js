@@ -606,6 +606,7 @@
   const hs=courses.get('yolo-head').sections;
   headIntro.paragraphs=[
     '检测头（Detection Head）是把特征转换成检测数据的末端模块。前面的Neck交来的是数字组成的特征表，还没有写明框的位置或类别；Detect把每个位置的特征变成一批候选答案。',
+    '为什么要有检测头？特征图提供网络从图片中提取的线索，而检测任务需要位置和类别。检测头用可训练的输出卷积，将每个位置的特征整理成框参数和分数，供后续计算使用。三个尺度各有自己的卷积：它们的输入通道数不同，但输出遵循同一套字段约定。',
     '先读一条已经解码的候选：[100,80,40,20,0.9,0.1,0.8]。前四个数是输入画布上的中心x、中心y、宽、高；0.9是物体性分数，最后两项分别是烟雾和火焰的分数。火焰组合分数为0.9×0.8=0.72。这是人工给定的例子，输出卷积本身先给出原始数，还需要解码。',
     '每个网格位置准备三组参考宽高，称为Anchor（锚框），每组对应一条候选。参考框不是最终预测框；为什么要用它，后面Anchor课会继续解释。现在先数一条候选需要多少数。',
     '输入为[1,3,640,640]时，第24层分别读取层17、20、23：P3是[1,256,80,80]，P4是[1,512,40,40]，P5是[1,1024,20,20]。每个形状依次表示批次、通道、高、宽。三路分别使用自己的1×1输出卷积。',
@@ -632,8 +633,13 @@
   hs[4].paragraphs=[
     '训练时，Detect把三尺度原始预测交出去：两类、B=1时分别为[1,3,80,80,7]、[1,3,40,40,7]、[1,3,20,20,7]。真实标签另交给损失计算，它决定哪些预测要与哪些目标比较；损失再通过反向传播影响网络参数。',
     '普通推理时，同一套输出继续经过Sigmoid和框解码。P3、P4、P5分别展平成19,200、4,800、1,200条候选，再拼成[1,25200,7]。普通推理返回解码结果和原始预测；导出模式的返回包装可能不同。',
-    '外部后处理再组合物体性与类别分数、按门槛筛选和去除重复框，并将坐标从输入画布还原到原图。每张图片最终保留的框数可以不同，也可以为0；25,200是筛选前的候选数，不是图片里有25,200个物体。样本怎样分配和误差怎样计算，分别见后面的样本分配与检测损失课。'
+    '下面跟踪其中一条候选。假设P3步幅是8，网格列为10、行为12，参考框宽16、高30像素，四个原始框参数都为0。Sigmoid(0)=0.5；按照本版本中心解码公式，中心x=(2×0.5−0.5+10)×8=84，中心y=(2×0.5−0.5+12)×8=100。宽=(2×0.5)²×16=16，高=(2×0.5)²×30=30。',
+    '所以这条候选在输入画布上的中心与宽高是(84,100,16,30)。转换为左上、右下角点时，横坐标是84±16/2，纵坐标是100±30/2，得到(76,85,92,115)。这只是框的位置；还需要分数来决定是否保留。',
+    '假设解码后的物体性分数是0.9，火焰类别分数是0.8，两者相乘得到火焰组合分数0.72。如果设筛选门槛为0.50，这条候选会通过分数筛选；如果附近还有同类的高分重叠框，NMS会按分数和重叠程度决定是否保留它。这里的分数是为演示另行假设的数，不能从前面四个框参数推导出来。',
+    '最后把留下的框从输入画布映回原图：假设预处理时原图统一缩小为原来的一半、左侧补20像素、顶部不补边，先让x坐标减20，再将x和y都除以0.5。于是(76,85,92,115)还原为(112,170,144,230)。实际使用时要记录该图片真实的缩放比例和补边，最后按原图边界裁剪。',
+    '每张图片最终保留的框数可以不同，也可以为0；25,200是筛选前的候选数。训练时不通过这套筛选结果回传损失，而是用原始预测、标签和分配规则计算训练目标；样本怎样分配和误差怎样计算，分别见后面的样本分配与检测损失课。'
   ];
+  hs[4].learningFigure='head-candidate-walk';hs[4].learningAfter=3;
   for(const index of [6,7,8]){hs[index].depth='advanced';hs[index].depthLabel='自定义项目：改类别与检查加载 · 点击展开';}
   for(const index of [9,10,11])hs[index].depthLabel='结构改造：P2与解耦头 · 点击展开';
   courses.get('yolo-head').beginnerReading={title:'先读基础，再按需要改模型',description:'第一步读第1～5节，认输入特征、输出字段、换轴和训练/推理。第二步要把80类模型改成自己的数据时读第7～9节，沿类别表、输出头、权重加载、前向和验证逐项检查。第三步要加尺度或换预测结构时读第10～12节；这些属于结构改造，不能跳过训练与部署兼容检查。',steps:[['yolo-head#head-fields','基础：第3节，数清候选字段'],['yolo-head#head-boundary','基础：第5节，分清训练输出和推理输出'],['yolo-head#head-change-classes','项目：第7节，类别表到两类输出头'],['yolo-head#head-transfer','项目：第9节，筛选兼容预训练权重'],['yolo-head#head-p2','改造：第10节，沿层号增加P2路径'],['yolo-head#head-decoupled','改造：第12节，分支后怎样重组候选字段']]};
@@ -806,7 +812,7 @@
     }).join('');
     root.querySelector('[data-yl-output]').innerHTML='<div class="yd-values">'+card('组合分数门槛',conf.toFixed(2))+card('NMS IoU门槛',limit.toFixed(2))+card('类别规则',agnostic?'跨类别去重':'按类别去重')+card('最终保留',kept.map(k=>k.id).join('、')||'0条')+'</div><svg viewBox="300 260 300 150" role="img" aria-label="640输入画布局部放大，A是贯穿算例火焰框，实线保留候选，虚线删除"><text x="302" y="270">输入画布像素局部放大</text><rect x="300" y="280" width="300" height="120" fill="#e6eee7" stroke="#c6c1b8"/>'+drawing+'</svg>'+table('逐条决策记录',['候选','类别','输入画布角点xyxy','物体性×类别','组合分数','结果'],nmsData.map(item=>[item.id,item.name,'['+item.box.map(v=>Number(v.toFixed(1))).join(', ')+']',item.obj+'×'+item.cp,item.score.toFixed(2),decisions.get(item.id)]),'A是人工假设恰好命中目标的理想框；B同类重叠框约IoU='+overlap(nmsData[0].box,nmsData[1].box).toFixed(3)+'。默认按类别NMS时D与A不会互相抑制；NMS本身不查看真实标签。');
   }
-  Object.assign(figures,{assignment:assignmentMarkup,loss:lossMarkup,nms:nmsMarkup});
+  Object.assign(figures,{assignment:assignmentMarkup,loss:lossMarkup,nms:nmsMarkup,'head-candidate-walk':()=>table('一条火焰候选：从原始参数到原图',['步骤','输入与计算','结果'],[['解码框','网格(10,12)，步幅8；参考宽高(16,30)，框参数均为0','中心(84,100)，宽高(16,30)'],['换成角点','中心坐标分别减、加半个宽高','输入画布 (76,85,92,115)'],['评分','物体性0.9 × 火焰分数0.8','0.72，超过示例门槛0.50'],['映回原图','左补20、上补0，缩放比0.5','原图 (112,170,144,230)']],'数值为独立构造的教学例子；NMS还需比较其他候选。')});
   function update(root){({'label-geometry':updateLabelGeometry,assignment:updateAssignment,loss:updateLoss,nms:updateNms}[root.dataset.ylKind])?.(root);}
   const previous=window.lessonPlaygrounds||{};
   window.lessonPlaygrounds={...previous,initialize(){previous.initialize?.();document.querySelectorAll('[data-yl-kind]').forEach(update);}};

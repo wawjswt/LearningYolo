@@ -142,12 +142,8 @@
     'NMS 阈值用于比较候选与候选；评估时的 IoU 阈值用于比较保留下来的预测与真实标签。即使 B 被抑制，也不能只凭这一操作断定 A 是真阳性：还需看 A 的类别、与真实框的重叠，以及一对一匹配情况。对于相邻的真实目标，去重门槛过低可能合并两处检测，应结合实际图片检查。'
   );inf.subheadings={...(inf.subheadings||{}),[infStart]:'手算两个候选的 NMS',[infStart+1]:'先算交并比',[infStart+2]:'再按分数和门槛筛选'};inf.nmsDetail=infStart;
   const config=catalog.find(item=>item.id==='yolo-config'), cs=config.sections[0], csStart=cs.paragraphs.length;
-  cs.paragraphs.push(
-    '模型 YAML 是结构说明，解析器根据配置创建模块并连接输入；它不是已经训练好的权重。每行 [from, number, module, args] 指明输入来源、基础重复次数、模块和参数。层号从0开始，from=-1 通常读取上一层，多来源列表则依次读取指定层。',
-    '看一个拼接：第18层输出 [1,256,40,40]，第14层保存的输出是 [1,256,40,40]。第19层 Concat 读取两者，沿通道拼接得到 [1,512,40,40]。拼接只把两组通道并排放置；接下来的模块才继续学习组合这些特征。这里使用本课 YOLOv5l 配置。',
-    '再看 C3 的重复：配置行中的 number 是基础次数，解析器根据 depth_multiple 调整它，并将结果交给 C3 内部。宽度系数影响部分模块的输出通道，解析器还会按实现规则调整通道数。查看其他规模时，应根据实际构建结果逐层核对，不把基础参数直接当成最终形状。',
-    '自己修改配置时按顺序检查：先找到每条 from 引用，再写出各输入的 [B,C,H,W]；对于 Concat，确认 B、H、W 相同，然后将通道相加；最后运行实际模型前向，核对每层形状。若加入新尺度，还要同步核对检测头、Anchor、损失和推理。'
-  );cs.subheadings={...(cs.subheadings||{}),[csStart]:'从一行配置追踪到实际张量'};cs.configTrace=csStart;
+  cs.paragraphs.push('修改配置时按顺序检查：写出每个from引用和各输入的[B,C,H,W]；Concat前确认B、H、W一致，再沿通道轴相加；最后用实际前向核对输出。加入新尺度还要同步核对Detect、Anchor、损失与推理。');
+  cs.subheadings={...(cs.subheadings||{}),[csStart]:'修改后怎样核对结构'};cs.configTrace=csStart;
   const exportCourse=catalog.find(item=>item.id==='yolo-export');
   const exportCheck=exportCourse.sections.find(section=>section.id==='export-check'), exportStart=exportCheck.paragraphs.length;
   exportCheck.paragraphs.push(
@@ -186,14 +182,51 @@
     'yolo-trace':['确定原图与画布','跟踪各层和预测尺度','按训练或推理路线继续'],
     'debugging':['记录最早异常的位置','保留输入、输出与配置','控制变量并复测']
   };
+  const omitRepeatedReaderExamples=new Set(['detection-one-stage','yolo-evolution','architecture','yolo-data','yolo-config','yolo-c3','yolo-sppf','yolo-neck','yolo-head','anchors','yolo-assignment','yolo-loss','train-yolo','yolo-checkpoints','yolo-augment','yolo-evaluation','inference','yolo-export','yolo-trace','debugging']);
   for(const [id,paragraphs] of Object.entries(examples)){
     const lesson=catalog.find(item=>item.id===id);if(!lesson)throw Error('YOLO lesson missing: '+id);
+    // These short end-of-course recaps repeat worked examples already taught in the body.
+    // Keep the dedicated diagrams/interactive figures, but do not append another summary paragraph block.
+    if(omitRepeatedReaderExamples.has(id))continue;
     const [title,...text]=paragraphs;
     const section=lesson.sections[lesson.sections.length-1];
     const start=section.paragraphs.length;
     section.paragraphs.push(...text);
     section.subheadings={...(section.subheadings||{}),[start]:title};
     section.readerDiagram={start,steps:flowSteps[id]};
+  }
+  const dataPaths=catalog.find(item=>item.id==='yolo-data').sections[1];
+  dataPaths.paragraphs=[
+    '数据 YAML 记录图片集合和类别名称：path 是数据根目录，train、val、test 指向相应图片目录或清单，names 说明类别编号的含义。YOLOv5 v7.0 的 check_dataset() 先按仓库根目录解析相对 path，再把 train/val 等路径接到数据根目录下；不能一概认为相对路径从 YAML 文件所在文件夹开始。',
+    '例如仓库在 D:/projects/yolov5，YAML 写 path: ./datasets/dfire、val: images/val，实际验证图片目录就是 D:/projects/yolov5/datasets/dfire/images/val。若数据放在仓库旁边，按实际位置写 ../datasets/dfire 或绝对路径；先核对程序最终解析出的路径，再开始训练。',
+    '图片与标签按路径和文件名配对。常见布局是 images/train/fire001.jpg 对应 labels/train/fire001.txt，文件名相同、扩展名不同；加载器会按本项目规则把图片路径中的 images 换成 labels。若图片改名、目录层级不同或配对规则不符，程序可能找不到对应标签。',
+    '一张背景图可以有空标签；“没有目标”与“有目标但漏标”在训练中的含义完全不同。本地加载流程可能把缺失标签当作空标签处理，因此没有路径报错不能证明标注完整。分类任务通常按类别文件夹组织，实例分割需要多边形等标注格式，都不能直接套用检测框文件。',
+    '开训前抽查几张有目标、无目标和多目标的图片，把标签框画回原图，核对类别、位置、漏标和重复框；再打开训练批次可视化，确认缩放、翻转、裁切或拼图后图像与框仍对齐。类别 names 的顺序也要与标签第一列使用的编号一致。',
+    '先用少量数据跑通读取流程：确认 train/val 目录存在且含有图片，抽查对应标签，检查类别数和 names 后再启动短程训练。这样能把“文件没有找到”“图片漏标签”“类别含义对错”分开定位，避免等长时间训练结束才发现数据入口有问题。'
+  ];
+  dataPaths.subheadings={0:'数据 YAML 决定程序去哪里找图片',2:'图片与标签怎样配对',4:'开训前检查路径、标注和批次图'};
+  dataPaths.dataTrace=4;
+  delete dataPaths.dataPractice;
+  const dataSplit=catalog.find(item=>item.id==='yolo-data').sections[2];
+  dataSplit.paragraphs.push('为让结果能复现，保存每张图片属于train、val或test的清单，按视频/现场分组的规则，类别名称与编号顺序、数据版本、代码版本、模型与超参数YAML、完整命令、随机种子和评价方式。只保存一个“seed=某数”不足以复现数据划分；固定分组清单更容易确认这次实验实际用了哪些图片。');
+  // Remove exact repeats in the loss course: the first worked BCE example already computes these values in order.
+  const lossSection=catalog.find(item=>item.id==='yolo-loss').sections[1];
+  const lossTailStart=lossSection.paragraphs.findIndex(p=>p.startsWith('接着上一课：一旦一个位置与火焰标签匹配'));
+  if(lossTailStart>=0){
+    lossSection.paragraphs=lossSection.paragraphs.slice(0,lossTailStart);
+    if(lossSection.subheadings)lossSection.subheadings=Object.fromEntries(Object.entries(lossSection.subheadings).filter(([i])=>Number(i)<lossTailStart));
+    lossSection.lossDetail=lossSection.paragraphs.findIndex(p=>p.startsWith('再看物体性：假设框的CIoU=0.6'));
+  }
+  // The scalar update is already explained in the previous paragraphs; keep one concrete tensor-shape example here.
+  const trainLoop=catalog.find(item=>item.id==='train-yolo').sections.find(s=>s.id==='repo-training-loop');
+  const trainStart=trainLoop.paragraphs.findIndex(p=>p.startsWith('把一个训练批次拆开看：'));
+  if(trainStart>=0)trainLoop.paragraphs.splice(trainStart,trainLoop.paragraphs.length-trainStart,
+    '以双类任务、4张640×640图片为例，图片张量形状为[4,3,640,640]；标签独立存为[N,6]，每行含批次图片索引、类别与归一化框。模型原始输出为[4,3,80,80,7]、[4,3,40,40,7]和[4,3,20,20,7]。标签不是第四个图像通道；目标分配会用它们找出需要监督的位置。'
+  );
+  if(trainStart>=0){
+    const preserved=Object.fromEntries(Object.entries(trainLoop.subheadings||{}).filter(([i])=>Number(i)<trainStart));
+    trainLoop.subheadings={...preserved,[trainStart]:'一个batch中的图片张量和标签各是什么'};
+    trainLoop.trainDetail=trainStart;
   }
   const old=window.visionlabYoloLearning.renderParagraph.bind(window.visionlabYoloLearning);
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -205,7 +238,7 @@
     if(section.assignmentAll===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>P3：一处火焰如何得到9条匹配</strong></figcaption><svg viewBox="0 0 520 230" role="img" aria-label="横向为三组参考，纵向为中心格、左邻格、下邻格，共九条匹配"><g fill="#f0edf8" stroke="#d1c7e5"><rect x="118" y="40" width="112" height="47" rx="5"/><rect x="238" y="40" width="112" height="47" rx="5"/><rect x="358" y="40" width="112" height="47" rx="5"/><rect x="118" y="97" width="112" height="47" rx="5"/><rect x="238" y="97" width="112" height="47" rx="5"/><rect x="358" y="97" width="112" height="47" rx="5"/><rect x="118" y="154" width="112" height="47" rx="5"/><rect x="238" y="154" width="112" height="47" rx="5"/><rect x="358" y="154" width="112" height="47" rx="5"/></g><g fill="#35445a" font-size="14" text-anchor="middle"><text x="174" y="26">参考 10×13</text><text x="294" y="26">参考 16×30</text><text x="414" y="26">参考 33×23</text><text x="66" y="68">中心 (42,37)</text><text x="66" y="125">左邻 (41,37)</text><text x="66" y="182">下邻 (42,38)</text><text x="174" y="69">匹配</text><text x="294" y="69">匹配</text><text x="414" y="69">匹配</text><text x="174" y="126">匹配</text><text x="294" y="126">匹配</text><text x="414" y="126">匹配</text><text x="174" y="183">匹配</text><text x="294" y="183">匹配</text><text x="414" y="183">匹配</text></g></svg><p>三列是 P3 的三组参考宽高（像素）；三行是同一目标分配到的位置（列，行）。其他尺度单独计算。</p></figure>';
     if(section.lossDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>一个正样本的三条监督路径</strong></figcaption><ol class="yl-flow"><li><span>预测框</span><b>与目标框比较：CIoU 0.6 → 框项 0.4</b></li><li><span>物体性</span><b>目标0.6，分数0.5 → BCE约0.693</b></li><li><span>类别</span><b>目标[0,1]，分数[0.8,0.2] → 平均BCE约1.609</b></li><li><span>整体训练</span><b>结合其他位置、尺度及权重，再反向传播</b></li></ol></figure>';
     if(section.dataPractice===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>1000 × 500 原图：从角点到标签</strong></figcaption><svg viewBox="0 0 600 330" role="img" aria-label="原图示意：火焰框角点400、160到600、240，中心500、200；烟雾框角点100、50到300、150"><rect x="40" y="35" width="500" height="250" fill="#eef3f6" stroke="#607287"/><rect x="240" y="115" width="100" height="40" fill="#eab58b" fill-opacity=".5" stroke="#b54e57" stroke-width="3"/><circle cx="290" cy="135" r="4" fill="#b54e57"/><text x="244" y="108" font-size="16">火焰 1</text><rect x="90" y="60" width="100" height="50" fill="#c9d5df" stroke="#52789d" stroke-width="3"/><text x="94" y="55" font-size="16">烟雾 0</text><text x="40" y="315" font-size="15">原图按比例缩小绘制；框坐标以原图像素计算</text></svg><ol class="yl-flow"><li><span>火焰</span><b>中心(500,200)，宽高(200,80)</b></li><li><span>标签第1行</span><b>1 0.5 0.4 0.2 0.16</b></li><li><span>烟雾</span><b>中心(200,100)，宽高(200,100)</b></li><li><span>标签第2行</span><b>0 0.2 0.2 0.2 0.2</b></li></ol></figure>';
-    if(section.dataTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>图片和标签如何送到训练</strong></figcaption><ol class="yl-flow"><li><span>图片</span><b>frame001.jpg：宽1000、高500</b></li><li><span>标注框</span><b>左上(400,160)，右下(600,240)</b></li><li><span>标签</span><b>1 0.5 0.4 0.2 0.16</b></li><li><span>配置</span><b>数据根目录 + 图片路径 + 类别名称</b></li><li><span>检查</span><b>叠加框，核对编号、位置与漏标</b></li></ol></figure>';
+    if(section.dataTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>数据 YAML 怎样找到图片和标签</strong></figcaption><ol class="yl-flow"><li><span>仓库根目录</span><b>D:/projects/yolov5</b></li><li><span>数据根目录</span><b>./datasets/dfire</b></li><li><span>验证图片</span><b>images/val → datasets/dfire/images/val</b></li><li><span>图片与标签</span><b>images/train/fire001.jpg → labels/train/fire001.txt</b></li><li><span>开训前</span><b>确认文件存在，再检查框图和增强批次图</b></li></ol></figure>';
     if(section.configTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l 第19层：两路拼接</strong></figcaption><ol class="yl-flow"><li><span>第18层</span><b>[1,256,40,40]</b></li><li><span>第14层</span><b>[1,256,40,40]</b></li><li><span>Concat</span><b>高宽一致，沿通道拼接</b></li><li><span>输出</span><b>[1,512,40,40] → 后续 C3</b></li></ol></figure>';
     if(section.archDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l：640方形输入的数据流</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>[1,3,640,640] → [1,64,320,320]</b></li><li><span>Backbone</span><b>80×80 → 40×40 → 20×20；C3与SPPF提取特征</b></li><li><span>Neck</span><b>20 → 40 → 80，再向 40 → 20 融合</b></li><li><span>Detect 输入</span><b>[1,256,80,80] · [1,512,40,40] · [1,1024,20,20]</b></li><li><span>两类输出</span><b>每尺度 3 组参考 × 7 个字段；筛选前共 25,200 条候选</b></li></ol></figure>';
     if(section.evoDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>认识本课的模型配置</strong></figcaption><ol class="yl-flow"><li><span>检测任务</span><b>第一代 YOLO：网格直接预测</b></li><li><span>模型版本</span><b>YOLOv5 v7.0：6×6入口、C3、SPPF</b></li><li><span>尺度融合</span><b>Neck 融合三种空间尺寸</b></li><li><span>预测</span><b>Detect 使用参考宽高与各尺度特征</b></li></ol></figure>';

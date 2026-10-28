@@ -55,6 +55,15 @@ test('YOLO examples keep units, model assumptions and explanations in their inte
   assert.match(head, /80类/);
   assert.equal(course('train-yolo').sections.find(s => s.trainDetail !== undefined).id, 'repo-training-loop');
   assert.equal(course('inference').sections.find(s => s.nmsDetail !== undefined).id, 'inference-s-hlnnlcv');
+  assert.equal(course('yolo-data').sections.find(s => s.dataPractice !== undefined).id, 'yolo-data-paths');
+  const assignment = course('yolo-assignment').sections.find(s => s.assignmentAll !== undefined);
+  const assignmentFigure = context.visionlabYoloLearning.renderParagraph(assignment, assignment.assignmentAll);
+  assert.match(assignmentFigure, /一处火焰如何得到9条匹配/);
+  assert.match(assignmentFigure, /中心 \(42,37\)/);
+  assert.match(assignmentFigure, /左邻 \(41,37\)/);
+  assert.match(assignmentFigure, /下邻 \(42,38\)/);
+  assert.equal((assignmentFigure.match(/>匹配<\/text>/g) || []).length, 9);
+  assert.deepEqual([[10,13],[16,30],[33,23]].map(([w,h]) => Math.max(32/w,w/32,16/h,h/16) < 4), [true,true,true]);
   const checkpoint = course('train-yolo').sections.flatMap(s => s.exercise ? [s.exercise] : []).find(e => e.q.includes('best.pt 与 last.pt'));
   assert.match(checkpoint.options[checkpoint.answer], /模型权重/);
   assert.match(checkpoint.why, /续训还需检查/);

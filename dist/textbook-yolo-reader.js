@@ -90,6 +90,19 @@
     '训练集用于参数更新，验证集用于比较设置和选择模型。若某段视频连续帧同时进入两者，画面几乎相同，验证可能高估对新视频的表现。先按视频或场景分组，再检查各集合的类别、天气和目标大小覆盖。',
     '空标签表示该图片没有标注目标，但也可能是漏标。对几张有目标、无目标和多目标图片分别叠加标签框：检查类别编号、框是否包住目标、有没有漏框或重复框；再检查增强后的图片和框是否同步变化。'
   );ds.subheadings={...(ds.subheadings||{}),[dsStart]:'把图片、标签和数据配置真正连起来'};ds.dataTrace=dsStart;
+  const practice=data.sections[2], practiceStart=practice.paragraphs.length;
+  practice.paragraphs.push(
+    '先建立一个可以检查的小数据集。假设项目目录是 dataset，里面有 images/train、images/val、labels/train、labels/val 四个目录。images/train/road001.jpg 的标注放在 labels/train/road001.txt；images/val/road101.jpg 的标注放在 labels/val/road101.txt。文件的扩展名不同，但对应的基本文件名相同。训练和验证分开存放后，才能清楚知道每张图片参与了哪个环节。',
+    '先确定类别表：约定 0 是 smoke（烟雾），1 是 fire（火焰）。这不是模型自动推断的编号，而是数据约定。所有标注文件、数据 YAML 中的 names 和推理时展示的名称都要使用同一顺序。若把 names 改成 [fire, smoke]，但没有同步转换原标签，原来编号1的火焰就会被解释成烟雾。',
+    '现在制作 road001.txt。原图宽1000、高500，第一处火焰的角点为左上(400,160)、右下(600,240)。先算宽600−400=200、高240−160=80；中心是((400+600)/2,(160+240)/2)=(500,200)。类别1后面写归一化数值：500/1000=0.5、200/500=0.4、200/1000=0.2、80/500=0.16，因此第一行是 1 0.5 0.4 0.2 0.16。',
+    '同一张图再有一处烟雾，角点为(100,50)和(300,150)，中心为(200,100)，宽高为(200,100)。类别0对应第二行 0 0.2 0.2 0.2 0.2。每行分别表示一个实例；标签文件描述的是两处目标，类别编号不是行号。图片中没有目标时可以没有相应目标行，仍要通过抽检确认这张图不是漏标。',
+    '从标签还原出框也能检查数字。对于第一行，中心坐标是(0.5×1000,0.4×500)=(500,200)，宽高是(0.2×1000,0.16×500)=(200,80)。中心减去半个宽高得到左上(400,160)，加上半个宽高得到右下(600,240)。把还原后的框画在原图上，比单看小数更容易发现框错位、类别写反或遗漏目标。',
+    '数据配置把图片集合和类别表交给训练程序。以 YOLOv5 v7.0 为例，可以在 YAML 中设置 path: /实际路径/dataset、train: images/train、val: images/val，再用 names 的0、1项对应 smoke、fire。这里的 /实际路径 是需要替换的本机路径；运行前应确认解析出的训练、验证路径都指向真实目录。',
+    '加载时图片与框必须一起变换。把原图1000×500等比例缩小到640×320，再在上下各补160像素，得到640×640画布；第一处火焰中心(500,200)乘0.64后为(320,128)，再加顶部补边变成(320,288)，宽高变成(128,51.2)。因此相对新画布的中心和宽高是(0.5,0.45,0.2,0.08)。磁盘标签仍描述原图，读取时根据实际变换同步处理。',
+    '训练开始前做四步检查：先抽取原图画框核对标注；再查看训练程序生成的批次可视化，确认缩放、翻转或拼图后框仍对齐；然后统计各类目标及各数据集的图片数量；最后先用少量数据跑通读取和前向计算。报错时先定位是图片路径、标签格式、类别编号还是数据类型，再修改对应文件。',
+    '训练与验证的划分决定评价回答的问题。若要评估新摄像头，将同一摄像头的图片放在同一组，再按摄像头划分；若希望评估新视频，按视频分组。同一组的相邻帧非常相似，分到不同集合可能使验证结果偏乐观。分组后还要看每个集合是否有需要评估的类别和场景。'
+  );
+  practice.subheadings={...(practice.subheadings||{}),[practiceStart]:'从目录到训练：完整做一遍',[practiceStart+2]:'手算两处目标的标签',[practiceStart+4]:'把标签还原成框',[practiceStart+5]:'配置数据并同步变换',[practiceStart+7]:'开始训练前检查什么'};practice.dataPractice=practiceStart+2;
   const config=catalog.find(item=>item.id==='yolo-config'), cs=config.sections[0], csStart=cs.paragraphs.length;
   cs.paragraphs.push(
     '模型 YAML 是结构说明，解析器根据配置创建模块并连接输入；它不是已经训练好的权重。每行 [from, number, module, args] 指明输入来源、基础重复次数、模块和参数。层号从0开始，from=-1 通常读取上一层，多来源列表则依次读取指定层。',
@@ -111,6 +124,7 @@
   const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   window.visionlabYoloLearning.renderParagraph=(section,index)=>{
     const existing=old(section,index);
+    if(section.dataPractice===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>1000 × 500 原图：从角点到标签</strong></figcaption><svg viewBox="0 0 600 330" role="img" aria-label="原图示意：火焰框角点400、160到600、240，中心500、200；烟雾框角点100、50到300、150"><rect x="40" y="35" width="500" height="250" fill="#eef3f6" stroke="#607287"/><rect x="240" y="115" width="100" height="40" fill="#eab58b" fill-opacity=".5" stroke="#b54e57" stroke-width="3"/><circle cx="290" cy="135" r="4" fill="#b54e57"/><text x="244" y="108" font-size="16">火焰 1</text><rect x="90" y="60" width="100" height="50" fill="#c9d5df" stroke="#52789d" stroke-width="3"/><text x="94" y="55" font-size="16">烟雾 0</text><text x="40" y="315" font-size="15">原图按比例缩小绘制；框坐标以原图像素计算</text></svg><ol class="yl-flow"><li><span>火焰</span><b>中心(500,200)，宽高(200,80)</b></li><li><span>标签第1行</span><b>1 0.5 0.4 0.2 0.16</b></li><li><span>烟雾</span><b>中心(200,100)，宽高(200,100)</b></li><li><span>标签第2行</span><b>0 0.2 0.2 0.2 0.2</b></li></ol></figure>';
     if(section.dataTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>图片和标签如何送到训练</strong></figcaption><ol class="yl-flow"><li><span>图片</span><b>frame001.jpg：宽1000、高500</b></li><li><span>标注框</span><b>左上(400,160)，右下(600,240)</b></li><li><span>标签</span><b>1 0.5 0.4 0.2 0.16</b></li><li><span>配置</span><b>数据根目录 + 图片路径 + 类别名称</b></li><li><span>检查</span><b>叠加框，核对编号、位置与漏标</b></li></ol></figure>';
     if(section.configTrace===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l 第19层：两路拼接</strong></figcaption><ol class="yl-flow"><li><span>第18层</span><b>[1,256,40,40]</b></li><li><span>第14层</span><b>[1,256,40,40]</b></li><li><span>Concat</span><b>高宽一致，沿通道拼接</b></li><li><span>输出</span><b>[1,512,40,40] → 后续 C3</b></li></ol></figure>';
     if(section.archDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l：640方形输入的数据流</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>[1,3,640,640] → [1,64,320,320]</b></li><li><span>Backbone</span><b>80×80 → 40×40 → 20×20；C3与SPPF提取特征</b></li><li><span>Neck</span><b>20 → 40 → 80，再向 40 → 20 融合</b></li><li><span>Detect 输入</span><b>[1,256,80,80] · [1,512,40,40] · [1,1024,20,20]</b></li><li><span>两类输出</span><b>每尺度 3 组参考 × 7 个字段；筛选前共 25,200 条候选</b></li></ol></figure>';

@@ -171,7 +171,7 @@
   ];
   const firstYolo=catalog.findIndex(l=>l.group==='yolo'),before=catalog.slice(0,firstYolo),after=catalog.slice(firstYolo).filter(l=>l.group!=='yolo');
   catalog.splice(0,catalog.length,...before,...newLessons,...after);
-  groups.yolo.name='YOLOv5 系统课程';groups.yolo.desc='按检测背景、仓库与配置、网络模块、训练机制、部署复盘五个阶段，循序学习24课。';
+  groups.yolo.name='YOLOv5 系统课程';groups.yolo.desc='按检测背景、仓库与配置、网络模块、训练机制、部署复盘五个阶段，按第0课背景导读与24课主线循序学习。';
   for(let i=0;i<newLessons.length;i++){
     const l=newLessons[i],previous=newLessons[i-1];
     l.yoloNumber=i+1;l.curriculumPhase=phases.find(p=>p.ids.includes(l.id)).id;
@@ -221,12 +221,12 @@
   function resolveRoute(hash){const parts=hash.replace(/^#/,'').split('/');if(parts[0]!=='lesson'||!parts[2])return null;const t=redirects.get(parts[1]+'/'+parts[2]);return t&&t.lesson!==parts[1]?'#lesson/'+t.lesson+'/section-'+t.section:null;}
   function renderCatalog(items,renderList){
     const allowed=new Set(items.map(l=>l.id));
-    return '<section class="yc-syllabus"><div class="yc-syllabus-intro"><span class="chapter-kicker">YOLOv5 · 5 STAGES / 24 LESSONS</span><h2>先理解为什么，再学网络怎样算、模型怎样学</h2><p>每课围绕一个问题展开。按下面顺序学习；已有基础可按阶段进入。先用图解和生活例子建立直觉，再通过算例、源码和练习逐步深入。</p><a class="primary" href="#lesson/detection-intro">从第01课开始 →</a><nav aria-label="YOLOv5阶段导航">'+phases.map((p,i)=>'<a href="#yc-phase-'+p.id+'">'+(i+1)+' · '+p.title.split('·')[1].trim()+'</a>').join('')+'</nav></div>'+phases.map(p=>{
+    return '<section class="yc-syllabus"><div class="yc-syllabus-intro"><span class="chapter-kicker">YOLOv5 · 第0课背景＋24课主线</span><h2>先理解为什么，再学网络怎样算、模型怎样学</h2><p>每课围绕一个问题展开。按下面顺序学习；已有基础可按阶段进入。先用图解和生活例子建立直觉，再通过算例、源码和练习逐步深入。</p><a class="primary" href="#lesson/detection-history">从第00课开始 →</a><nav aria-label="YOLOv5阶段导航">'+phases.map((p,i)=>'<a href="#yc-phase-'+p.id+'">'+(i+1)+' · '+p.title.split('·')[1].trim()+'</a>').join('')+'</nav></div>'+phases.map(p=>{
       const list=p.ids.map(id=>newLessons.find(l=>l.id===id)).filter(l=>allowed.has(l.id));if(!list.length)return '';
       return '<section class="yc-phase" id="yc-phase-'+p.id+'"><h2>'+p.title+'</h2><p>'+p.why+'</p>'+renderList(list)+'<p class="yc-check"><strong>阶段验收：</strong>'+p.check+'</p></section>';
     }).join('')+'</section>';
   }
-  function renderContext(l){if(!l.yoloNumber)return '';const phase=phases.find(p=>p.id===l.curriculumPhase);return '<aside class="yc-course-context"><strong>YOLOv5系统课程 · 第'+String(l.yoloNumber).padStart(2,'0')+' / 24课</strong><span>'+phase.title+'</span><p>'+esc(l.curriculumIntro)+'</p><a href="#courses/yolo">查看五阶段完整顺序 ↗</a></aside>';}
+  function renderContext(l){if(l.yoloNumber===undefined)return '';const phase=phases.find(p=>p.id===l.curriculumPhase);return '<aside class="yc-course-context"><strong>YOLOv5系统课程 · 第'+String(l.yoloNumber).padStart(2,'0')+' / 共'+newLessons.length+'课</strong><span>'+phase.title+'</span><p>'+esc(l.curriculumIntro)+'</p><a href="#courses/yolo">查看五阶段完整顺序 ↗</a></aside>';}
   function slidingCount(size){return Math.floor((640-size)/32+1)**2;}
   function slidingView(size){const count=slidingCount(size);return '<div class="yc-demo" data-yc="sliding"><h3>换一个窗口大小，先估计要查多少位置</h3><div class="yc-controls">'+[64,128,256].map(n=>'<button type="button" data-yc-size="'+n+'" aria-pressed="'+(n===size)+'">'+n+'×'+n+'</button>').join('')+'</div><svg viewBox="0 0 640 320" role="img" aria-label="缩略整图与一个滑动窗口"><rect x="5" y="5" width="305" height="305" fill="#f4f1e9"/><path d="M5 210H310M5 245H310" stroke="#b8c1c5" stroke-width="22"/><rect x="70" y="180" width="55" height="30" rx="6" fill="#73998b"/><rect x="205" y="220" width="65" height="32" rx="6" fill="#8198ad"/><rect x="'+(30)+'" y="'+(35)+'" width="'+(size*305/640)+'" height="'+(size*305/640)+'" fill="#6957b522" stroke="#6957b5" stroke-width="3"/><text x="335" y="90" fill="currentColor">整图：640×640</text><text x="335" y="125" fill="currentColor">步幅：32</text><text x="335" y="160" fill="currentColor">一个窗口：'+size+'×'+size+'</text><text x="335" y="205" fill="currentColor">总检查位置：'+count+'</text></svg><p>每个方向 floor((640−'+size+')/32)+1='+Math.sqrt(count)+' 个位置，共'+count+'个。三种大小合计819个位置。</p><p class="yc-note">窗口只示意尺寸，不执行分类；次数不等于耗时。共享特征后也不能简单把819当作实测加速倍数。</p></div>';}
   const pipelines={two:[['整图提共享特征','卷积网络先把整张图片变成可复用的特征。'],['RPN产生候选区域','在共享特征上提议值得细看的框；这些框还不是真实标注或最终答案。'],['区域特征与检测头','按候选取区域特征，进一步判断类别并精修框。'],['筛选与去重','按规则保留输出，后处理不改变前面两阶段的职责划分。']],one:[['整图提共享特征','Backbone与多尺度融合先产生供预测使用的特征。'],['密集预测框与分数','在许多位置直接产生框、目标性和类别相关数字；没有独立的区域候选检测头。'],['解码、筛选与去重','将原始数字变成候选框并按规则保留；YOLOv5有NMS仍属于一阶段。']]};

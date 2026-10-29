@@ -54,6 +54,7 @@
   );
   fast.subheadings={...(fast.subheadings||{}),[fastStart]:'共享特征之后，候选框怎样继续走'};fast.fastDiagram=fastStart;
   const one=catalog.find(item=>item.id==='detection-one-stage');
+  one.sections[0].stageComparison=0;
   const yolo=one.sections[1], yoloStart=yolo.paragraphs.length;
   yolo.paragraphs.push(
     '第一代 YOLO 的设计目标是将整张图片上的检测作为一个统一的预测任务：一张图片进入网络，网络同时输出多个位置的框和类别信息。它把输入划分为 S×S 个网格；训练时，目标中心落在哪个网格，就由那个网格负责预测该目标。',
@@ -64,6 +65,25 @@
     '因此，一阶段说的是从特征直接产生密集预测的组织方式；具体字段、匹配和损失随模型变化。第一代 YOLO 的 7×7×30 与后面 YOLOv5 的多尺度、Anchor 和每候选类别字段是不同设计，阅读代码时要先确定版本。'
   );
   yolo.subheadings={...(yolo.subheadings||{}),[yoloStart]:'第一代 YOLO 的输出怎样组成'};yolo.oneStageDiagram=yoloStart;
+  const deepStart=yolo.paragraphs.length;
+  yolo.paragraphs.push(
+    '先把原图统一缩放到 448×448，再送入第一代 YOLO 的卷积网络。网络先提取整图特征，末尾全连接层输出 1470 个数，按 7×7×30 组织。7×7 说的是输出位置的排列；网络并没有把图片裁成 49 张独立小图逐张识别。每个位置可利用整图提取的特征。',
+    '一格的 30 个数分成两组框信息和一组类别信息：每组框为中心 x、y、宽 w、高 h、置信度，共 2×5=10；其余 20 个数表示该格有目标时属于各类别的条件概率。两个框共享这 20 个类别数，因此不能把它理解为每个框各自有 20 个类别数。',
+    '例如某格第一个框的置信度为 0.8，该格给“车”的条件概率为 0.7，则这个框的车类别分数为 0.8×0.7=0.56；若第二个框置信度为 0.5，其车类别分数为 0.35。两个框都可能被保留为候选，之后还要按类别和阈值筛选，再对重叠框做 NMS。0.56 是计算出的类别相关分数，具体保留与否取决于所选阈值。',
+    '训练时，真实框的中心决定由哪一格负责该目标，再在该格的两个预测框中选与真实框 IoU 最大的框负责定位。坐标损失推动负责框靠近真实框；置信度项学习目标存在与重叠质量；类别项训练负责格的类别分数。训练使用真实标注；推理面对新图片时没有真实框，因此不能按真实框 IoU 来挑负责框。',
+    'SSD 的出发点是让不同分辨率的特征图都参与检测。以论文中的 VGG 版 SSD300 为例，输入为 300×300；主干产生 conv4_3 和 conv7 等特征，后续附加卷积继续降低空间分辨率。六张预测特征图依次为 38×38、19×19、10×10、5×5、3×3、1×1。各层既有不同位置数，也有不同感受范围。',
+    '默认框是预先规定的中心、宽和高，供网络在每个位置参考；它还不是最终检测结果。每个默认框各自预测类别分数和四个位置偏移量。预测头是卷积层：对 H×W 的特征图、每位置 k 个默认框、C 个类别（含背景），分类输出 k×C 个通道，定位输出 k×4 个通道；每个空间位置都有对应的这些输出。',
+    '以 SSD300 的 PASCAL VOC 设定为例，20 个前景类别加 1 个背景，共 C=21。六层每位置默认框数依次是 4、6、6、6、4、4。第一层分类输出形状为 [1,84,38,38]，定位输出为 [1,16,38,38]；这里批次为1，采用通道在前的记法。展开后，每个默认框都有21个类别分数和4个偏移量。',
+    '把六层候选数逐层相加：38²×4=5776，19²×6=2166，10²×6=600，5²×6=150，3²×4=36，1²×4=4，总共 8732 个默认框。数量由特征图尺寸与每位置默认框数共同决定；更换模型或输入配置需要重新计算。候选数不是最终检测物体数。',
+    'SSD 训练先把真实框与默认框配对：每个真实框先匹配 IoU 最高的默认框，再把 IoU 高于 0.5 的其他默认框也匹配进来。匹配到目标的框是正样本，用真实类别训练分类，并用真实框相对默认框的偏移训练定位；未匹配的框作为背景候选。分类损失采用 Softmax 类别损失，定位项采用 Smooth L1。',
+    '例如一张图片只有一辆车，8732 个默认框中只有少数与车匹配，大多数是背景。SSD 按背景分类损失挑选难负样本，论文将负样本与正样本数量之比控制在最多 3:1，避免大量容易判断的背景主导学习。若一张图没有匹配正样本，论文定义该图的损失为零；实际实现应以所用代码为准。',
+    '推理时没有标签和匹配过程：对每个默认框，根据网络预测的偏移还原候选框，对类别分数做 Softmax，按前景类别筛选，并对同类别重叠候选做 NMS。六张图的预测先汇总；最后留下几辆车取决于图片、分数、阈值和 NMS，而不是固定为 8732。',
+    '三种设计有联系，也各有自己的输出约定：初代 YOLO 在 7×7 网格每格共享类别概率；SSD 在多张特征图上为每个默认框输出含背景的类别分数；本课程 YOLOv5 v7.0 使用三个检测尺度，按每个 Anchor 输出框参数、物体性和各类别字段。理解共同的密集预测思路后，再分别阅读各自的标签分配、损失和解码。'
+  );
+  Object.assign(yolo.subheadings,{[deepStart]:'初代 YOLO：从整图到一个格子的分数',[deepStart+3]:'训练时谁负责预测',[deepStart+4]:'SSD300：沿六张特征图追踪',[deepStart+8]:'训练时：默认框怎样获得监督',[deepStart+10]:'推理时：候选怎样变成结果',[deepStart+11]:'从两种历史设计走向 YOLOv5'});
+  yolo.ssdDetail=deepStart+4;
+  yolo.ssdTraining=deepStart+8;
+  yolo.modelComparison=deepStart+11;
   one.sources=one.sources||[];one.sources.push({label:'YOLO 原论文',url:'https://arxiv.org/abs/1506.02640'},{label:'SSD 原论文',url:'https://arxiv.org/abs/1512.02325'});
   const evolution=catalog.find(item=>item.id==='yolo-evolution'), evo=evolution.sections[1], evoStart=evo.paragraphs.length;
   evo.paragraphs.push(
@@ -243,6 +263,10 @@
     if(section.archDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>YOLOv5l：640方形输入的数据流</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>[1,3,640,640] → [1,64,320,320]</b></li><li><span>Backbone</span><b>80×80 → 40×40 → 20×20；C3与SPPF提取特征</b></li><li><span>Neck</span><b>20 → 40 → 80，再向 40 → 20 融合</b></li><li><span>Detect 输入</span><b>[1,256,80,80] · [1,512,40,40] · [1,1024,20,20]</b></li><li><span>两类输出</span><b>每尺度 3 组参考 × 7 个字段；筛选前共 25,200 条候选</b></li></ol></figure>';
     if(section.evoDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>认识本课的模型配置</strong></figcaption><ol class="yl-flow"><li><span>检测任务</span><b>第一代 YOLO：网格直接预测</b></li><li><span>模型版本</span><b>YOLOv5 v7.0：6×6入口、C3、SPPF</b></li><li><span>尺度融合</span><b>Neck 融合三种空间尺寸</b></li><li><span>预测</span><b>Detect 使用参考宽高与各尺度特征</b></li></ol></figure>';
     if(section.oneStageDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>第一代 YOLO：从图片到 7 × 7 × 30</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 神经网络</b></li><li><span>7 × 7 网格</span><b>每格 2 个框 × 5 个数 + 20 个类别数</b></li><li><span>分类与定位</span><b>框坐标、置信度与类别分数</b></li><li><span>后处理</span><b>类别分数 × 框置信度 → 筛选与 NMS</b></li></ol></figure>';
+    if(section.stageComparison===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>同一张有两辆车的图片：两种预测路线</strong></figcaption><details open><summary>一阶段：直接预测</summary><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 共享特征</b></li><li><span>预测</span><b>多个位置直接输出候选框及类别相关分数</b></li><li><span>整理</span><b>按分数筛选、NMS 去重 → 最终车辆框</b></li></ol></details><details><summary>两阶段：先提出区域</summary><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 共享特征</b></li><li><span>第一阶段</span><b>产生可能包含目标的候选区域</b></li><li><span>第二阶段</span><b>提取各区域特征，分类并修正框</b></li><li><span>整理</span><b>筛选和去重 → 最终车辆框</b></li></ol></details></figure>';
+    if(section.modelComparison===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>三种模型怎样组织预测</strong></figcaption><ol class="yl-flow"><li><span>初代 YOLO</span><b>单张 7×7 网格；每格两个框共享20个类别数；框置信度与类别条件概率相乘。</b></li><li><span>SSD300</span><b>六张特征图；每个默认框预测4个偏移和21个类别分数（含背景）。</b></li><li><span>YOLOv5 v7.0</span><b>三个尺度；每个 Anchor 预测4个框参数、1个物体性和各类别字段。</b></li></ol><details><summary>自查：SSD 有六张特征图，因此是六阶段检测吗？</summary><p>不是。六张图表示六个预测尺度；SSD 在这些位置直接产生预测，不经过独立的区域分类精修阶段。</p></details><details><summary>自查：8732 个默认框代表图片里有 8732 个物体吗？</summary><p>不是。它们是预设候选的数量；大多数会被分类分数筛除，其余再经 NMS 整理。</p></details></figure>';
+    if(section.ssdTraining===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>同一张图片：训练与推理各走哪条路？</strong></figcaption><details open><summary>训练：预测和标注一起参与</summary><p>图片 → 多尺度预测；真实框 → 与默认框匹配 → 正样本类别和偏移目标 → 分类与定位损失 → 更新参数。</p></details><details><summary>推理：对新图片输出检测结果</summary><p>图片 → 多尺度预测 → 默认框加预测偏移得到候选框 → 类别分数筛选 → 同类别 NMS → 最终结果。</p></details></figure>';
+    if(section.ssdDetail===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>SSD300：点击各尺度查看候选数</strong></figcaption><p>每个位置有若干默认框；选择一层，查看该层的输入、输出与计算。</p>'+[[38,4],[19,6],[10,6],[5,6],[3,4],[1,4]].map(([s,k])=>`<details><summary>${s}×${s} 特征图 · 每位置 ${k} 个默认框</summary><p>收到 ${s}×${s} 个特征位置；预测头在每个位置为 ${k} 个默认框分别输出 21 个类别分数和 4 个位置偏移。共 ${s}×${s}×${k} = ${s*s*k} 个候选。</p></details>`).join('')+'<p>六层合计 8732 个候选；筛选和去重后得到最终结果。</p></figure>';
     if(section.fastDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>从共享特征到区域检测</strong></figcaption><ol class="yl-flow"><li><span>输入</span><b>整张图片 → 卷积网络 → 共享特征图</b></li><li><span>候选</span><b>Fast：外部候选；Faster：RPN 与 Anchor 产生建议</b></li><li><span>区域特征</span><b>候选映射到特征图 → RoI Pooling → 固定尺寸</b></li><li><span>两支输出</span><b>类别与背景分数 + 边界框修正</b></li></ol></figure>';
     if(section.rcnnDiagram===index)return existing+'<figure class="yd-workshop yl-figure"><figcaption><strong>R-CNN：候选区域逐个通过网络</strong></figcaption><ol class="yl-flow"><li><span>原图</span><b>Selective Search → 约 2000 个候选框</b></li><li><span>逐个处理</span><b>裁剪并变换 → 227 × 227 区域</b></li><li><span>区域网络</span><b>卷积 → pool5（6 × 6 × 256）→ fc6 → fc7（4096维）</b></li><li><span>分类分支</span><b>fc7 → 各类别线性 SVM 打分</b></li><li><span>定位分支</span><b>pool5 → 线性框回归 → 修正中心与宽高</b></li><li><span>结果整理</span><b>按类别筛选并用 NMS 去重</b></li></ol></figure>';
     if(!section.readerDiagram||index!==section.readerDiagram.start)return existing;

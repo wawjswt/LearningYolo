@@ -86,6 +86,14 @@
   yolo.modelComparison=deepStart+11;
   one.sources=one.sources||[];one.sources.push({label:'YOLO 原论文',url:'https://arxiv.org/abs/1506.02640'},{label:'SSD 原论文',url:'https://arxiv.org/abs/1512.02325'});
   const evolution=catalog.find(item=>item.id==='yolo-evolution'), evo=evolution.sections[1], evoStart=evo.paragraphs.length;
+  const timeline=evolution.sections[0], timelineStart=timeline.paragraphs.length;
+  timeline.paragraphs.push(
+    '回到初代 YOLO 的限制：一张图片分成 7×7 个输出位置，每格只预测一组类别概率。如果两只小鸟的中心落在同一格，即使该格有两个框，它也无法为这两个框分别给出两组类别概率。这是输出组织方式带来的约束，不是说模型一定检测不到相邻目标。',
+    'YOLOv2 引入参考框：先根据训练框宽高选出若干形状，再由网络预测相对参考框的调整。参考框给预测一个宽高起点，不是把标注框直接复制到结果中。训练仍需确定哪个预测负责哪个真实目标，推理仍需把预测参数变成框并筛选。',
+    'YOLOv3 在多个尺度预测。假设输入边长为 416，三个尺度的网格可分别是 13×13、26×26、52×52：位置较密的网格为小目标提供更多可选位置，较粗的网格与较大范围特征配合。尺度只是帮助分工，目标能否检出还取决于数据、特征和训练。',
+    '从这里走到 YOLOv5 时要问清同一个问题：输入是什么，哪些特征用于预测，每个位置输出哪些数，训练怎样分配目标，推理怎样筛选？这些问题可以跨版本使用；每个问题的具体答案则要查对应版本的模型配置与实现。'
+  );
+  timeline.subheadings={...(timeline.subheadings||{}),[timelineStart]:'从一个限制出发，理解参考框和多尺度'};
   evo.paragraphs.push(
     '要看清不同版本解决了什么问题，先回到第一代 YOLO：它用固定网格直接预测框和类别，整图计算简洁，但每格共享一组类别信息，对紧邻的小目标有局限。后续设计逐步引入参考框与更多尺度，让预测位置能表达不同宽高和大小的目标；每个版本的具体分配和损失仍需分别阅读。',
     '本课使用 Ultralytics YOLOv5 v7.0 的 yolov5l 配置：输入先经过 6×6、步幅2的卷积，再通过卷积和 C3 模块提取特征；SPPF 汇集不同范围的信息，Neck 融合不同尺度，Detect 在三个尺度输出预测。这个清单描述各部分的职责，后面将逐层查看具体输入和输出。',

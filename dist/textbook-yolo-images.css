@@ -1,0 +1,11 @@
+.yolo-course-image{margin:2rem 0;padding:1.25rem;border:1px solid #ded9e7;border-radius:8px;background:#fff;}
+.yolo-course-image figcaption{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem;line-height:1.5;}
+.yolo-course-image figcaption strong{font-size:1.12rem;color:#2d4054;}
+.yolo-course-image-open{display:block;border:1px solid #ece9f1;border-radius:4px;overflow:hidden;background:#fbfaf7;}
+.yolo-course-image img{display:block;width:100%;height:auto;}
+.yolo-course-image-open:focus-visible{outline:3px solid #7660a6;outline-offset:3px;}
+.yolo-course-image .yolo-course-image-hint{font-size:.82rem;color:#69798a;margin:.5rem 0 1rem;}
+.yolo-course-image ol{padding-left:1.4rem;line-height:1.8;}
+.yolo-course-image li+li{margin-top:.45rem;}
+.yolo-course-image .source-note{font-size:.82rem;margin-bottom:0;}
+@media(max-width:600px){.yolo-course-image{padding:.75rem;margin:1.5rem 0}.yolo-course-image figcaption strong{font-size:1rem;}}

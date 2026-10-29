@@ -20,8 +20,69 @@ save('anchor-geometry','Anchor是参考宽高：几何适配与预测要分开',
 save('assignment-grid','目标靠近边界时，同一Anchor可监督哪些位置',Array.from({length:25},(_,i)=>{const x=i%5,y=Math.floor(i/5),hit=(x===2&&y===2)||(x===1&&y===2)||(x===2&&y===3);return `<rect x="${45+x*52}" y="${75+y*52}" width="52" height="52" fill="${hit?'#dcd0ef':'#f5f3ef'}" stroke="#bcb2ca"/>`+text(49+x*52,104+y*52,`${x},${y}`,13);}).join('')+`<circle cx="169.8" cy="210.2" r="6" fill="#d47850"/>`+box(380,90,535,190,['目标中心(列2.4，行2.6)','中心格：(2,2)，局部坐标(0.4,0.6)','左邻格：(1,2)，同一中心表示为(1.4,0.6)','下邻格：(2,3)，同一中心表示为(0.4,−0.4)','紫色格是本例为同一Anchor选择的负责位置'])+text(28,397,'教学网格：先通过宽高匹配，再按v7.0邻格规则选择位置；不是五乘五的真实检测尺度。',15));
 graph('loss-paths','一个正样本，分别影响三项监督',[[30,85,240,85,['框定位','CIoU = 0.6 → 框项0.4']],[350,85,250,85,['物体性','目标0.6，预测0.5']],[680,85,245,85,['类别','目标[0,1]，预测[0.8,0.2]']],[80,265,210,70,['框项归约','正样本位置']],[380,265,210,70,['BCE ≈ 0.693','还包括其他网格位置']],[680,265,245,70,['类别平均BCE≈1.609','正样本类别字段']]],[[150,170,180,258],[475,170,485,258],[800,170,800,258]],'三项再按gain、尺度与实现归约组合；图中单项值不直接等于训练日志总损失。');
 graph('resume-paths','初始化微调与断点续训，需要的状态不同',[[30,165,190,90,['已有.pt','先检查实际内容']],[335,70,250,100,['微调初始化','筛选匹配的模型参数','新任务可改变类别头']],[335,265,250,100,['恢复原实验','模型＋优化器＋轮次','还原训练进度等状态']],[690,155,240,120,['检查名称与形状','类别数与类别顺序','是否保留续训状态','不能仅靠文件名判断']]],[[220,185,328,120],[220,225,328,310],[585,120,683,185],[585,310,683,240]],'best.pt与last.pt可能被清理优化器状态；先检查保存内容再决定恢复方式。',450);
-save('evaluation-counts','评价先匹配，再把TP、FP、FN数清楚',box(30,80,245,105,['真实目标：3个','按分数排序的4条预测','匹配结果：TP、FP、TP、TP'])+box(355,80,245,105,['只保留最高分1条','P = 1/1 = 1','R = 1/3'])+box(680,80,245,105,['保留前2条','P = 1/2 = 0.5','R = 1/3'])+box(355,270,245,105,['保留前3条','P = 2/3','R = 2/3'])+box(680,270,245,105,['保留前4条','P = 3/4 = 0.75','R = 3/3 = 1'])+arrow(275,130,348,130)+arrow(600,130,673,130)+arrow(802,185,802,263)+arrow(680,320,607,320)+text(28,428,'人工数据例子：需先固定类别匹配、IoU阈值及每个真实框只能匹配一次的规则。',15),450);
+save('evaluation-counts','评价先匹配，再把TP、FP、FN数清楚',box(30,80,245,105,['真实目标：3个','按分数排序的4条预测','匹配结果：TP、TP、FP、TP'])+box(355,80,245,105,['只保留最高分1条','P = 1/1 = 1','R = 1/3'])+box(680,80,245,105,['保留前2条','P = 2/2 = 1','R = 2/3'])+box(355,270,245,105,['保留前3条','P = 2/3','R = 2/3'])+box(680,270,245,105,['保留前4条','P = 3/4 = 0.75','R = 3/3 = 1'])+arrow(275,130,348,130)+arrow(600,130,673,130)+arrow(802,185,802,263)+arrow(680,320,607,320)+text(28,428,'人工数据例子：需固定类别匹配、IoU阈值和一对一匹配；顺序与下文AP例子一致。',15),450);
+{
+ const body=[];
+ body.push(text(38,79,'人工设定：3个真实目标；预测按置信度从高到低排列',16));
+ const tx=38,ty=102,cw=[58,74,72,82,82],rh=42;
+ const heads=['序号','分数','匹配','累计P','累计R'];
+ let xx=tx;
+ heads.forEach((h,i)=>{body.push(`<rect x="${xx}" y="${ty}" width="${cw[i]}" height="${rh}" fill="#e9e5ef" stroke="#c8bfd3"/>`);body.push(text(xx+6,ty+27,h,14));xx+=cw[i];});
+ const rows=[['A','.95','TP','1.00','1/3'],['B','.82','TP','1.00','2/3'],['C','.61','FP','0.67','2/3'],['D','.34','TP','.75','1.00']];
+ rows.forEach((row,r)=>{let x=tx;row.forEach((v,i)=>{const y=ty+rh*(r+1),fill=i===2?(v==='TP'?'#e2efe8':'#f6e9de'):'#fbfaf7';body.push(`<rect x="${x}" y="${y}" width="${cw[i]}" height="${rh}" fill="${fill}" stroke="#d5d0d8"/>`);body.push(text(x+7,y+27,v,14));x+=cw[i];});});
+ body.push(text(38,ty+rh*5+22,'TP：匹配到一个尚未匹配的真实目标；FP：误报。',13));
+ const x0=570, yTop=133, w=330, h=250;
+ body.push(`<rect x="${x0}" y="${yTop}" width="${w}" height="${h}" rx="5" fill="#fff" stroke="#cfc9d2"/>`);
+ const gx=x0+42,gy=yTop+28,gw=260,gh=180;
+ for(let i=0;i<=4;i++){
+   const x=gx+gw*i/4,y=gy+gh*i/4;
+   body.push(`<path d="M${x} ${gy}V${gy+gh} M${gx} ${y}H${gx+gw}" stroke="#e3dfe5" stroke-width="1"/>`);
+   body.push(text(x-7,gy+gh+20,String(i/4),11,'#687789'));
+   body.push(text(gx-30,y+4,String(1-i/4),11,'#687789'));
+ }
+ body.push(`<path d="M${gx} ${gy+gh}V${gy} M${gx} ${gy+gh}H${gx+gw}" stroke="#526273" stroke-width="2"/>`);
+ const px=r=>gx+gw*r,py=p=>gy+gh*(1-p);
+ body.push(`<path d="M${px(0)} ${py(0)} V${py(1)} H${px(2/3)} V${py(.75)} H${px(1)} V${py(0)} Z" fill="#dceee6" stroke="none"/>`);
+ body.push(`<path d="M${px(0)} ${py(1)} H${px(2/3)} V${py(.75)} H${px(1)}" fill="none" stroke="#34745c" stroke-width="4"/>`);
+ body.push(`<path d="M${px(1/3)} ${py(1)} L${px(2/3)} ${py(1)} L${px(2/3)} ${py(2/3)} L${px(1)} ${py(.75)}" fill="none" stroke="#7660a6" stroke-width="3"/>`);
+ [[1/3,1,'A'],[2/3,1,'B'],[2/3,2/3,'C'],[1,.75,'D']].forEach(([r,p,n])=>body.push(`<circle cx="${px(r)}" cy="${py(p)}" r="5" fill="#7660a6" stroke="white" stroke-width="2"/>`+text(px(r)+6,py(p)-6,n,11,'#493c65')));
+ body.push(text(gx+80,gy+gh+42,'Recall（召回率）',13));
+ body.push(`<text x="${gx-36}" y="${gy+85}" transform="rotate(-90 ${gx-36} ${gy+85})" font-size="13" fill="#293d50">Precision（精确率）</text>`);
+ body.push(text(38,497,'插值精确率包住的面积：',16,'#293d50'));
+ body.push(text(38,526,'1/3×1 + 1/3×1 + 1/3×0.75 ≈ 0.917',20,'#34745c'));
+ body.push(text(38,557,'紫点/线：逐条预测的P-R；绿色阶梯：向右取最大精确率形成的包络。',13));
+ body.push(text(515,475,'浅绿区域表示AP的直观面积',13,'#34745c'));
+ body.push(text(515,501,'真实版本按指定采样规则求面积。',13));
+ body.push(text(515,527,'YOLOv5 v7.0采用101点插值；',13));
+ body.push(text(515,553,'上式是连续区间手算近似示意。',13));
+ save('evaluation-pr-ap','从排序预测走到PR曲线与AP面积',body.join(''),590);
+}
+{
+ const body=[];
+ body.push(text(42,79,'人工计数：行是预测类别，列是真实类别',16));
+ const x=220,y=130,cw=115,ch=75;
+ const cols=['真实 Smoke','真实 Fire','背景列*'];
+ const rows=['预测 Smoke','预测 Fire','背景行*'];
+ body.push(text(x+36,108,'列 →',13,'#526273'));
+ cols.forEach((v,i)=>{body.push(`<rect x="${x+i*cw}" y="${y-32}" width="${cw}" height="32" fill="#eeebf2" stroke="#cec7d5"/>`);body.push(text(x+i*cw+8,y-11,v,13));});
+ rows.forEach((v,i)=>{body.push(`<rect x="${x-118}" y="${y+i*ch}" width="118" height="${ch}" fill="${i===2?'#eee9f5':'#eeebf2'}" stroke="#cec7d5"/>`);body.push(text(x-110,y+i*ch+42,v,14));});
+ const vals=[[3,0,1],[1,2,0],[0,1,0]];
+ vals.forEach((row,i)=>row.forEach((v,j)=>{
+   const diag=i===j&&i<2,miss=i===2&&j<2,fp=i<2&&j===2,wrong=i<2&&j<2&&i!==j;
+   const fill=diag?'#dceee6':miss?'#f5deda':fp?'#e8e0f3':wrong?'#f6ecd9':'#fbfaf7';
+   body.push(`<rect x="${x+j*cw}" y="${y+i*ch}" width="${cw}" height="${ch}" fill="${fill}" stroke="#cfc9d2" stroke-width="2"/>`);
+   body.push(text(x+j*cw+48,y+i*ch+48,String(v),24,diag?'#34745c':miss?'#a44f43':fp?'#66518d':'#293d50'));
+ }));
+ body.push(text(48,182,'行 ↓',14,'#526273'));
+ body.push(box(620,116,292,88,['对角线：类别和位置都匹配','Smoke 3个，Fire 2个','这是匹配成功的计数。'],'#e6f0ea'));
+ body.push(box(620,222,292,88,['末行 Background：漏检','有1个真实 Fire 没有匹配框','背景行记录未匹配真实目标。'],'#f7e7e3'));
+ body.push(box(620,328,292,88,['末列 Background：误报','有1个预测 Smoke 没有匹配GT','背景列记录未匹配预测框。'],'#eee8f5'));
+ body.push(box(82,395,474,91,['错分：1个真实 Smoke 被报成 Fire。','检测任务没有“所有背景像素都算TN”的格子；','只统计参与匹配的框及未匹配项。'],'#f7f1e5'));
+ body.push(text(82,519,'由表可算：Smoke P=3/4、R=3/4；Fire P=2/3、R=2/3。',15));
+ body.push(text(82,550,'*Background不是对象类别；本站为人工原始计数，v7.0绘图按真实类别列归一化。',13));
+ save('evaluation-confusion-matrix','读懂YOLOv5检测混淆矩阵：行预测，列真实',body.join(''),590);
+}
 save('nms-boxes','NMS手算：同一辆车附近的两个高分候选',`<rect x="60" y="110" width="300" height="150" fill="#d6e5f0" stroke="#426d97" stroke-width="3"/><rect x="90" y="110" width="300" height="150" fill="#e8dcf2" fill-opacity=".55" stroke="#7660a6" stroke-width="3"/>`+text(60,94,'A：0.90',20)+text(220,291,'B：0.80',20)+box(480,95,435,190,['两个框宽100、高50，水平相差10','交集：90×50 = 4500','并集：5000+5000−4500 = 5500','IoU = 4500/5500 ≈ 0.818','同类NMS阈值0.7：保留A，抑制B'])+text(28,397,'NMS的重叠门槛，与分数筛选门槛和评价匹配IoU门槛分别设置。',16));
 save('letterbox-frame','同一框从原图进入画布：位置与尺寸要同步变化',`<rect x="35" y="115" width="400" height="200" fill="#dfefe8" stroke="#477f6a"/><rect x="195" y="179" width="80" height="32" fill="none" stroke="#c67147" stroke-width="3"/><rect x="580" y="70" width="300" height="300" fill="#e4e0e9" stroke="#7660a6"/><rect x="580" y="145" width="300" height="150" fill="#dfefe8"/><rect x="700" y="193" width="60" height="24" fill="none" stroke="#c67147" stroke-width="3"/>`+text(35,85,'原图1000×500，框中心(500,200)',18)+arrow(445,220,567,220)+text(590,55,'画布640×640',18)+text(590,396,'上下各补160；中心变为(320,288)',17)+text(28,443,'缩放0.64：原框宽高(200,80) → (128,51.2)；网络画布坐标需要逆变换才能画回原图。',15),470);
 graph('debug-evidence','漏检之后，从哪一段数据找原因',[[30,85,260,80,['先看原图与标签','目标是否漏标、尺寸多小？']],[350,85,260,80,['看预处理后的图与框','缩放后目标还剩多少像素？']],[670,85,260,80,['看筛选前候选','是否已预测出合理框？']],[670,270,260,80,['看阈值与NMS','是否被筛掉或抑制？']],[350,270,260,80,['按场景汇总失败','小目标／夜间／遮挡分别看']],[30,270,260,80,['做单项对照实验','固定划分、指标、输入条件']]],[[290,125,343,125],[610,125,663,125],[800,165,800,263],[670,310,617,310],[350,310,297,310]],'每个改动先对应一条观察证据，再比较精度、开销和部署表现。');
-console.log('Generated 18 course diagrams.');
+console.log('Generated 20 course diagrams.');

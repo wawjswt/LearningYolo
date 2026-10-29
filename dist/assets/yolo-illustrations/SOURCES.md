@@ -26,9 +26,9 @@
 
 ## 本站 SVG 教学图
 
-18 张 SVG 由 `scripts/build-yolo-course-illustrations.mjs` 生成，属于本站绘制的教学图，未从外部位图描摹或裁切。结构图根据 YOLOv5 v7.0 的 `models/yolo.py`、`models/common.py`、模型 YAML，以及数据、损失、指标和后处理实现整理。历史路线另参考对应原论文；图注提供各自的计算依据链接。
+20 张 SVG 由 `scripts/build-yolo-course-illustrations.mjs` 生成，属于本站绘制的教学图，未从外部位图描摹或裁切。结构图根据 YOLOv5 v7.0 的 `models/yolo.py`、`models/common.py`、模型 YAML，以及数据、损失、指标和后处理实现整理。历史路线另参考对应原论文；图注提供各自的计算依据链接。
 
-网格、框坐标、损失项及计数图中采用正文写明的教学条件。`evaluation-counts.svg` 是人工设定的 TP/FP 计数例子，不是训练测量的 PR 曲线。官方训练结果、模型性能和数据分布图是其原文示例，不代表本项目新训练的结果。
+网格、框坐标、损失项及计数图中采用正文写明的教学条件。`evaluation-counts.svg`、`evaluation-pr-ap.svg` 和 `evaluation-confusion-matrix.svg` 都是人工设定的教学计数，不是训练测量结果。PR/AP 图沿用3个真实目标与A、B、C、D四条预测的示例；混淆矩阵图采用YOLOv5 v7.0 的预测行、真实列及末行/列 Background 约定，并标出原始计数与官方绘图的列归一化区别。官方训练结果、模型性能和数据分布图是其原文示例，不代表本项目新训练的结果。
 
 ## 阅读和维护
 

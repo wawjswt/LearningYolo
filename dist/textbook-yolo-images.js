@@ -32,6 +32,8 @@
  add('yolo-augment','hsv.avif','HSV：颜色变化与几何变化分开看','官方HSV增强图，对比色调、饱和度与明度的变化',['观察外观颜色改变时，对象位置是否保持。','颜色增强通常不改变框坐标，和上面的几何增强职责不同。'],official+'architecture-description','Ultralytics 官方文档',1);
  add('yolo-augment','mixup.avif','MixUp：两份图片内容与标签如何共存','官方MixUp示例，组合两张训练图的视觉内容',['找出两份输入各自保留了哪些对象与框。','增强要符合任务语义；是否有效通过固定评价协议的对照实验判断。'],official+'architecture-description','Ultralytics 官方文档',1);
  own('yolo-evaluation','evaluation-counts','从四条预测数出P和R','三个真实目标，四条排序预测在不同保留数量下的精确率与召回率',['每增加一条预测，分别更新TP、FP及未检出的FN。','这是人工设定的计数例子；AP还需按既定协议处理整条PR曲线。'],v7+'utils/metrics.py');
+ own('yolo-evaluation','evaluation-pr-ap','从排序预测走到PR曲线与AP面积','4条按分数排序的预测、累计精确率与召回率、逐条PR点、插值包络和AP示意面积',['按A到D的顺序读表：每加入一条预测，更新累计TP和FP，再算P与R。','绿色区域是包络下的面积；例子使用人工计数。YOLOv5 v7.0按101个召回率点插值，实际数值还取决于评价协议和IoU匹配门槛。'],v7+'utils/metrics.py',1);
+ own('yolo-evaluation','evaluation-confusion-matrix','读懂YOLOv5检测混淆矩阵：行预测，列真实','人工计数的检测混淆矩阵，行是预测类别，列是真实类别，末行末列Background分别表示漏检和误报',['先沿行读预测类别，沿列读真实类别；绿色对角线表示类别和定位匹配。','末行Background记录未匹配的真实框（漏检）；末列Background记录未匹配的预测框（误报）。例子是人工原始计数；YOLOv5 v7.0绘图按真实类别列归一化。'],v7+'utils/metrics.py',2);
  own('inference','nms-boxes','重叠框为何被NMS抑制','两个火焰候选的分数和0.818交并比计算',['先算交集与并集，再比较NMS门槛。','确定类别相同及高分框之后再决定抑制；不同应用还要评估拥挤目标的误删。'],v7+'utils/general.py');
  add('yolo-export','export-graph.avif','用模型查看器检查导出的计算图','官方导出教程中Netron对比不同导出模型的图与输入输出属性',['先读输入名称、形状和输出数量，再沿算子连线检查。','截图来自官方历史导出示例；你使用的导出格式、动态轴与输出必须看实际文件。'],official+'model-export');
  add('yolo-export','export-targets.avif','导出格式，是交给运行环境的不同文件','官方示例目录，含多种格式的导出模型',['关注同一模型被保存成不同文件格式。','文件生成只证明转换完成；还需比较同一输入的数值、后处理与最终指标。'],official+'model-export','Ultralytics 官方文档',1);
